@@ -20,9 +20,9 @@ export function regenerateOutline(taskId) {
   return request.post(`/task/${taskId}/regenerate-outline`)
 }
 
-// 确认大纲
-export function confirmOutline(taskId) {
-  return request.post(`/task/${taskId}/confirm-outline`)
+// 确认大纲（可传入修改后的大纲）
+export function confirmOutline(taskId, outline = null) {
+  return request.post(`/task/${taskId}/confirm-outline`, { outline })
 }
 
 // 生成正文
