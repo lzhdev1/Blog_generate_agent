@@ -23,6 +23,11 @@ class TaskService:
         return TaskRepository.get_task_by_id(db, task_id=task_id)
 
     @staticmethod
+    def delete_task(db: Session, task_id: int) -> bool:
+        """根据ID删除任务"""
+        return TaskRepository.delete_task(db, task_id=task_id)
+
+    @staticmethod
     def list_tasks(db: Session, limit: int = 20, offset: int = 0):
         """任务列表（简单分页）"""
         total = db.query(BlogTask).count()
@@ -71,6 +76,14 @@ class TaskService:
             task.outline_research = research
             db.commit()
 
+    @staticmethod
+    def save_content_research(db: Session, task_id: int, research: str):
+        """保存正文调研结果"""
+        task = TaskRepository.get_task_by_id(db, task_id)
+        if task:
+            task.content_research = research
+            db.commit()
+
     # ========== 节点1：标题 ==========
 
     @staticmethod
@@ -82,6 +95,15 @@ class TaskService:
         task.titles = json.dumps(titles, ensure_ascii=False)
         task.status = TaskStatus.TITLE_GENERATED
         task.progress = "标题已生成，请选择标题并配置配图需求"
+        db.commit()
+
+    @staticmethod
+    def save_title_scores(db: Session, task_id: int, scores: list):
+        """保存标题评分结果"""
+        task = TaskRepository.get_task_by_id(db, task_id)
+        if not task:
+            return
+        task.title_scores = json.dumps(scores, ensure_ascii=False)
         db.commit()
 
     @staticmethod
@@ -124,6 +146,7 @@ class TaskService:
         if outline is not None:
             task.outline = outline
         task.outline_confirmed = True
+        task.progress = "大纲已确认，准备生成正文..."
         db.commit()
 
     # ========== 节点3：正文 ==========

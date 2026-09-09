@@ -51,14 +51,22 @@
         <div class="blog-divider"></div>
 
         <footer class="blog-footer">
-          <el-collapse>
-            <el-collapse-item title="查看审稿记录" name="review">
-              <div v-if="blog.review_feedback" class="review-content">
-                <pre>{{ blog.review_feedback }}</pre>
+          <div class="review-section">
+            <div class="review-header" @click="showReview = !showReview">
+              <SvgIcon name="review" :size="16" />
+              <span>审稿记录</span>
+              <SvgIcon :name="showReview ? 'up' : 'down'" :size="14" class="review-arrow" />
+            </div>
+            <div v-if="showReview" class="review-body">
+              <div v-if="reviewFeedback" class="review-content">
+                <pre>{{ reviewFeedback }}</pre>
               </div>
-              <div v-else class="empty-review">无审稿记录</div>
-            </el-collapse-item>
-          </el-collapse>
+              <div v-else class="empty-review">
+                <SvgIcon name="review" :size="24" />
+                <p>无审稿记录</p>
+              </div>
+            </div>
+          </div>
         </footer>
       </article>
 
@@ -81,16 +89,39 @@ const blogId = route.params.id
 
 const loading = ref(false)
 const blog = ref(null)
+const showReview = ref(true)
 
 const wordCount = computed(() => {
   if (!blog.value?.content) return 0
   return blog.value.content.replace(/\s/g, '').length
 })
 
+const reviewFeedback = computed(() => {
+  if (!blog.value?.review_feedback) return ''
+  const raw = blog.value.review_feedback
+  // 如果已经是对象，直接取 feedback
+  if (typeof raw === 'object') {
+    return raw.feedback || JSON.stringify(raw, null, 2)
+  }
+  // 如果是字符串，尝试解析 JSON
+  try {
+    const data = JSON.parse(raw)
+    return data.feedback || raw
+  } catch (e) {
+    // 不是JSON格式，直接返回原文
+    return raw
+  }
+})
+
 async function fetchBlog() {
   loading.value = true
   try {
     blog.value = await getBlogDetail(blogId)
+    console.log('[调试] 文章详情数据:', {
+      hasReviewFeedback: !!blog.value?.review_feedback,
+      reviewFeedbackType: typeof blog.value?.review_feedback,
+      reviewFeedbackPreview: blog.value?.review_feedback?.substring?.(0, 100) || blog.value?.review_feedback
+    })
   } finally {
     loading.value = false
   }
@@ -250,6 +281,40 @@ onMounted(() => {
   margin-top: 32px;
 }
 
+.review-section {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.review-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 18px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  transition: background 0.2s ease;
+}
+
+.review-header:hover {
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+}
+
+.review-arrow {
+  margin-left: auto;
+  color: var(--text-muted);
+  transition: transform 0.2s ease;
+}
+
+.review-body {
+  padding: 16px 18px;
+  background: white;
+}
+
 .review-content pre {
   background: #f8fafc;
   padding: 16px;
@@ -258,12 +323,23 @@ onMounted(() => {
   font-size: 13px;
   line-height: 1.7;
   color: var(--text-secondary);
+  margin: 0;
+  font-family: inherit;
 }
 
 .empty-review {
   text-align: center;
   color: var(--text-muted);
   padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.empty-review p {
+  margin: 0;
+  font-size: 13px;
 }
 
 @media (max-width: 768px) {

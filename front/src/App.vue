@@ -12,10 +12,10 @@
           </div>
         </router-link>
         <div class="header-actions">
-          <router-link to="/" class="nav-link">
+          <a href="#" class="nav-link" @click.prevent="scrollToArticles">
             <SvgIcon name="document" :size="18" />
             <span>我的文章</span>
-          </router-link>
+          </a>
           <router-link to="/create" class="create-btn">
             <SvgIcon name="plus" :size="18" />
             <span>创建新文章</span>
@@ -34,7 +34,30 @@
 </template>
 
 <script setup>
+import { useRouter, useRoute } from 'vue-router'
 import SvgIcon from '@/components/SvgIcon.vue'
+
+const router = useRouter()
+const route = useRoute()
+
+function scrollToArticles() {
+  if (route.path === '/') {
+    // 已经在首页，滚动到文章列表
+    const el = document.getElementById('articles-section')
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' })
+    }
+  } else {
+    // 不在首页，先跳转到首页，然后滚动
+    router.push('/')
+    setTimeout(() => {
+      const el = document.getElementById('articles-section')
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' })
+      }
+    }, 300)
+  }
+}
 </script>
 
 <style scoped>

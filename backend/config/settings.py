@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     llm_api_key: str
     llm_model: str = "qwen-plus"
     llm_temperature: float = 0.7
+    # 千问自带联网搜索（全局开关，researcher 节点会强制开启）
+    llm_enable_search: bool = False
 
     # ========== 各 Agent 模型配置（可选，不填则用默认 llm_model）==========
     # 研究员：速度快、便宜
@@ -25,8 +27,10 @@ class Settings(BaseSettings):
     llm_model_formatter: Optional[str] = None
 
     # ========== 审稿配置 ==========
+    # 是否启用审稿循环（关闭后写完正文直接配图/格式化，速度更快）
+    enable_review: bool = True
     # 审稿不通过时，最多自动修改几次
-    max_review_rounds: int = 3
+    max_review_rounds: int = 2
 
     # ========== 配图配置 ==========
     # 图片网站API（方式A：搜索图片）

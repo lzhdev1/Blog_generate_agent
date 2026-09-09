@@ -79,6 +79,74 @@ class ImageAgent(BaseAgent):
     # 3. 搜索图片（图片网站API）
     # ============================================================
 
+    def optimize_image_query(self, description: str) -> str:
+        """
+        搜索失败时，把配图描述改得更通用、更容易搜到
+        比如"性能对比图表" → "数据 科技 办公"
+        """
+        prompt = f"""以下配图描述在图片库搜索不到，请把它改得更通用、更抽象，更容易在摄影图片库搜到。
+要求：
+1. 去掉具体的图表、示意图、架构图等搜不到的类型
+2. 改成相关的场景、物品、氛围描述
+3. 输出英文关键词，用空格分隔，不超过8个单词
+4. 直接输出关键词，不要其他解释
+
+原描述：{description}
+优化后的关键词："""
+        return self.chat(prompt, temperature=0.3)
+
+    def search_image_with_retry(self, description: str, max_retries: int = 2) -> Tuple[Optional[str], bool]:
+        """
+        带重试的图片搜索
+        返回：(图片URL或None, 是否搜索成功)
+        第一次用原描述，失败后LLM优化描述再试，最多max_retries次
+        """
+        # 第一次：用原描述生成关键词
+        query = self.generate_image_prompt(description, "api")
+        image_url = self.search_image_pexels(query)
+        if not image_url:
+            image_url = self.search_image_unsplash(query)
+
+        if image_url:
+            return image_url, True
+
+        # 重试：优化描述后再搜
+        for attempt in range(max_retries):
+            print(f"配图搜索失败（第{attempt+1}次），正在优化描述重试...")
+            optimized_query = self.optimize_image_query(description)
+            image_url = self.search_image_pexels(optimized_query)
+            if not image_url:
+                image_url = self.search_image_unsplash(optimized_query)
+            if image_url:
+                return image_url, True
+
+        return None, False
+
+    def replace_image_with_text(self, content: str, position: str, description: str) -> str:
+        """
+        配图失败时，把配图位置改成纯文本过渡句
+        在对应章节标题后插入一段引导文字，代替图片
+        """
+        prompt = f"""文章中有一个位置原本计划配图，但搜不到合适的图片。请写一句简短的过渡句（不超过50字），代替图片，自然地引出下文内容。
+
+章节：{position}
+原配图要求：{description}
+
+直接输出过渡句，不要其他解释。"""
+        transition = self.chat(prompt, temperature=0.5)
+
+        # 在对应章节标题后插入过渡句
+        escaped_position = re.escape(position)
+        pattern = f'(^#{{1,4}}\\s+{escaped_position}\\s*$)'
+        replacement = f'\\1\n\n{transition}\n'
+        new_content = re.sub(pattern, replacement, content, count=1, flags=re.MULTILINE)
+
+        if new_content == content:
+            # 找不到标题，在末尾追加
+            new_content = content + f'\n\n{transition}\n'
+
+        return new_content
+
     def search_image_unsplash(self, query: str) -> Optional[str]:
         """
         调用 Unsplash API 搜索图片
@@ -202,22 +270,75 @@ class ImageAgent(BaseAgent):
         image_source: "api"（搜索图片）或 "ai"（AI生成）
         返回图片URL，失败返回None
         """
-        # 生成提示词/关键词
-        prompt = self.generate_image_prompt(description, image_source)
-
         if image_source == "api":
-            # 优先用 Pexels，失败用 Unsplash
-            image_url = self.search_image_pexels(prompt)
-            if not image_url:
-                image_url = self.search_image_unsplash(prompt)
+            # 搜索图片：带重试，失败时优化描述再搜
+            image_url, success = self.search_image_with_retry(description, max_retries=2)
             return image_url
         else:
             # AI生成
+            prompt = self.generate_image_prompt(description, "ai")
             return self.generate_image_dashscope(prompt)
 
     # ============================================================
     # 6. 把图片插入正文
     # ============================================================
+
+    def _normalize_title(self, title: str) -> str:
+        """标准化标题，用于模糊匹配：去掉序号、标点、空格"""
+        import re
+        # 去掉开头的序号（如 "1. "、"3、"、"一、"）
+        t = re.sub(r'^[\d一二三四五六七八九十]+[.、\)\s]+', '', title)
+        # 去掉所有标点和空格
+        t = re.sub(r'[^\w\u4e00-\u9fff]', '', t)
+        return t.strip()
+
+    def extract_image_markers_from_content(self, content: str) -> List[Dict]:
+        """
+        从正文中提取配图标记 <!-- 配图：描述 -->
+        返回：[{"index": int, "description": str, "start": int, "end": int}, ...]
+        """
+        markers = []
+        pattern = r'<!--\s*配图[：:]\s*(.+?)\s*-->'
+        for i, match in enumerate(re.finditer(pattern, content)):
+            markers.append({
+                "index": i,
+                "description": match.group(1).strip(),
+                "start": match.start(),
+                "end": match.end(),
+            })
+        return markers
+
+    def insert_images_by_markers(
+        self,
+        content: str,
+        image_markers: List[Dict],
+        image_urls: List[Optional[str]],
+    ) -> Tuple[str, List[str]]:
+        """
+        直接把正文中的配图标记替换成图片markdown
+        按标记位置从后往前替换，避免位置偏移
+        返回：(替换后的正文, 成功插入的图片URL列表)
+        """
+        result = content
+        inserted_urls = []
+
+        # 从后往前替换，避免位置偏移
+        for i in range(len(image_markers) - 1, -1, -1):
+            marker = image_markers[i]
+            if i >= len(image_urls) or not image_urls[i]:
+                # 配图失败，删除标记
+                result = result[:marker["start"]] + result[marker["end"]:]
+                continue
+
+            image_url = image_urls[i]
+            alt_text = f"配图{i+1}"
+            replacement = f'![{alt_text}]({image_url})'
+            result = result[:marker["start"]] + replacement + result[marker["end"]:]
+            inserted_urls.append(image_url)
+
+        # inserted_urls 是倒序的，反转回来
+        inserted_urls.reverse()
+        return result, inserted_urls
 
     def insert_images_to_content(
         self,
@@ -226,31 +347,58 @@ class ImageAgent(BaseAgent):
         image_urls: List[Optional[str]],
     ) -> Tuple[str, List[str]]:
         """
-        把图片插入正文对应位置
-        返回：(插入图片后的正文, 成功插入的图片URL列表)
+        [已废弃] 用标题匹配的方式插入图片
+        推荐使用 insert_images_by_markers 直接替换配图标记
         """
         result = content
         inserted_urls = []
+
+        content_headers = []
+        for match in re.finditer(r'^(#{1,4})\s+(.+)$', content, re.MULTILINE):
+            content_headers.append({
+                'full': match.group(0),
+                'title': match.group(2).strip(),
+                'normalized': self._normalize_title(match.group(2)),
+                'start': match.start(),
+                'end': match.end(),
+            })
 
         for i, pos in enumerate(image_positions):
             if i >= len(image_urls) or not image_urls[i]:
                 continue
 
             image_url = image_urls[i]
-            # 在正文找到对应章节标题，在标题后插入图片
-            position = pos["position"]
-            # 转义特殊字符
-            escaped_position = re.escape(position)
-            pattern = f'(^#{{1,4}}\\s+{escaped_position}\\s*$)'
-            replacement = f'\\1\n\n![{pos["description"]}]({image_url})\n'
+            alt_text = f"配图{i+1}"
+            target_title = pos["position"]
+            target_normalized = self._normalize_title(target_title)
 
-            new_result = re.sub(pattern, replacement, result, count=1, flags=re.MULTILINE)
-            if new_result != result:
-                result = new_result
+            matched_header = None
+            for h in content_headers:
+                if h['title'] == target_title:
+                    matched_header = h
+                    break
+            if not matched_header:
+                for h in content_headers:
+                    if h['normalized'] == target_normalized:
+                        matched_header = h
+                        break
+            if not matched_header:
+                for h in content_headers:
+                    if target_normalized and (target_normalized in h['normalized'] or h['normalized'] in target_normalized):
+                        matched_header = h
+                        break
+
+            if matched_header:
+                insert_pos = matched_header['end']
+                result = result[:insert_pos] + f'\n\n![{alt_text}]({image_url})\n' + result[insert_pos:]
                 inserted_urls.append(image_url)
+                offset = len(f'\n\n![{alt_text}]({image_url})\n')
+                for h in content_headers:
+                    if h['start'] > insert_pos:
+                        h['start'] += offset
+                        h['end'] += offset
             else:
-                # 找不到对应标题，在正文末尾追加
-                result += f'\n\n![{pos["description"]}]({image_url})\n'
+                result += f'\n\n![{alt_text}]({image_url})\n'
                 inserted_urls.append(image_url)
 
         return result, inserted_urls

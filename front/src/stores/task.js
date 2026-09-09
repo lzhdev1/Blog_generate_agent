@@ -24,7 +24,7 @@ export const useTaskStore = defineStore('task', () => {
     loading.value = true
     try {
       const res = await getTaskList()
-      taskList.value = res.tasks || []
+      taskList.value = res.items || []
       return res
     } finally {
       loading.value = false

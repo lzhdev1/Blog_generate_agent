@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from src.blog_agent.api.deps import get_db
+from src.blog_agent.db.models import TaskStatus
 from src.blog_agent.schemas.task_schema import (
     TaskCreateReq,
     TaskResp,
@@ -38,6 +39,16 @@ def get_task(task_id: int, db: Session = Depends(get_db)):
     return task
 
 
+@router.delete("/task/{task_id}", summary="删除任务")
+def delete_task(task_id: int, db: Session = Depends(get_db)):
+    """根据 task_id 删除任务及其所有数据"""
+    task = TaskService.get_task(db, task_id=task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    TaskService.delete_task(db, task_id=task_id)
+    return {"message": "删除成功", "task_id": task_id}
+
+
 @router.get("/task", response_model=TaskListResp, summary="任务列表")
 def list_tasks(
     limit: int = 20,
@@ -65,24 +76,38 @@ def get_blog_detail(task_id: int, db: Session = Depends(get_db)):
         "selected_title": task.selected_title,
         "outline": task.outline,
         "content": content,
+        "formatted_content": task.formatted_content,
         "image_prompts": TaskService.parse_image_prompts(task.image_prompts),
+        "image_urls": TaskService.parse_image_urls(task.image_urls),
+        "review_feedback": task.review_feedback,
         "word_count": len(content) if content else 0,
+        "created_at": task.created_at.isoformat() if task.created_at else None,
     }
 
 
 # ========== 节点1：调研 + 生成标题 ==========
 
-@router.post("/task/{task_id}/generate-titles", response_model=TaskResp, summary="节点1：调研并生成标题")
+@router.post("/task/{task_id}/generate-titles", response_model=TaskResp, summary="节点1：调研并生成标题（支持重新生成）")
 def generate_titles(task_id: int, db: Session = Depends(get_db)):
     """
     先调研同类文章标题（避免重复），再生成3个标题
+    支持 pending 和 title_generated 状态（重新生成）
     执行过程中可通过 GET /task/{id} 查看实时进度
     """
     task = TaskService.get_task(db, task_id=task_id)
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
-    if task.status != "pending":
+    if task.status not in ("pending", "title_generated"):
         raise HTTPException(status_code=400, detail="当前状态不允许生成标题")
+
+    # 重新生成时，清空旧的标题和配置
+    if task.status == "title_generated":
+        task.titles = None
+        task.selected_title = None
+        task.need_image = False
+        task.image_source = None
+        task.status = TaskStatus.PENDING
+        db.commit()
 
     try:
         run_generate_titles(db, task_id, task.topic)

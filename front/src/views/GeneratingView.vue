@@ -90,18 +90,20 @@ const completed = ref(false)
 let pollTimer = null
 
 const agents = [
-  { key: 'write', name: '写手 Agent', icon: 'pen', desc: '撰写正文' },
-  { key: 'review', name: '审稿 Agent', icon: 'review', desc: '审阅文章' },
-  { key: 'image', name: '配图 Agent', icon: 'image', desc: '搜索/生成配图' },
-  { key: 'format', name: '排版 Agent', icon: 'format', desc: '格式化文章' }
+  { key: 'research', name: '调研资料', icon: 'search', desc: '联网搜索最新资料' },
+  { key: 'write', name: '撰写正文', icon: 'pen', desc: '撰写正文' },
+  { key: 'review', name: '审阅文章', icon: 'review', desc: '审阅文章' },
+  { key: 'image', name: '配图', icon: 'image', desc: '搜索/生成配图' },
+  { key: 'format', name: '排版', icon: 'format', desc: '格式化文章' }
 ]
 
 const statusMap = {
-  'GENERATING_CONTENT': { text: '生成正文中', percent: 25 },
-  'REVIEWING': { text: '审稿中', percent: 50 },
-  'GENERATING_IMAGES': { text: '配图中', percent: 75 },
-  'FORMATTING': { text: '格式化中', percent: 90 },
-  'COMPLETED': { text: '已完成', percent: 100 }
+  'researching_content': { text: '调研资料中', percent: 15 },
+  'generating_content': { text: '生成正文中', percent: 35 },
+  'reviewing': { text: '审稿中', percent: 55 },
+  'generating_images': { text: '配图中', percent: 75 },
+  'formatting': { text: '格式化中', percent: 90 },
+  'completed': { text: '已完成', percent: 100 }
 }
 
 const statusText = computed(() => statusMap[task.value?.status]?.text || '处理中')
@@ -109,17 +111,18 @@ const progressPercent = computed(() => statusMap[task.value?.status]?.percent ||
 
 function getAgentState(key) {
   const status = task.value?.status
-  const order = ['write', 'review', 'image', 'format']
+  const order = ['research', 'write', 'review', 'image', 'format']
   const currentIdx = {
-    'GENERATING_CONTENT': 0,
-    'REVIEWING': 1,
-    'GENERATING_IMAGES': 2,
-    'FORMATTING': 3,
-    'COMPLETED': 4
+    'researching_content': 0,
+    'generating_content': 1,
+    'reviewing': 2,
+    'generating_images': 3,
+    'formatting': 4,
+    'completed': 5
   }[status] ?? -1
 
   const idx = order.indexOf(key)
-  if (status === 'COMPLETED') return 'done'
+  if (status === 'completed') return 'done'
   if (idx < currentIdx) return 'done'
   if (idx === currentIdx) return 'active'
   return 'pending'
@@ -135,11 +138,16 @@ function getAgentStatusText(key) {
 async function fetchTask() {
   try {
     task.value = await getTask(taskId)
-    if (task.value.status === 'COMPLETED') {
+    const status = task.value.status
+    if (status === 'completed' || status === 'content_generated') {
       completed.value = true
       stopPolling()
-    } else if (task.value.status === 'FAILED') {
-      error.value = '任务执行失败，请重试'
+      // 延迟跳转，让用户看到完成状态
+      setTimeout(() => {
+        router.push(`/blog/${taskId}`)
+      }, 800)
+    } else if (status === 'failed') {
+      error.value = task.value.error || '任务执行失败，请重试'
       stopPolling()
     }
   } catch (e) {
@@ -174,10 +182,13 @@ async function retry() {
 
 onMounted(async () => {
   await fetchTask()
-  if (task.value?.status === 'OUTLINE_CONFIRMED' || task.value?.status === 'OUTLINE_GENERATED') {
-    await startGeneration()
-  }
+  // 先启动轮询，实时展示进度
   startPolling()
+  // 如果大纲已确认，触发生成正文（异步执行，不阻塞轮询）
+  const status = task.value?.status
+  if (status === 'outline_generated' && task.value?.outline_confirmed) {
+    startGeneration()
+  }
 })
 
 onUnmounted(() => {

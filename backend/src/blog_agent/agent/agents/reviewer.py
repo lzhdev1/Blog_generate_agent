@@ -1,5 +1,5 @@
 import json
-from typing import Dict
+from typing import Dict, Optional
 
 from src.blog_agent.agent.agents.base_agent import BaseAgent
 
@@ -9,56 +9,123 @@ class ReviewerAgent(BaseAgent):
 
     name = "reviewer"
     role = "审稿编辑"
-    system_prompt = """你是一个严格的资深审稿编辑，擅长：
-1. 检查文章结构是否清晰、逻辑是否连贯
-2. 发现事实错误、技术错误、逻辑漏洞
-3. 指出语言表达问题、错别字、格式问题
-4. 给出具体、可操作的修改建议
-5. 严格把关，不轻易通过
+    system_prompt = """你是一个资深的技术博客审稿编辑，有10年以上技术内容审核经验。
+你审稿时严格但不苛刻，重点关注文章的专业性、准确性和完整性，而不是吹毛求疵。
 
-你的审稿要客观、具体，不要泛泛而谈。"""
+核心审稿原则：
+1. 大纲遵从度：文章必须严格按照给定大纲的章节结构，不得擅自增删合并章节
+2. 素材真实性：文章中引用的数据、版本号、案例必须来自调研素材，不得编造
+3. 主旨紧扣度：每个章节都必须服务于文章主旨，不得跑题
+4. 技术准确性：技术概念、代码示例、命令参数必须准确无误
+5. 逻辑连贯性：章节之间要有递进关系，不能前后矛盾
+6. 配图合理性：配图位置必须和大纲标记一致，图片内容要和上下文相关
+
+合格标准：70分以上，没有严重问题即可通过。小问题写在建议里，不要反复修改。"""
     model_config_key = "llm_model_reviewer"
 
-    def review_content(self, content: str, selected_title: str) -> Dict:
+    def review_content(
+        self,
+        content: str,
+        selected_title: str,
+        outline: Optional[str] = None,
+        content_research: Optional[str] = None,
+    ) -> Dict:
         """
-        审稿，返回结构化结果
+        专业审稿，返回结构化结果
         返回：{"passed": bool, "score": int, "issues": list, "suggestions": list, "feedback": str}
         """
-        prompt = f"""请审阅以下博客文章。
+        outline_section = ""
+        if outline:
+            outline_section = f"""
+文章大纲（必须严格遵从的章节结构）：
+{outline}
+"""
+
+        research_section = ""
+        if content_research:
+            research_section = f"""
+写作前的调研素材（文章中的数据、版本号、案例应来自此处）：
+{content_research}
+"""
+
+        prompt = f"""请以资深技术编辑的身份，专业审阅以下博客文章。
 
 文章标题：{selected_title}
-
+{outline_section}
+{research_section}
 文章内容：
 {content}
 
-请从以下维度审稿：
-1. 结构清晰度（章节安排、逻辑递进）
-2. 内容准确性（事实、技术、数据是否正确）
-3. 表达流畅度（语言、错别字、格式）
-4. 内容充实度（是否有实质内容，还是空泛）
+请从以下7个维度专业审稿：
+
+【维度1：大纲遵从度】（权重20%）
+- 文章章节是否和大纲完全一致？有没有擅自增删、合并、重命名章节？
+- 每个大纲中的章节是否都有对应的实质内容？
+- 如果大纲中标注了配图位置，正文中是否保留了配图标记？
+
+【维度2：素材真实性】（权重20%）
+- 文章中的数据、版本号、技术名词是否和调研素材一致？
+- 有没有编造不存在的数据、案例或引用？
+- 有没有使用已经过时的技术信息？
+
+【维度3：主旨紧扣度】（权重15%）
+- 文章是否始终围绕标题和主旨展开？
+- 有没有跑题、凑字数、无关内容？
+- 每个章节是否都服务于主旨？
+
+【维度4：技术准确性】（权重20%）
+- 技术概念解释是否准确？
+- 代码示例是否正确可运行？
+- 命令、参数、配置是否有误？
+
+【维度5：逻辑连贯性】（权重10%）
+- 章节之间是否有递进关系？
+- 有没有前后矛盾、跳跃过大？
+- 论证是否充分？
+
+【维度6：表达流畅度】（权重10%）
+- 语言是否通顺？有没有明显错别字？
+- 格式是否规范？markdown语法是否正确？
+
+【维度7：配图合理性】（权重5%）
+- 如果有配图标记，位置是否合理？
+- 配图描述是否和上下文内容相关？
 
 请严格按照以下JSON格式输出，不要输出其他内容：
 {{
     "passed": true或false,
     "score": 0-100的整数评分,
-    "issues": ["问题1", "问题2", ...],
-    "suggestions": ["修改建议1", "修改建议2", ...],
-    "feedback": "总体评价和修改说明"
+    "dimension_scores": {{
+        "outline": 0-100,
+        "research": 0-100,
+        "relevance": 0-100,
+        "accuracy": 0-100,
+        "logic": 0-100,
+        "expression": 0-100,
+        "image": 0-100
+    }},
+    "issues": ["严重问题1", "严重问题2", ...],
+    "suggestions": ["改进建议1", "改进建议2", ...],
+    "feedback": "总体评价，说明扣分原因和通过/不通过理由"
 }}
 
-注意：
-- 80分以上且没有严重问题才能通过（passed=true）
-- 有事实错误、逻辑混乱、内容空洞等严重问题必须不通过
-- issues和suggestions要具体，不要写"内容不错"这种空话"""
+审稿标准：
+- 70分以上且没有严重问题 → 通过（passed=true）
+- 以下情况必须不通过（passed=false）：
+  * 擅自增删合并大纲章节（严重违反大纲遵从度）
+  * 编造数据或使用严重过时的技术信息
+  * 技术错误会误导读者
+  * 内容空洞、跑题严重
+- 小问题（个别错别字、表达可以更好）写在suggestions里，不影响通过
+- issues只列严重问题，不要把小问题列进去
+- feedback要具体，说明哪些维度扣分，为什么"""
 
         resp = self.chat(prompt, temperature=0.3)
 
         # 解析 JSON 结果
         try:
-            # 尝试提取 JSON（可能被 markdown 代码块包裹）
             resp_clean = resp.strip()
             if resp_clean.startswith("```"):
-                # 去掉代码块标记
                 lines = resp_clean.split("\n")
                 if lines[0].startswith("```"):
                     lines = lines[1:]
@@ -75,7 +142,6 @@ class ReviewerAgent(BaseAgent):
                 "feedback": result.get("feedback", ""),
             }
         except (json.JSONDecodeError, ValueError):
-            # 解析失败，默认不通过，把原始返回作为反馈
             return {
                 "passed": False,
                 "score": 0,

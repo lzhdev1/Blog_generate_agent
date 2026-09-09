@@ -1,6 +1,6 @@
 import json
 from pydantic import BaseModel, Field, field_validator
-from typing import Optional, List
+from typing import Optional, List, Dict
 from datetime import datetime
 
 
@@ -40,6 +40,7 @@ class TaskResp(BaseModel):
 
     # 标题
     titles: List[str] = []
+    title_scores: List[Dict] = []
     selected_title: Optional[str] = None
 
     # 配图配置
@@ -66,7 +67,7 @@ class TaskResp(BaseModel):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
-    @field_validator("titles", "image_urls", mode="before")
+    @field_validator("titles", "image_urls", "title_scores", mode="before")
     @classmethod
     def parse_json_list(cls, v):
         """把数据库里的 None 或 JSON 字符串转成列表"""

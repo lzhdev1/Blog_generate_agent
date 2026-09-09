@@ -95,6 +95,14 @@
     <template v-else-if="name === 'loading'">
       <path d="M21 12a9 9 0 11-6.219-8.56" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
     </template>
+    <!-- 向上箭头 -->
+    <template v-else-if="name === 'up'">
+      <path d="M18 15l-6-6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </template>
+    <!-- 向下箭头 -->
+    <template v-else-if="name === 'down'">
+      <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </template>
     <!-- 默认：圆点 -->
     <template v-else>
       <circle cx="12" cy="12" r="4" fill="currentColor"/>

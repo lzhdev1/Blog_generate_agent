@@ -9,8 +9,12 @@ class BlogDetailResp(BaseModel):
     selected_title: Optional[str] = None  # 用户最终选择的标题
     outline: Optional[str] = None         # 大纲
     content: Optional[str] = None         # 正文 markdown
+    formatted_content: Optional[str] = None  # 格式化后的正文
     image_prompts: List[str] = []         # 配图提示词
+    image_urls: List[str] = []            # 配图URL列表
+    review_feedback: Optional[str] = None # 审稿记录
     word_count: Optional[int] = None      # 字数
+    created_at: Optional[str] = None      # 创建时间
 
 
 class BlogPublishReq(BaseModel):

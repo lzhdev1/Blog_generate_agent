@@ -15,9 +15,11 @@ class AgentState(TypedDict):
     # 调研结果
     title_research: str
     outline_research: str
+    content_research: str
 
     # 节点1：标题
     titles: List[str]
+    title_scores: List[Dict]
     selected_title: str
 
     # 配图配置

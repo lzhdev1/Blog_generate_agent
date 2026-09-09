@@ -11,6 +11,7 @@ class TaskStatus(StrEnum):
     TITLE_GENERATED = "title_generated"          # 标题已生成，等用户选择+配置
     RESEARCHING_OUTLINE = "researching_outline"  # 正在调研（大纲）
     OUTLINE_GENERATED = "outline_generated"      # 大纲已生成，等用户确认
+    RESEARCHING_CONTENT = "researching_content"  # 正在调研（正文资料）
     GENERATING_CONTENT = "generating_content"    # 正在生成正文
     REVIEWING = "reviewing"                      # 正在审稿
     CONTENT_GENERATED = "content_generated"      # 正文已生成
@@ -31,9 +32,11 @@ class BlogTask(Base):
     # 调研结果
     title_research = Column(Text, nullable=True, comment="标题调研摘要")
     outline_research = Column(Text, nullable=True, comment="大纲调研摘要")
+    content_research = Column(Text, nullable=True, comment="正文调研摘要")
 
     # 节点1：标题
     titles = Column(Text, nullable=True, comment="生成的3个标题，json字符串")
+    title_scores = Column(Text, nullable=True, comment="标题评分，json字符串")
     selected_title = Column(String(512), nullable=True, comment="用户选择的标题")
 
     # 配图配置（人工介入点1）

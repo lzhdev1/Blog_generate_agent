@@ -45,6 +45,9 @@ class FormatterAgent(BaseAgent):
         # 统一换行符
         content = content.replace("\r\n", "\n")
 
+        # 去掉大纲残留的配图注释 <!-- 配图：... -->
+        content = re.sub(r'<!--\s*配图[：:]\s*.+?\s*-->\s*', '', content)
+
         # 去掉行尾空格
         lines = [line.rstrip() for line in content.split("\n")]
 

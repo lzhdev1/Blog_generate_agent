@@ -18,11 +18,14 @@ class BaseAgent:
         model = getattr(settings, self.model_config_key, None)
         return model or settings.llm_model
 
-    def chat(self, prompt: str, temperature: Optional[float] = None) -> str:
-        """调用大模型，自动带上该 Agent 的角色设定和模型"""
+    def chat(self, prompt: str, temperature: Optional[float] = None, enable_search: Optional[bool] = None) -> str:
+        """调用大模型，自动带上该 Agent 的角色设定和模型
+        enable_search: None=用全局配置, True=强制联网, False=强制不联网
+        """
         return llm_client.chat_completion(
             prompt=prompt,
             model=self.get_model(),
             system_prompt=self.system_prompt,
             temperature=temperature,
+            enable_search=enable_search,
         )

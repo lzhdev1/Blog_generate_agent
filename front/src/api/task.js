@@ -40,6 +40,11 @@ export function getTaskList(params) {
   return request.get('/task', { params })
 }
 
+// 删除任务
+export function deleteTask(taskId) {
+  return request.delete(`/task/${taskId}`)
+}
+
 // 获取博客详情
 export function getBlogDetail(blogId) {
   return request.get(`/blog/${blogId}`)

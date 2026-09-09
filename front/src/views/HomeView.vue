@@ -24,6 +24,7 @@
             :rows="2"
             placeholder="输入你想写的博客主题，例如：Python 快速入门指南..."
             resize="none"
+            :disabled="creating"
             @keydown.enter.ctrl="handleCreate"
           />
           <button class="send-btn" :disabled="!topic.trim() || creating" @click="handleCreate">
@@ -53,7 +54,7 @@
     </div>
 
     <!-- 我的文章 -->
-    <div class="articles-section" v-if="taskList.length > 0">
+    <div id="articles-section" class="articles-section" v-if="taskList.length > 0">
       <div class="section-header">
         <h2>我的文章</h2>
         <span class="article-count">{{ taskList.length }} 篇</span>
@@ -65,6 +66,12 @@
           class="article-card"
           @click="goToTask(task)"
         >
+          <button class="card-delete" title="删除" @click.stop="handleDelete(task)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+          </button>
           <div class="card-status" :class="getStatusClass(task.status)">
             <span class="status-dot"></span>
             {{ getStatusText(task.status) }}
@@ -95,23 +102,39 @@
       </div>
       <p>还没有文章，输入主题开始创作吧</p>
     </div>
+
+    <!-- 进度弹窗 -->
+    <ProgressModal
+      :visible="showProgressModal"
+      type="titles"
+      :task-status="currentTaskStatus"
+      :progress-text="progressText"
+      @close="showProgressModal = false"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { storeToRefs } from 'pinia'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import SvgIcon from '@/components/SvgIcon.vue'
+import ProgressModal from '@/components/ProgressModal.vue'
 import { useTaskStore } from '@/stores/task'
-import { createTask, generateTitles } from '@/api/task'
+import { createTask, generateTitles, getTask, deleteTask } from '@/api/task'
 
 const router = useRouter()
 const taskStore = useTaskStore()
-const { taskList, loading, fetchTaskList } = taskStore
+const { taskList, loading } = storeToRefs(taskStore)
+const { fetchTaskList } = taskStore
 
 const topic = ref('')
 const creating = ref(false)
+const progressText = ref('')
+const showProgressModal = ref(false)
+const currentTaskStatus = ref('')
+let pollTimer = null
 
 const examples = [
   'Python 快速入门指南',
@@ -122,17 +145,17 @@ const examples = [
 ]
 
 const statusMap = {
-  'PENDING': { text: '待生成', class: 'status-pending' },
-  'RESEARCHING_TITLE': { text: '标题调研中', class: 'status-processing' },
-  'TITLE_GENERATED': { text: '待选标题', class: 'status-warning' },
-  'RESEARCHING_OUTLINE': { text: '大纲调研中', class: 'status-processing' },
-  'OUTLINE_GENERATED': { text: '待确认大纲', class: 'status-warning' },
-  'GENERATING_CONTENT': { text: '生成正文中', class: 'status-processing' },
-  'REVIEWING': { text: '审稿中', class: 'status-processing' },
-  'GENERATING_IMAGES': { text: '配图中', class: 'status-processing' },
-  'FORMATTING': { text: '格式化中', class: 'status-processing' },
-  'COMPLETED': { text: '已完成', class: 'status-success' },
-  'FAILED': { text: '失败', class: 'status-failed' }
+  'pending': { text: '待生成', class: 'status-pending' },
+  'researching_title': { text: '标题调研中', class: 'status-processing' },
+  'title_generated': { text: '待选标题', class: 'status-warning' },
+  'researching_outline': { text: '大纲调研中', class: 'status-processing' },
+  'outline_generated': { text: '待确认大纲', class: 'status-warning' },
+  'generating_content': { text: '生成正文中', class: 'status-processing' },
+  'reviewing': { text: '审稿中', class: 'status-processing' },
+  'generating_images': { text: '配图中', class: 'status-processing' },
+  'formatting': { text: '格式化中', class: 'status-processing' },
+  'completed': { text: '已完成', class: 'status-success' },
+  'failed': { text: '失败', class: 'status-failed' }
 }
 
 function getStatusText(status) {
@@ -150,6 +173,39 @@ function formatTime(timeStr) {
     date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
 }
 
+function startProgressPolling(taskId) {
+  pollTimer = setInterval(async () => {
+    try {
+      const task = await getTask(taskId)
+      currentTaskStatus.value = task.status
+      if (task.progress) {
+        progressText.value = task.progress
+      }
+      if (task.status === 'title_generated') {
+        stopProgressPolling()
+        showProgressModal.value = false
+        creating.value = false
+        router.push(`/task/${taskId}/titles`)
+      }
+      if (task.status === 'failed') {
+        stopProgressPolling()
+        showProgressModal.value = false
+        creating.value = false
+        ElMessage.error(task.error || '生成标题失败')
+      }
+    } catch (e) {
+      console.error('轮询进度失败:', e)
+    }
+  }, 1500)
+}
+
+function stopProgressPolling() {
+  if (pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
+}
+
 async function handleCreate() {
   if (!topic.value.trim()) {
     ElMessage.warning('请输入博客主题')
@@ -157,26 +213,69 @@ async function handleCreate() {
   }
 
   creating.value = true
+  progressText.value = '正在创建任务...'
+  currentTaskStatus.value = 'pending'
+  showProgressModal.value = true
   try {
     const task = await createTask({ topic: topic.value.trim() })
-    ElMessage.success('任务创建成功，正在生成标题...')
-    await generateTitles(task.id)
-    router.push(`/task/${task.id}/titles`)
+    currentTaskStatus.value = task.status
+    // 启动轮询展示进度
+    startProgressPolling(task.id)
+    // 异步触发生成标题（不阻塞）
+    generateTitles(task.id).catch(err => {
+      console.error('生成标题失败:', err)
+      stopProgressPolling()
+      showProgressModal.value = false
+      creating.value = false
+      ElMessage.error('生成标题失败')
+    })
   } catch (error) {
     console.error('创建任务失败:', error)
-  } finally {
     creating.value = false
+    showProgressModal.value = false
+    progressText.value = ''
+  }
+}
+
+onUnmounted(() => {
+  stopProgressPolling()
+})
+
+async function handleDelete(task) {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除「${task.topic}」吗？删除后无法恢复。`,
+      '删除确认',
+      {
+        confirmButtonText: '删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+        confirmButtonClass: 'el-button--danger'
+      }
+    )
+  } catch {
+    return // 用户取消
+  }
+  try {
+    await deleteTask(task.id)
+    ElMessage.success('删除成功')
+    fetchTaskList()
+  } catch (e) {
+    console.error('删除失败:', e)
+    ElMessage.error('删除失败')
   }
 }
 
 function goToTask(task) {
   const status = task.status
-  if (['COMPLETED'].includes(status)) {
+  if (['completed', 'content_generated'].includes(status)) {
     router.push(`/blog/${task.id}`)
-  } else if (['OUTLINE_GENERATED'].includes(status)) {
+  } else if (['outline_generated'].includes(status)) {
     router.push(`/task/${task.id}/outline`)
-  } else if (['GENERATING_CONTENT', 'REVIEWING', 'GENERATING_IMAGES', 'FORMATTING'].includes(status)) {
+  } else if (['generating_content', 'reviewing', 'generating_images', 'formatting'].includes(status)) {
     router.push(`/task/${task.id}/generating`)
+  } else if (['title_generated', 'researching_title'].includes(status)) {
+    router.push(`/task/${task.id}/titles`)
   } else {
     router.push(`/task/${task.id}/titles`)
   }
@@ -306,6 +405,14 @@ onMounted(() => {
   color: var(--text-muted);
 }
 
+.progress-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--primary);
+  font-weight: 500;
+}
+
 /* 示例标签 */
 .examples {
   margin-top: 32px;
@@ -372,6 +479,7 @@ onMounted(() => {
 }
 
 .article-card {
+  position: relative;
   background: white;
   border-radius: 16px;
   padding: 20px;
@@ -384,6 +492,34 @@ onMounted(() => {
   transform: translateY(-4px);
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
   border-color: var(--primary-light);
+}
+
+.card-delete {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: all 0.2s ease;
+  z-index: 2;
+}
+
+.article-card:hover .card-delete {
+  opacity: 1;
+}
+
+.card-delete:hover {
+  background: #fee2e2;
+  color: #dc2626;
 }
 
 .card-status {

@@ -19,6 +19,16 @@ class TaskRepository:
         return db.query(BlogTask).filter(BlogTask.id == task_id).first()
 
     @staticmethod
+    def delete_task(db: Session, task_id: int) -> bool:
+        """根据ID删除任务，返回是否删除成功"""
+        task = TaskRepository.get_task_by_id(db, task_id)
+        if not task:
+            return False
+        db.delete(task)
+        db.commit()
+        return True
+
+    @staticmethod
     def update_task_status(db: Session, task_id: int, status: TaskStatus):
         task = TaskRepository.get_task_by_id(db, task_id)
         if task:
