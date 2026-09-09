@@ -1,0 +1,40 @@
+# ============================================================
+# 博客生成 Agent - 后端依赖清单
+# 安装命令：pip install -r requirements.txt
+# ============================================================
+
+# ========== Web 框架 ==========
+fastapi==0.141.1              # Web 框架，API 接口
+uvicorn==0.52.4               # ASGI 服务器，运行 FastAPI
+python-multipart==0.0.20      # FastAPI 文件上传支持（预留）
+
+# ========== 数据库 ==========
+SQLAlchemy==2.0.52            # ORM，数据库操作
+
+# ========== 数据验证 & 配置 ==========
+pydantic==2.13.5              # 数据验证，Schema 定义
+pydantic-settings==2.15.0     # 配置管理，读取 .env 文件
+
+# ========== 大模型 ==========
+openai==3.9.0                 # OpenAI 兼容 SDK，对接阿里云百炼
+
+# ========== Agent 框架 ==========
+langgraph==1.2.11             # Agent 工作流编排（StateGraph、条件边、循环）
+langchain-openai==1.6.1       # LangChain OpenAI 集成（langgraph 依赖）
+
+# ========== HTTP 请求 ==========
+requests==2.34.2              # HTTP 客户端，配图 API 调用（Pexels/Unsplash/百炼图片生成）
+
+# ========== 可选：异步任务（暂未使用，预留）==========
+# celery==5.4.0                # 异步任务队列
+# redis==5.2.1                 # Redis，Celery broker 和结果后端
+
+# ========== 可选：向量数据库（暂未使用，预留）==========
+# chromadb==0.5.0              # 向量数据库，RAG 知识库
+# faiss-cpu==1.8.0             # FAISS 向量检索
+
+# ========== 可选：开发工具 ==========
+# pytest==8.3.0                # 单元测试
+# httpx==0.28.0                # FastAPI 测试客户端
+# black==24.10.0               # 代码格式化
+# ruff==0.8.0                  # 代码检查
