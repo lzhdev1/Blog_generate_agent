@@ -49,13 +49,13 @@ def run_generate_titles(db: Session, task_id: int, topic: str) -> List[str]:
     def generate_titles_node(state: AgentState) -> AgentState:
         TaskService.update_progress(db, task_id, "正在生成标题...")
         titles = title_agent.generate_titles(topic, state["title_research"])
-        TaskService.save_titles(db, task_id, titles)
         return {**state, "titles": titles}
 
     def score_titles_node(state: AgentState) -> AgentState:
         TaskService.update_progress(db, task_id, "正在评估标题质量...")
         scores = researcher.score_titles(topic, state["titles"], state["title_research"])
-        TaskService.save_title_scores(db, task_id, scores)
+        # 标题和评分一次性保存，避免竞态：前端轮询时标题存在但评分为空的窗口
+        TaskService.save_titles(db, task_id, state["titles"], scores)
         return {**state, "title_scores": scores}
 
     # 构建图

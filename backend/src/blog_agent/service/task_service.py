@@ -87,12 +87,16 @@ class TaskService:
     # ========== 节点1：标题 ==========
 
     @staticmethod
-    def save_titles(db: Session, task_id: int, titles: List[str]):
-        """保存生成的3个标题，状态改为 title_generated"""
+    def save_titles(db: Session, task_id: int, titles: List[str], scores: Optional[list] = None):
+        """保存生成的3个标题，状态改为 title_generated
+        同时保存评分（如有），避免前端轮询时标题已存在但评分为空的竞态问题
+        """
         task = TaskRepository.get_task_by_id(db, task_id)
         if not task:
             return
         task.titles = json.dumps(titles, ensure_ascii=False)
+        if scores is not None:
+            task.title_scores = json.dumps(scores, ensure_ascii=False)
         task.status = TaskStatus.TITLE_GENERATED
         task.progress = "标题已生成，请选择标题并配置配图需求"
         db.commit()

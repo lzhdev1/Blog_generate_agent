@@ -338,23 +338,27 @@ function startProgressPolling() {
   }, 1500)
 }
 
-async function fetchTask() {
+async function fetchTask(retryCount = 0) {
   loading.value = true
   try {
-    task.value = await getTask(taskId)
-    console.log('[调试] 任务数据:', {
-      taskId: taskId,
-      titlesCount: task.value.titles?.length || 0,
-      titleScores: task.value.title_scores,
-      titleScoresType: typeof task.value.title_scores,
-      titleScoresLength: task.value.title_scores?.length
-    })
-    if (task.value.titles?.length) {
-      selectedTitle.value = task.value.titles[0]
+    const data = await getTask(taskId)
+    task.value = data
+
+    // 保险机制：标题已生成但评分为空时（理论上已修复，保留极低概率的兜底），自动延迟重试，最多3次
+    const hasTitles = data.titles?.length > 0
+    const hasScores = data.title_scores?.length > 0
+    if (hasTitles && !hasScores && retryCount < 3) {
+      console.log(`[评分] 标题已有但评分为空，1000ms后第${retryCount + 1}次重试...`)
+      setTimeout(() => fetchTask(retryCount + 1), 1000)
+      return
     }
-    if (task.value.need_image) {
+
+    if (data.titles?.length) {
+      selectedTitle.value = data.titles[0]
+    }
+    if (data.need_image) {
       needImage.value = true
-      imageSource.value = task.value.image_source || 'api'
+      imageSource.value = data.image_source || 'api'
     }
   } finally {
     loading.value = false
