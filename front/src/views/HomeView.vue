@@ -17,7 +17,6 @@
       <!-- 问答输入框 -->
       <div class="input-card">
         <div class="input-wrapper">
-          <SvgIcon name="edit" :size="22" class="input-icon" />
           <el-input
             v-model="topic"
             type="textarea"
@@ -344,7 +343,7 @@ onMounted(() => {
 
 .input-wrapper {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   gap: 12px;
   padding: 16px;
   background: white;
@@ -357,12 +356,6 @@ onMounted(() => {
 .input-wrapper:focus-within {
   border-color: var(--primary);
   box-shadow: 0 4px 24px rgba(99, 102, 241, 0.15);
-}
-
-.input-icon {
-  color: var(--primary);
-  margin-bottom: 8px;
-  flex-shrink: 0;
 }
 
 .input-wrapper :deep(.el-textarea__inner) {
