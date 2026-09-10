@@ -19,6 +19,13 @@ class ImageAgent(BaseAgent):
 3. 确保图片风格和文章内容匹配"""
     model_config_key = "llm_model_formatter"  # 用便宜的模型生成提示词
 
+    # 无效占位描述（模型照抄格式示例时产生），命中则跳过搜索/生图，直接走降级
+    INVALID_IMAGE_MARKERS = {
+        "搜索关键词", "具体搜索关键词", "图片搜索关键词", "配图关键词",
+        "画面描述", "配图描述", "图片描述", "配图位置和搜索关键词",
+        "关键词", "描述", "search keywords", "image description",
+    }
+
     # ============================================================
     # 1. 从大纲中提取配图位置
     # ============================================================
@@ -333,13 +340,19 @@ class ImageAgent(BaseAgent):
         image_source: "api"（搜索图片）或 "ai"（AI生成）
         返回图片URL，失败返回None
         """
+        # 防御：无效占位描述直接判失败，避免浪费搜索/生图调用
+        stripped = (description or "").strip()
+        if not stripped or stripped in self.INVALID_IMAGE_MARKERS or len(stripped) < 3:
+            print(f"[image] 配图描述无效（占位词或过短），跳过: {stripped!r}")
+            return None
+
         if image_source == "api":
             # 搜索图片：带重试，失败时优化描述再搜
-            image_url, success = self.search_image_with_retry(description, max_retries=2)
+            image_url, success = self.search_image_with_retry(stripped, max_retries=2)
             return image_url
         else:
             # AI生成
-            prompt = self.generate_image_prompt(description, "ai")
+            prompt = self.generate_image_prompt(stripped, "ai")
             return self.generate_image_dashscope(prompt)
 
     # ============================================================
