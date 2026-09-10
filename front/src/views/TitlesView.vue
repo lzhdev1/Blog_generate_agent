@@ -492,6 +492,9 @@ async function handleSubmit() {
   progressText.value = '正在提交配置...'
   currentTaskStatus.value = 'title_generated'
   showProgressModal.value = true
+  // 先启动轮询再提交，后端是同步执行的（跑完大纲调研+生成才返回），
+  // 轮询必须与请求并发，才能捕捉到 researching_outline / generating_outline 中间态
+  startProgressPolling()
   try {
     await submitTitleConfig(taskId, {
       title: selectedTitle.value,
@@ -501,9 +504,10 @@ async function handleSubmit() {
       level: level.value,
       extra_requirements: extraRequirements.value || null,
     })
-    startProgressPolling()
+    // 完成与跳转由轮询回调处理（outline_generated 跳转大纲页 / failed 报错）
   } catch (error) {
     console.error('提交配置失败:', error)
+    stopProgressPolling()
     submitting.value = false
     showProgressModal.value = false
     ElMessage.error('提交配置失败')
