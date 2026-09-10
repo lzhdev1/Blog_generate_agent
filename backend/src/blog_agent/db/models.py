@@ -8,8 +8,10 @@ from .session import Base
 class TaskStatus(StrEnum):
     PENDING = "pending"                          # 任务已创建
     RESEARCHING_TITLE = "researching_title"      # 正在调研（标题）
+    GENERATING_TITLES = "generating_titles"      # 正在生成标题+评分
     TITLE_GENERATED = "title_generated"          # 标题已生成，等用户选择+配置
     RESEARCHING_OUTLINE = "researching_outline"  # 正在调研（大纲）
+    GENERATING_OUTLINE = "generating_outline"    # 正在生成大纲
     OUTLINE_GENERATED = "outline_generated"      # 大纲已生成，等用户确认
     RESEARCHING_CONTENT = "researching_content"  # 正在调研（正文资料）
     GENERATING_CONTENT = "generating_content"    # 正在生成正文
@@ -42,6 +44,11 @@ class BlogTask(Base):
     # 配图配置（人工介入点1）
     need_image = Column(Boolean, default=False, comment="是否需要配图")
     image_source = Column(String(32), nullable=True, comment="配图方式：api/ai")
+
+    # 文章个性化配置（人工介入点1）
+    word_count = Column(Integer, nullable=True, comment="目标字数：300/500/800/自定义")
+    level = Column(String(32), nullable=True, comment="专业水平：general/medium/advanced/professional")
+    extra_requirements = Column(Text, nullable=True, comment="用户对大纲的额外要求")
 
     # 节点2：大纲
     outline = Column(Text, nullable=True, comment="博客大纲")

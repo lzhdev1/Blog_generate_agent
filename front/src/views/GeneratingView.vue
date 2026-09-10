@@ -88,6 +88,7 @@ const task = ref(null)
 const error = ref('')
 const completed = ref(false)
 let pollTimer = null
+let isGenerating = false
 
 const agents = [
   { key: 'research', name: '调研资料', icon: 'search', desc: '联网搜索最新资料' },
@@ -167,11 +168,15 @@ function stopPolling() {
 }
 
 async function startGeneration() {
+  if (isGenerating) return
+  isGenerating = true
   try {
     await generateContent(taskId)
     await fetchTask()
   } catch (e) {
     error.value = e.response?.data?.detail || '生成失败，请重试'
+  } finally {
+    isGenerating = false
   }
 }
 

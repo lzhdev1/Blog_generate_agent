@@ -207,13 +207,77 @@ class ImageAgent(BaseAgent):
 
     def generate_image_dashscope(self, prompt: str) -> Optional[str]:
         """
-        调用百炼通义万相生成图片
-        需要配置 DASHSCOPE_API_KEY（和LLM共用一个key即可）
+        调用百炼生成图片
+        支持两种模型：
+        - qwen-image-3.0 / qwen-image-3.0-pro：新的多模态对话接口（同步调用）
+        - wanx2.1-t2i-turbo 等旧模型：旧的 text2image 接口（异步轮询）
+        API Key 优先用 image_api_key，没有则用 llm_api_key
         返回图片URL，失败返回None
         """
-        api_key = settings.llm_api_key
+        api_key = getattr(settings, "image_api_key", None) or settings.llm_api_key
         model = getattr(settings, "image_gen_model", "wanx2.1-t2i-turbo")
 
+        # qwen-image 系列用新接口
+        if model.startswith("qwen-image"):
+            return self._generate_image_qwen(model, prompt, api_key)
+        # 旧模型用 wanx 接口
+        else:
+            return self._generate_image_wanx(model, prompt, api_key)
+
+    def _generate_image_qwen(self, model: str, prompt: str, api_key: str) -> Optional[str]:
+        """
+        qwen-image-3.0 新接口：多模态对话，同步调用
+        需要 dashscope_workspace_id
+        """
+        workspace_id = getattr(settings, "dashscope_workspace_id", None)
+        if not workspace_id:
+            print("qwen-image-3.0 需要配置 dashscope_workspace_id（业务空间ID）")
+            return None
+
+        try:
+            url = f"https://{workspace_id}.cn-beijing.maas.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation"
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            }
+            data = {
+                "model": model,
+                "input": {
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": [{"text": prompt}]
+                        }
+                    ]
+                },
+                "parameters": {
+                    "prompt_extend": True,
+                    "size": "1024*1024",
+                    "n": 1,
+                }
+            }
+            resp = requests.post(url, headers=headers, json=data, timeout=120)
+            if resp.status_code == 200:
+                result = resp.json()
+                # 新接口返回格式：output.choices[0].message.content[0].image
+                choices = result.get("output", {}).get("choices", [])
+                if choices:
+                    content = choices[0].get("message", {}).get("content", [])
+                    if content:
+                        image_url = content[0].get("image")
+                        if image_url:
+                            return image_url
+                print(f"qwen-image 返回格式异常: {result}")
+            else:
+                print(f"qwen-image 调用失败: {resp.status_code} {resp.text}")
+        except Exception as e:
+            print(f"qwen-image 生成失败: {e}")
+        return None
+
+    def _generate_image_wanx(self, model: str, prompt: str, api_key: str) -> Optional[str]:
+        """
+        旧的通义万相接口：异步调用，轮询任务结果
+        """
         try:
             url = "https://dashscope.aliyuncs.com/api/v1/services/aigc/text2image/image-synthesis"
             headers = {
@@ -231,7 +295,6 @@ class ImageAgent(BaseAgent):
                 result = resp.json()
                 task_id = result.get("output", {}).get("task_id")
                 if task_id:
-                    # 轮询任务结果
                     return self._poll_dashscope_task(task_id, api_key)
         except Exception as e:
             print(f"百炼图片生成失败: {e}")

@@ -103,6 +103,15 @@
     <template v-else-if="name === 'down'">
       <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
     </template>
+    <!-- 字数/文本行数 -->
+    <template v-else-if="name === 'wordcount'">
+      <path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </template>
+    <!-- 水平/层级 -->
+    <template v-else-if="name === 'level'">
+      <path d="M4 20h6M4 14h10M4 8h14M4 4h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M18 16l3-3-3-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </template>
     <!-- 默认：圆点 -->
     <template v-else>
       <circle cx="12" cy="12" r="4" fill="currentColor"/>

@@ -117,14 +117,20 @@ class TaskService:
         selected_title: str,
         need_image: bool,
         image_source: Optional[str] = None,
+        word_count: Optional[int] = None,
+        level: Optional[str] = None,
+        extra_requirements: Optional[str] = None,
     ):
-        """用户选择标题 + 配置配图需求"""
+        """用户选择标题 + 配置配图需求 + 文章个性化配置"""
         task = TaskRepository.get_task_by_id(db, task_id)
         if not task:
             return
         task.selected_title = selected_title
         task.need_image = need_image
         task.image_source = image_source
+        task.word_count = word_count
+        task.level = level
+        task.extra_requirements = extra_requirements
         db.commit()
 
     # ========== 节点2：大纲 ==========

@@ -36,8 +36,10 @@ class Settings(BaseSettings):
     # 图片网站API（方式A：搜索图片）
     unsplash_access_key: Optional[str] = None   # Unsplash API Key
     pexels_api_key: Optional[str] = None        # Pexels API Key
-    # AI图片生成（方式B：百炼通义万相）
+    # AI图片生成（方式B：百炼 qwen-image / 通义万相）
     image_gen_model: str = "wanx2.1-t2i-turbo"  # 图片生成模型
+    image_api_key: Optional[str] = None         # 配图专用API Key（不填则用 llm_api_key）
+    dashscope_workspace_id: Optional[str] = None  # 百炼业务空间ID（qwen-image-3.0 必需）
 
     # Database
     db_url: str = "sqlite:///./blog_agent.db"

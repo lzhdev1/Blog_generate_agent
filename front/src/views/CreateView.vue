@@ -48,19 +48,36 @@
         </button>
       </div>
     </div>
+
+    <!-- 进度弹窗 -->
+    <ProgressModal
+      :visible="showProgressModal"
+      type="titles"
+      :task-status="currentTaskStatus"
+      :progress-text="progressText"
+      @close="handleModalClose"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import SvgIcon from '@/components/SvgIcon.vue'
-import { createTask, generateTitles } from '@/api/task'
+import ProgressModal from '@/components/ProgressModal.vue'
+import { createTask, generateTitles, getTask } from '@/api/task'
 
 const router = useRouter()
 const topic = ref('')
 const creating = ref(false)
+
+// 进度弹窗相关
+const showProgressModal = ref(false)
+const currentTaskStatus = ref('')
+const progressText = ref('')
+const currentTaskId = ref(null)
+let pollTimer = null
 
 const examples = [
   'Python 快速入门指南',
@@ -69,6 +86,33 @@ const examples = [
   'FastAPI 高性能后端开发'
 ]
 
+function startProgressPolling() {
+  pollTimer = setInterval(async () => {
+    if (!currentTaskId.value) return
+    try {
+      const t = await getTask(currentTaskId.value)
+      currentTaskStatus.value = t.status
+      if (t.progress) {
+        progressText.value = t.progress
+      }
+    } catch (e) {
+      console.error('轮询进度失败:', e)
+    }
+  }, 1500)
+}
+
+function stopProgressPolling() {
+  if (pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
+}
+
+function handleModalClose() {
+  // 用户点击"后台运行"，关闭弹窗但继续生成
+  showProgressModal.value = false
+}
+
 async function handleCreate() {
   if (!topic.value.trim()) {
     ElMessage.warning('请输入博客主题')
@@ -76,16 +120,38 @@ async function handleCreate() {
   }
   creating.value = true
   try {
+    // 1. 创建任务
     const task = await createTask({ topic: topic.value.trim() })
+    currentTaskId.value = task.id
+    currentTaskStatus.value = task.status
     ElMessage.success('任务创建成功，正在生成标题...')
+
+    // 2. 显示进度弹窗
+    showProgressModal.value = true
+
+    // 3. 启动轮询（实时获取调研和生成进度）
+    startProgressPolling()
+
+    // 4. 异步调用 generateTitles（不阻塞轮询）
     await generateTitles(task.id)
+
+    // 5. 生成完成，停止轮询，跳转
+    stopProgressPolling()
+    showProgressModal.value = false
     router.push(`/task/${task.id}/titles`)
   } catch (error) {
     console.error('创建任务失败:', error)
+    stopProgressPolling()
+    showProgressModal.value = false
+    ElMessage.error(error.response?.data?.detail || '生成标题失败，请重试')
   } finally {
     creating.value = false
   }
 }
+
+onUnmounted(() => {
+  stopProgressPolling()
+})
 </script>
 
 <style scoped>

@@ -12,6 +12,11 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 5173,
+    watch: {
+      // Docker Desktop 的 bind mount 不传递 inotify 事件，需轮询监听才能热更新
+      usePolling: true,
+      interval: 300
+    },
     proxy: {
       '/api': {
         target: 'http://backend:8000',

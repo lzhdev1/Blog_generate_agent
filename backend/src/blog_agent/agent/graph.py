@@ -47,6 +47,7 @@ def run_generate_titles(db: Session, task_id: int, topic: str) -> List[str]:
         return {**state, "title_research": research}
 
     def generate_titles_node(state: AgentState) -> AgentState:
+        TaskService.update_status(db, task_id, TaskStatus.GENERATING_TITLES)
         TaskService.update_progress(db, task_id, "正在生成标题...")
         titles = title_agent.generate_titles(topic, state["title_research"])
         return {**state, "titles": titles}
@@ -107,12 +108,18 @@ def run_generate_outline(
     selected_title: str,
     need_image: bool = False,
     image_source: Optional[str] = None,
+    word_count: Optional[int] = None,
+    level: Optional[str] = None,
+    extra_requirements: Optional[str] = None,
 ) -> str:
     """
     阶段2：保存配置 → 大纲调研 → 生成大纲
     """
     # 保存标题和配图配置
-    TaskService.select_title_and_config(db, task_id, selected_title, need_image, image_source)
+    TaskService.select_title_and_config(
+        db, task_id, selected_title, need_image, image_source,
+        word_count, level, extra_requirements
+    )
     TaskService.update_status(db, task_id, TaskStatus.RESEARCHING_OUTLINE)
 
     task = TaskService.get_task(db, task_id)
@@ -125,12 +132,16 @@ def run_generate_outline(
         return {**state, "outline_research": research}
 
     def generate_outline_node(state: AgentState) -> AgentState:
+        TaskService.update_status(db, task_id, TaskStatus.GENERATING_OUTLINE)
         TaskService.update_progress(db, task_id, "正在生成大纲...")
         outline = outliner.generate_outline(
             selected_title,
             state["outline_research"],
             need_image,
             image_source or "",
+            word_count,
+            level,
+            extra_requirements,
         )
         TaskService.save_outline(db, task_id, outline)
         return {**state, "outline": outline}

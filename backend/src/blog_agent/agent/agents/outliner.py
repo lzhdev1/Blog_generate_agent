@@ -22,6 +22,9 @@ class OutlinerAgent(BaseAgent):
         research: str = "",
         need_image: bool = False,
         image_source: str = "",
+        word_count: int = None,
+        level: str = None,
+        extra_requirements: str = None,
     ) -> str:
         """生成大纲，如果需要配图则在大纲中标注配图位置"""
         research_section = ""
@@ -42,9 +45,40 @@ class OutlinerAgent(BaseAgent):
 注释放在对应章节标题的前一行，不影响大纲阅读。
 """
 
+        # 字数要求
+        word_count_section = ""
+        if word_count:
+            word_count_section = f"""
+字数要求：全文目标约 {word_count} 字，请根据字数合理安排章节数量和每章篇幅。
+"""
+
+        # 专业水平要求
+        level_map = {
+            "general": "入门科普，语言通俗易懂，避免过多专业术语，适合零基础读者",
+            "medium": "中等深度，有一定技术细节，但不过于晦涩，适合有基础的读者",
+            "advanced": "高级深度，包含较多技术细节和原理分析，适合进阶读者",
+            "professional": "专业级，深入技术原理，包含代码/配置/架构分析，适合专业从业者",
+        }
+        level_section = ""
+        if level and level in level_map:
+            level_section = f"""
+专业水平：{level_map[level]}。请根据这个深度调整大纲的技术密度和内容深度。
+"""
+
+        # 额外要求
+        extra_section = ""
+        if extra_requirements and extra_requirements.strip():
+            extra_section = f"""
+用户额外要求：{extra_requirements.strip()}
+请在大纲中充分体现这些要求。
+"""
+
         prompt = f"""请以"{selected_title}"为标题，写一份博客文章大纲。
 {research_section}
 {image_section}
+{word_count_section}
+{level_section}
+{extra_section}
 【重要】这是博客，不是论文！请遵守以下要求：
 
 1. 标题风格：用吸引人的博客式小标题，不要学术化

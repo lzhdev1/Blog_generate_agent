@@ -78,52 +78,84 @@
             </div>
           </div>
 
-          <!-- 配图配置 -->
-          <div class="config-section">
-            <h3 class="config-title">
-              <SvgIcon name="image" :size="18" />
-              配图配置
-            </h3>
-            <div class="config-row">
-              <div class="config-label">
-                <span>是否需要配图</span>
-                <span class="config-desc">在大纲中标注配图位置，生成正文后自动配图</span>
+          <!-- 目标字数 + 专业水平 -->
+          <div class="config-section compact-config">
+            <div class="compact-row">
+              <div class="compact-item">
+                <h3 class="config-title">
+                  <SvgIcon name="wordcount" :size="16" />
+                  目标字数
+                </h3>
+                <el-select
+                  v-model="wordCountSelect"
+                  placeholder="选择字数"
+                  filterable
+                  allow-create
+                  default-first-option
+                  style="width: 100%"
+                  @change="handleWordCountChange"
+                >
+                  <el-option v-for="wc in wordCountOptions" :key="wc.value" :label="wc.label" :value="wc.value" />
+                </el-select>
               </div>
+              <div class="compact-item">
+                <h3 class="config-title">
+                  <SvgIcon name="level" :size="16" />
+                  专业水平
+                </h3>
+                <el-select v-model="level" placeholder="选择水平" style="width: 100%">
+                  <el-option v-for="lv in levelOptions" :key="lv.value" :label="lv.label" :value="lv.value" />
+                </el-select>
+              </div>
+            </div>
+          </div>
+
+          <!-- 配图配置 -->
+          <div class="config-section compact-config">
+            <div class="compact-header">
+              <h3 class="config-title">
+                <SvgIcon name="image" :size="16" />
+                配图配置
+              </h3>
               <div class="switch-wrapper" @click="needImage = !needImage">
                 <div class="switch-track" :class="{ on: needImage }">
                   <div class="switch-thumb"></div>
                 </div>
               </div>
             </div>
-            <div class="config-row image-source" v-if="needImage">
-              <div class="config-label">
-                <span>配图方式</span>
+            <div class="source-options compact-source" :class="{ disabled: !needImage }">
+              <div
+                class="source-option"
+                :class="{ active: imageSource === 'api' }"
+                @click="needImage && (imageSource = 'api')"
+              >
+                <SvgIcon name="search" :size="18" />
+                <span>搜索图片</span>
               </div>
-              <div class="source-options">
-                <div
-                  class="source-option"
-                  :class="{ active: imageSource === 'api' }"
-                  @click="imageSource = 'api'"
-                >
-                  <SvgIcon name="search" :size="20" />
-                  <div>
-                    <div class="option-title">搜索图片</div>
-                    <div class="option-desc">Pexels / Unsplash 正版图片</div>
-                  </div>
-                </div>
-                <div
-                  class="source-option"
-                  :class="{ active: imageSource === 'ai' }"
-                  @click="imageSource = 'ai'"
-                >
-                  <SvgIcon name="magic" :size="20" />
-                  <div>
-                    <div class="option-title">AI 生成</div>
-                    <div class="option-desc">通义万相 AI 绘画</div>
-                  </div>
-                </div>
+              <div
+                class="source-option"
+                :class="{ active: imageSource === 'ai' }"
+                @click="needImage && (imageSource = 'ai')"
+              >
+                <SvgIcon name="magic" :size="18" />
+                <span>AI 生成</span>
               </div>
             </div>
+          </div>
+
+          <!-- 额外要求 -->
+          <div class="config-section">
+            <h3 class="config-title">
+              <SvgIcon name="send" :size="18" />
+              额外要求
+            </h3>
+            <el-input
+              v-model="extraRequirements"
+              type="textarea"
+              :rows="3"
+              placeholder="您可以说出您对文章的要求，例如文章风格：科普、攻略、专业知识等等........."
+              resize="none"
+            />
           </div>
 
           <div class="actions">
@@ -157,21 +189,27 @@
                 <SvgIcon name="edit" :size="14" />
                 <span>调研方向</span>
               </div>
-              <p class="section-content">{{ parsedResearch.thought }}</p>
+              <div class="section-content">
+                <MarkdownRender :content="parsedResearch.thought" />
+              </div>
             </div>
             <div class="research-section" v-if="parsedResearch.observation">
               <div class="section-label">
                 <SvgIcon name="search" :size="14" />
                 <span>联网搜索发现</span>
               </div>
-              <p class="section-content">{{ parsedResearch.observation }}</p>
+              <div class="section-content">
+                <MarkdownRender :content="parsedResearch.observation" />
+              </div>
             </div>
             <div class="research-section" v-if="parsedResearch.summary">
               <div class="section-label">
                 <SvgIcon name="check" :size="14" />
                 <span>调研结论</span>
               </div>
-              <p class="section-content">{{ parsedResearch.summary }}</p>
+              <div class="section-content">
+                <MarkdownRender :content="parsedResearch.summary" />
+              </div>
             </div>
           </div>
           <div class="empty-detail" v-else>
@@ -258,6 +296,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import SvgIcon from '@/components/SvgIcon.vue'
 import ProgressModal from '@/components/ProgressModal.vue'
+import MarkdownRender from '@/components/MarkdownRender.vue'
 import { getTask, generateTitles, submitTitleConfig } from '@/api/task'
 
 const route = useRoute()
@@ -279,6 +318,35 @@ const editingIndex = ref(-1)
 const editingTitle = ref('')
 const titleInput = ref(null)
 let pollTimer = null
+
+// 文章个性化配置
+const wordCount = ref(500)
+const wordCountSelect = ref(500)
+const level = ref('medium')
+const extraRequirements = ref('')
+
+const wordCountOptions = [
+  { value: 300, label: '300字' },
+  { value: 500, label: '500字' },
+  { value: 800, label: '800字' },
+]
+
+const levelOptions = [
+  { value: 'general', label: '一般' },
+  { value: 'medium', label: '中等' },
+  { value: 'advanced', label: '高级' },
+  { value: 'professional', label: '专业' },
+]
+
+function handleWordCountChange(val) {
+  // allow-create 模式下，用户输入的自定义值是字符串，转成数字
+  const num = typeof val === 'string' ? parseInt(val, 10) : val
+  if (!isNaN(num) && num >= 100 && num <= 10000) {
+    wordCount.value = num
+  } else if (typeof val === 'number') {
+    wordCount.value = val
+  }
+}
 
 // 解析调研结果（ReAct格式）
 const parsedResearch = computed(() => {
@@ -360,6 +428,17 @@ async function fetchTask(retryCount = 0) {
       needImage.value = true
       imageSource.value = data.image_source || 'api'
     }
+    // 回显文章个性化配置
+    if (data.word_count) {
+      wordCount.value = data.word_count
+      wordCountSelect.value = data.word_count
+    }
+    if (data.level) {
+      level.value = data.level
+    }
+    if (data.extra_requirements) {
+      extraRequirements.value = data.extra_requirements
+    }
   } finally {
     loading.value = false
   }
@@ -417,7 +496,10 @@ async function handleSubmit() {
     await submitTitleConfig(taskId, {
       title: selectedTitle.value,
       need_image: needImage.value,
-      image_source: needImage.value ? imageSource.value : null
+      image_source: needImage.value ? imageSource.value : null,
+      word_count: wordCount.value,
+      level: level.value,
+      extra_requirements: extraRequirements.value || null,
     })
     startProgressPolling()
   } catch (error) {
@@ -443,32 +525,59 @@ onUnmounted(() => {
   margin: 0 auto;
 }
 
-/* 两栏布局 */
+/* 两栏布局：容器高度由左栏内容决定，右栏绝对定位铺满容器，
+   评分内容超出时在卡片内部滚动，保证两栏底部严格对齐 */
 .two-column-layout {
+  position: relative;
   display: flex;
   gap: 24px;
-  align-items: flex-start;
+  align-items: stretch;
 }
 
 .left-column {
   flex: 1;
   min-width: 0;
+  margin-right: 404px; /* 380px 右栏 + 24px 间距 */
 }
 
 .right-column {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
   width: 380px;
-  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   gap: 20px;
+  overflow: hidden;
+}
+
+.right-column .detail-card:last-child {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.right-column .detail-card:last-child .detail-body {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+  padding-bottom: 20px;
 }
 
 @media (max-width: 960px) {
   .two-column-layout {
     flex-direction: column;
   }
+  .left-column {
+    margin-right: 0;
+  }
   .right-column {
+    position: static;
     width: 100%;
+    overflow: visible;
   }
 }
 
@@ -834,6 +943,60 @@ onUnmounted(() => {
   color: var(--text-muted);
 }
 
+/* 紧凑配置（字数+水平 / 配图） */
+.compact-config {
+  padding: 14px 16px;
+}
+
+.compact-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.compact-header .config-title {
+  margin: 0;
+  font-size: 14px;
+}
+
+.compact-row {
+  display: flex;
+  gap: 12px;
+}
+
+.compact-item {
+  flex: 1;
+}
+
+.compact-item .config-title {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+}
+
+.compact-source {
+  display: flex;
+  gap: 10px;
+}
+
+.compact-source .source-option {
+  flex: 1;
+  flex-direction: row;
+  gap: 6px;
+  padding: 10px 12px;
+  justify-content: center;
+}
+
+.compact-source .source-option span {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.compact-source.disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
 /* 按钮 */
 .actions {
   display: flex;
@@ -941,7 +1104,29 @@ onUnmounted(() => {
   font-size: 13px;
   line-height: 1.7;
   color: var(--text-secondary);
-  white-space: pre-wrap;
+  padding-left: 20px;
+}
+
+.section-content :deep(p) {
+  margin: 0 0 8px 0;
+}
+
+.section-content :deep(p:last-child) {
+  margin-bottom: 0;
+}
+
+.section-content :deep(ul),
+.section-content :deep(ol) {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.section-content :deep(li) {
+  margin-bottom: 4px;
+}
+
+.section-content :deep(strong) {
+  color: #667eea;
 }
 
 .empty-detail {

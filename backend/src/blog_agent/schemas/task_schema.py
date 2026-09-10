@@ -10,12 +10,27 @@ class TaskCreateReq(BaseModel):
 
 
 class TitleAndConfigReq(BaseModel):
-    """用户选择标题 + 配图配置 — 请求体"""
+    """用户选择标题 + 配图配置 + 文章个性化配置 — 请求体"""
     title: str = Field(description="用户选中的标题", min_length=1)
     need_image: bool = Field(description="是否需要配图", default=False)
     image_source: Optional[str] = Field(
         description="配图方式：api（图片网站搜索）/ ai（AI生成），need_image为true时必填",
         default=None
+    )
+    word_count: Optional[int] = Field(
+        description="目标字数：300/500/800/自定义数字",
+        default=None,
+        ge=100,
+        le=10000
+    )
+    level: Optional[str] = Field(
+        description="专业水平：general（一般）/ medium（中等）/ advanced（高级）/ professional（专业）",
+        default=None
+    )
+    extra_requirements: Optional[str] = Field(
+        description="用户对大纲的额外要求",
+        default=None,
+        max_length=1000
     )
 
 
@@ -46,6 +61,11 @@ class TaskResp(BaseModel):
     # 配图配置
     need_image: bool = False
     image_source: Optional[str] = None
+
+    # 文章个性化配置
+    word_count: Optional[int] = None
+    level: Optional[str] = None
+    extra_requirements: Optional[str] = None
 
     # 大纲
     outline: Optional[str] = None

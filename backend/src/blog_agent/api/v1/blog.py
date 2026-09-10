@@ -142,6 +142,9 @@ def submit_title_config(task_id: int, req: TitleAndConfigReq, db: Session = Depe
             selected_title=req.title,
             need_image=req.need_image,
             image_source=req.image_source,
+            word_count=req.word_count,
+            level=req.level,
+            extra_requirements=req.extra_requirements,
         )
     except Exception as e:
         TaskService.mark_failed(db, task_id, str(e))
@@ -168,6 +171,9 @@ def regenerate_outline(task_id: int, db: Session = Depends(get_db)):
             selected_title=task.selected_title,
             need_image=task.need_image,
             image_source=task.image_source,
+            word_count=task.word_count,
+            level=task.level,
+            extra_requirements=task.extra_requirements,
         )
     except Exception as e:
         TaskService.mark_failed(db, task_id, str(e))
@@ -199,8 +205,25 @@ def generate_content(task_id: int, db: Session = Depends(get_db)):
     task = TaskService.get_task(db, task_id=task_id)
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
-    if task.status != "outline_generated" or not task.outline_confirmed:
+    if not task.outline_confirmed:
         raise HTTPException(status_code=400, detail="请先确认大纲")
+
+    # 任务正在执行中，直接返回当前状态，不重复执行
+    running_statuses = [
+        "researching_content", "generating_content", "reviewing",
+        "generating_images", "formatting"
+    ]
+    if task.status in running_statuses:
+        return task
+
+    # 任务已完成，直接返回
+    if task.status == "completed":
+        return task
+
+    # 任务失败，允许重新执行（重置状态）
+    if task.status == "failed":
+        TaskService.update_status(db, task_id, TaskStatus.OUTLINE_GENERATED)
+        task = TaskService.get_task(db, task_id=task_id)
 
     try:
         run_generate_content(db, task_id)

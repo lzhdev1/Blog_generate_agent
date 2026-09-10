@@ -79,11 +79,13 @@ const currentStepText = computed(() => {
   if (props.type === 'titles') {
     if (status === 'pending') return '准备中...'
     if (status === 'researching_title') return '正在调研同类文章标题...'
+    if (status === 'generating_titles') return '正在生成标题并评估...'
     if (status === 'title_generated') return '标题生成完成！'
     return '准备中...'
   } else {
     if (status === 'title_generated') return '准备中...'
     if (status === 'researching_outline') return '正在调研同类文章大纲...'
+    if (status === 'generating_outline') return '正在生成大纲...'
     if (status === 'outline_generated') return '大纲生成完成！'
     return '准备中...'
   }
@@ -96,6 +98,7 @@ function getStepState(key) {
     const currentIdx = {
       'pending': 0,
       'researching_title': 1,
+      'generating_titles': 2,
       'title_generated': 3
     }[status] ?? 0
     const idx = order.indexOf(key)
@@ -107,6 +110,7 @@ function getStepState(key) {
     const currentIdx = {
       'title_generated': 0,
       'researching_outline': 1,
+      'generating_outline': 2,
       'outline_generated': 3
     }[status] ?? 0
     const idx = order.indexOf(key)
