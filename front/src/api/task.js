@@ -20,14 +20,14 @@ export function regenerateOutline(taskId) {
   return request.post(`/task/${taskId}/regenerate-outline`)
 }
 
-// 确认大纲（可传入修改后的大纲）
-export function confirmOutline(taskId, outline = null) {
-  return request.post(`/task/${taskId}/confirm-outline`, { outline })
+// 确认大纲（可传入修改后的大纲 + 正文写作配置：字数/水平/额外要求）
+export function confirmOutline(taskId, data = {}) {
+  return request.post(`/task/${taskId}/confirm-outline`, data)
 }
 
-// 生成正文
+// 生成正文（同步接口，整个流程可能 5-15 分钟，不设超时避免前端误报失败）
 export function generateContent(taskId) {
-  return request.post(`/task/${taskId}/generate-content`)
+  return request.post(`/task/${taskId}/generate-content`, null, { timeout: 0 })
 }
 
 // 获取任务详情

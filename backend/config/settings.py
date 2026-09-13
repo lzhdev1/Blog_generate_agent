@@ -29,8 +29,8 @@ class Settings(BaseSettings):
     # ========== 审稿配置 ==========
     # 是否启用审稿循环（关闭后写完正文直接配图/格式化，速度更快）
     enable_review: bool = True
-    # 审稿不通过时，最多自动修改几次
-    max_review_rounds: int = 2
+    # 审稿不通过时，最多自动打回修改几次（含重新调研+重写）
+    max_review_rounds: int = 3
 
     # ========== 配图配置 ==========
     # 图片网站API（方式A：搜索图片）

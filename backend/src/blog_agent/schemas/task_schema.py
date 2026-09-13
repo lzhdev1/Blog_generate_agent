@@ -10,12 +10,30 @@ class TaskCreateReq(BaseModel):
 
 
 class TitleAndConfigReq(BaseModel):
-    """用户选择标题 + 配图配置 + 文章个性化配置 — 请求体"""
+    """用户选择标题 + 是否配图 + 文章风格 + 对大纲的额外要求 — 请求体"""
     title: str = Field(description="用户选中的标题", min_length=1)
     need_image: bool = Field(description="是否需要配图", default=False)
-    image_source: Optional[str] = Field(
-        description="配图方式：api（图片网站搜索）/ ai（AI生成），need_image为true时必填",
+    article_style: Optional[str] = Field(
+        description="文章风格：popular_science（科普）/ technical（技术）/ essay（论文）/ prose（散文）/ note（笔记）/ custom（自定义）",
         default=None
+    )
+    article_style_custom: Optional[str] = Field(
+        description="自定义风格时的用户输入（article_style=custom时必填）",
+        default=None,
+        max_length=200
+    )
+    extra_requirements: Optional[str] = Field(
+        description="用户对大纲的额外要求（指导大纲师生成大纲）",
+        default=None,
+        max_length=1000
+    )
+
+
+class ConfirmOutlineReq(BaseModel):
+    """用户确认大纲 + 正文写作配置 + 配图方式 — 请求体"""
+    outline: Optional[str] = Field(
+        default=None,
+        description="修改后的大纲，不传则使用原大纲"
     )
     word_count: Optional[int] = Field(
         description="目标字数：300/500/800/自定义数字",
@@ -27,18 +45,14 @@ class TitleAndConfigReq(BaseModel):
         description="专业水平：general（一般）/ medium（中等）/ advanced（高级）/ professional（专业）",
         default=None
     )
-    extra_requirements: Optional[str] = Field(
-        description="用户对大纲的额外要求",
+    content_extra_requirements: Optional[str] = Field(
+        description="用户对正文的额外要求（指导写手生成正文）",
         default=None,
         max_length=1000
     )
-
-
-class ConfirmOutlineReq(BaseModel):
-    """用户确认大纲 — 请求体"""
-    outline: Optional[str] = Field(
-        default=None,
-        description="修改后的大纲，不传则使用原大纲"
+    image_source: Optional[str] = Field(
+        description="配图方式：api（图片网站搜索）/ ai（AI生成），need_image为true时必填",
+        default=None
     )
 
 
@@ -62,10 +76,15 @@ class TaskResp(BaseModel):
     need_image: bool = False
     image_source: Optional[str] = None
 
+    # 文章风格
+    article_style: Optional[str] = None
+    article_style_custom: Optional[str] = None
+
     # 文章个性化配置
     word_count: Optional[int] = None
     level: Optional[str] = None
-    extra_requirements: Optional[str] = None
+    extra_requirements: Optional[str] = None       # 对大纲的额外要求（标题页填写）
+    content_extra_requirements: Optional[str] = None  # 对正文的额外要求（大纲页填写）
 
     # 大纲
     outline: Optional[str] = None

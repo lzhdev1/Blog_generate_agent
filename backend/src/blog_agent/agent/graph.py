@@ -11,9 +11,9 @@ from src.blog_agent.agent.agents import (
     OutlinerAgent,
     WriterAgent,
     ReviewerAgent,
-    FormatterAgent,
     ImageAgent,
 )
+from src.blog_agent.agent.agents.formatter import format_markdown
 from src.blog_agent.service.task_service import TaskService
 from src.blog_agent.db.models import TaskStatus
 from config.settings import settings
@@ -24,7 +24,6 @@ title_agent = TitleAgent()
 outliner = OutlinerAgent()
 writer = WriterAgent()
 reviewer = ReviewerAgent()
-formatter = FormatterAgent()
 image_agent = ImageAgent()
 
 
@@ -89,6 +88,7 @@ def run_generate_titles(db: Session, task_id: int, topic: str) -> List[str]:
         "review_result": {},
         "review_count": 0,
         "review_feedback": "",
+        "research_suggestions": "",
         "formatted_content": "",
         "progress": "",
         "error": None,
@@ -107,18 +107,18 @@ def run_generate_outline(
     task_id: int,
     selected_title: str,
     need_image: bool = False,
-    image_source: Optional[str] = None,
-    word_count: Optional[int] = None,
-    level: Optional[str] = None,
+    article_style: Optional[str] = None,
+    article_style_custom: Optional[str] = None,
     extra_requirements: Optional[str] = None,
 ) -> str:
     """
     阶段2：保存配置 → 大纲调研 → 生成大纲
+    配图方式（搜索/AI生成）在大纲确认页配置，不参与大纲生成
     """
-    # 保存标题和配图配置
+    # 保存标题和配图配置 + 文章风格 + 对大纲的额外要求
     TaskService.select_title_and_config(
-        db, task_id, selected_title, need_image, image_source,
-        word_count, level, extra_requirements
+        db, task_id, selected_title, need_image,
+        article_style, article_style_custom, extra_requirements
     )
     TaskService.update_status(db, task_id, TaskStatus.RESEARCHING_OUTLINE)
 
@@ -127,7 +127,11 @@ def run_generate_outline(
 
     def research_node(state: AgentState) -> AgentState:
         TaskService.update_progress(db, task_id, "正在分析同类文章大纲结构...")
-        research = researcher.research_for_outline(topic, selected_title)
+        research = researcher.research_for_outline(
+            topic, selected_title,
+            article_style=article_style or "",
+            article_style_custom=article_style_custom or "",
+        )
         TaskService.save_outline_research(db, task_id, research)
         return {**state, "outline_research": research}
 
@@ -138,10 +142,9 @@ def run_generate_outline(
             selected_title,
             state["outline_research"],
             need_image,
-            image_source or "",
-            word_count,
-            level,
-            extra_requirements,
+            article_style=article_style or "",
+            article_style_custom=article_style_custom or "",
+            extra_requirements=extra_requirements,
         )
         TaskService.save_outline(db, task_id, outline)
         return {**state, "outline": outline}
@@ -165,7 +168,7 @@ def run_generate_outline(
         "title_scores": [],
         "selected_title": selected_title,
         "need_image": need_image,
-        "image_source": image_source or "",
+        "image_source": "",
         "outline": "",
         "outline_confirmed": False,
         "content": "",
@@ -197,6 +200,14 @@ def run_generate_content(db: Session, task_id: int) -> str:
     selected_title = task.selected_title or ""
     outline = task.outline or ""
     topic = task.topic or ""
+    # 正文写作配置（来自大纲确认页）
+    word_count = task.word_count
+    level = task.level
+    content_extra_requirements = task.content_extra_requirements
+    # 文章风格（来自标题选择页）
+    article_style = task.article_style or ""
+    article_style_custom = task.article_style_custom or ""
+    need_image = task.need_image
 
     # 阶段3开头：正文调研
     TaskService.update_status(db, task_id, TaskStatus.RESEARCHING_CONTENT)
@@ -216,6 +227,20 @@ def run_generate_content(db: Session, task_id: int) -> str:
         if review_count == 0:
             TaskService.update_status(db, task_id, TaskStatus.GENERATING_CONTENT)
             TaskService.update_progress(db, task_id, "正在撰写正文...")
+            # 首次写作：先生成写作思路（展示给用户）
+            try:
+                thoughts = writer.generate_thoughts(
+                    selected_title,
+                    outline,
+                    state.get("content_research", ""),
+                    word_count=word_count,
+                    level=level,
+                    content_extra_requirements=content_extra_requirements,
+                )
+                TaskService.save_writing_thoughts(db, task_id, thoughts)
+            except Exception as e:
+                # 思路生成失败不阻塞正文
+                TaskService.save_writing_thoughts(db, task_id, f"（写作思路生成失败：{e}）")
         else:
             TaskService.update_progress(db, task_id, f"正在根据审稿意见修改（第{review_count}次修改）...")
 
@@ -224,6 +249,9 @@ def run_generate_content(db: Session, task_id: int) -> str:
             selected_title,
             state["review_feedback"],
             state.get("content_research", ""),
+            word_count=word_count,
+            level=level,
+            content_extra_requirements=content_extra_requirements,
         )
         TaskService.save_content(db, task_id, content)
         return {**state, "content": content}
@@ -237,21 +265,85 @@ def run_generate_content(db: Session, task_id: int) -> str:
             selected_title,
             outline=state.get("outline", ""),
             content_research=state.get("content_research", ""),
+            article_style=article_style,
+            article_style_custom=article_style_custom,
+            word_count=word_count,
         )
         TaskService.save_review_feedback(
             db, task_id,
             json.dumps(review_result, ensure_ascii=False),
             review_result["passed"],
         )
+
+        # 构造审稿意见给写手（条理清晰的1.2.3...点）
+        review_opinions = review_result.get("review_opinions", [])
+        if review_opinions:
+            feedback_lines = []
+            for op in review_opinions:
+                point = op.get("point", "")
+                where = op.get("where", "")
+                why = op.get("why", "")
+                expected = op.get("expected", "")
+                feedback_lines.append(f"{point}. 位置：{where}\n   原因：{why}\n   期望：{expected}")
+            review_feedback_text = "审稿意见（请逐条修改）：\n" + "\n".join(feedback_lines)
+        else:
+            review_feedback_text = ""
+
+        # 构造调研建议给重新调研节点
+        research_list = review_result.get("research_list", [])
+        research_suggestions_text = ""
+        if review_result.get("need_re_research") and research_list:
+            research_type = review_result.get("research_type", "补充调研")
+            research_suggestions_text = f"需要{research_type}，调研方向：\n" + "\n".join([f"- {r}" for r in research_list])
+
         return {
             **state,
             "review_result": review_result,
             "review_count": state["review_count"] + 1,
-            "review_feedback": review_result["feedback"] + "\n问题：" + "；".join(review_result["issues"]) + "\n建议：" + "；".join(review_result["suggestions"]),
+            "review_feedback": review_feedback_text,
+            "research_suggestions": research_suggestions_text,
         }
 
+    def research_again_node(state: AgentState) -> AgentState:
+        """重新调研节点：审稿打回后，根据审稿建议补充调研或重新调研，更新调研素材供写手重写"""
+        TaskService.update_status(db, task_id, TaskStatus.RESEARCHING_CONTENT)
+        research_suggestions = state.get("research_suggestions", "")
+        review_result = state.get("review_result", {})
+
+        # 判断调研模式：补充调研（追加）还是重新调研（覆盖）
+        research_type = review_result.get("research_type", "")
+        if research_type == "补充调研":
+            research_mode = "supplement"
+            TaskService.update_progress(db, task_id, "根据审稿建议补充调研（保留原有调研结果）...")
+        else:
+            research_mode = "redo"
+            TaskService.update_progress(db, task_id, "根据审稿建议重新调研（覆盖原有调研结果）...")
+
+        # 调用调研节点，传入模式参数
+        new_research = researcher.research_for_content(
+            topic, selected_title, outline,
+            extra_suggestions=research_suggestions,
+            research_mode=research_mode
+        )
+
+        # 补充调研模式：把新结果追加到旧结果后面，保留原有资料
+        if research_mode == "supplement":
+            old_research = state.get("content_research", "")
+            if old_research and old_research.strip():
+                combined_research = old_research + "\n\n" + "=" * 40 + "\n\n" + new_research
+            else:
+                combined_research = new_research
+            TaskService.save_content_research(db, task_id, combined_research)
+            TaskService.update_progress(db, task_id, "补充调研完成（已追加到原有结果），准备重写正文...")
+            return {**state, "content_research": combined_research}
+        else:
+            # 重新调研模式：直接覆盖旧结果
+            TaskService.save_content_research(db, task_id, new_research)
+            TaskService.update_progress(db, task_id, "重新调研完成（已覆盖原有结果），准备重写正文...")
+            return {**state, "content_research": new_research}
+
     def should_continue_after_review(state: AgentState) -> str:
-        """条件边：审稿通过后，判断需要配图还是直接格式化"""
+        """条件边：审稿通过后，判断需要配图还是直接格式化；不通过时判断是否需要重新调研"""
         review_result = state["review_result"]
         review_count = state["review_count"]
 
@@ -264,8 +356,14 @@ def run_generate_content(db: Session, task_id: int) -> str:
                 TaskService.update_progress(db, task_id, "审稿通过，正在格式化...")
                 return "format"
         else:
-            TaskService.update_progress(db, task_id, f"审稿未通过，返回修改（已修改{review_count}次）...")
-            return "write"
+            # 审稿不通过：如果有调研补充建议，先重新调研再重写；否则直接重写
+            research_suggestions = state.get("research_suggestions", "")
+            if research_suggestions and research_suggestions.strip():
+                TaskService.update_progress(db, task_id, f"审稿未通过（{review_result.get('score', 0)}分），根据审稿建议补充调研后重写（第{review_count}次打回）...")
+                return "research_again"
+            else:
+                TaskService.update_progress(db, task_id, f"审稿未通过，返回修改（已修改{review_count}次）...")
+                return "write"
 
     def should_continue_after_write(state: AgentState) -> str:
         """条件边：关闭审稿时，写完正文直接判断配图还是格式化"""
@@ -277,59 +375,25 @@ def run_generate_content(db: Session, task_id: int) -> str:
             return "format"
 
     def image_node(state: AgentState) -> AgentState:
-        """配图设计师节点：直接替换正文中的配图标记，搜不到的图改成纯文本过渡"""
+        """配图设计师节点：分析配图位置上下文，生成专业关键词/prompt，获取图片并插入正文"""
         TaskService.update_status(db, task_id, TaskStatus.GENERATING_IMAGES)
-        TaskService.update_progress(db, task_id, "正在提取配图位置...")
+        TaskService.update_progress(db, task_id, "正在分析配图位置并生成图片...")
 
-        # 1. 从正文中提取配图标记 <!-- 配图：描述 -->
-        image_markers = image_agent.extract_image_markers_from_content(state["content"])
-        if not image_markers:
-            TaskService.update_progress(db, task_id, "未找到配图标记，跳过配图...")
-            return state
-
-        # 2. 逐个获取图片（带重试，搜不到会自动优化描述重试）
-        image_urls = []
-        failed_markers = []
-        for i, marker in enumerate(image_markers):
-            TaskService.update_progress(db, task_id, f"正在获取第{i+1}/{len(image_markers)}张配图...")
-            image_url = image_agent.get_image(marker["description"], state.get("image_source", "ai"))
-            image_urls.append(image_url)
-            if not image_url:
-                failed_markers.append(marker)
-
-        # 2.5 统一转存本地：AI生图/API搜索的远程图片下载到 /app/data/images，
-        #     避免百炼 OSS 临时链接过期导致图片失效；下载失败自动回退原URL
-        TaskService.update_progress(db, task_id, "正在持久化图片...")
-        persisted_urls = []
-        for i, url in enumerate(image_urls):
-            if url:
-                url = image_agent.persist_image(url, f"{task_id}_{i+1}")
-            persisted_urls.append(url)
-
-        # 3. 直接把正文中的配图标记替换成图片
-        TaskService.update_progress(db, task_id, "正在将图片插入正文...")
-        content_with_images, inserted_urls = image_agent.insert_images_by_markers(
-            state["content"], image_markers, persisted_urls
+        image_source = state.get("image_source", "ai")
+        content_with_images, inserted_urls = image_agent.process_images(
+            state["content"], image_source
         )
 
-        # 4. 配图失败的位置，改成纯文本过渡句
-        if failed_markers:
-            TaskService.update_progress(db, task_id, f"有{len(failed_markers)}处配图未找到，正在调整为文字描述...")
-            for marker in failed_markers:
-                content_with_images = image_agent.replace_image_with_text(
-                    content_with_images, "相关章节", marker["description"]
-                )
-
-        # 5. 保存图片URL
-        TaskService.save_image_urls(db, task_id, [u for u in inserted_urls if u])
+        # 保存图片URL
+        TaskService.save_image_urls(db, task_id, inserted_urls)
 
         return {**state, "content": content_with_images}
 
     def format_node(state: AgentState) -> AgentState:
-        """排版师节点：格式化"""
+        """排版节点：纯规则格式化 Markdown，不调用 LLM"""
         TaskService.update_status(db, task_id, TaskStatus.FORMATTING)
         TaskService.update_progress(db, task_id, "正在格式化文章...")
-        formatted = formatter.format_content(state["content"])
+        formatted = format_markdown(state["content"])
         TaskService.save_formatted_content(db, task_id, formatted)
         return {**state, "formatted_content": formatted}
 
@@ -345,13 +409,16 @@ def run_generate_content(db: Session, task_id: int) -> str:
     graph.add_edge("research_content", "write")
 
     if settings.enable_review:
-        # 启用审稿：write → review → 条件(write/image/format)
+        # 启用审稿：write → review → 条件(research_again/write/image/format)
         graph.add_node("review", review_node)
+        graph.add_node("research_again", research_again_node)
         graph.add_edge("write", "review")
+        graph.add_edge("research_again", "write")  # 重新调研后重写
         graph.add_conditional_edges(
             "review",
             should_continue_after_review,
             {
+                "research_again": "research_again",
                 "write": "write",
                 "image": "image",
                 "format": "format",
@@ -390,6 +457,7 @@ def run_generate_content(db: Session, task_id: int) -> str:
         "review_result": {},
         "review_count": 0,
         "review_feedback": "",
+        "research_suggestions": "",
         "formatted_content": "",
         "progress": "",
         "error": None,

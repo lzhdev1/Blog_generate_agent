@@ -78,44 +78,12 @@
             </div>
           </div>
 
-          <!-- 目标字数 + 专业水平 -->
-          <div class="config-section compact-config">
-            <div class="compact-row">
-              <div class="compact-item">
-                <h3 class="config-title">
-                  <SvgIcon name="wordcount" :size="16" />
-                  目标字数
-                </h3>
-                <el-select
-                  v-model="wordCountSelect"
-                  placeholder="选择字数"
-                  filterable
-                  allow-create
-                  default-first-option
-                  style="width: 100%"
-                  @change="handleWordCountChange"
-                >
-                  <el-option v-for="wc in wordCountOptions" :key="wc.value" :label="wc.label" :value="wc.value" />
-                </el-select>
-              </div>
-              <div class="compact-item">
-                <h3 class="config-title">
-                  <SvgIcon name="level" :size="16" />
-                  专业水平
-                </h3>
-                <el-select v-model="level" placeholder="选择水平" style="width: 100%">
-                  <el-option v-for="lv in levelOptions" :key="lv.value" :label="lv.label" :value="lv.value" />
-                </el-select>
-              </div>
-            </div>
-          </div>
-
-          <!-- 配图配置 -->
+          <!-- 配图配置（只配置是否配图，配图方式在大纲确认页选择） -->
           <div class="config-section compact-config">
             <div class="compact-header">
               <h3 class="config-title">
                 <SvgIcon name="image" :size="16" />
-                配图配置
+                是否配图
               </h3>
               <div class="switch-wrapper" @click="needImage = !needImage">
                 <div class="switch-track" :class="{ on: needImage }">
@@ -123,23 +91,35 @@
                 </div>
               </div>
             </div>
-            <div class="source-options compact-source" :class="{ disabled: !needImage }">
-              <div
-                class="source-option"
-                :class="{ active: imageSource === 'api' }"
-                @click="needImage && (imageSource = 'api')"
-              >
-                <SvgIcon name="search" :size="18" />
-                <span>搜索图片</span>
-              </div>
-              <div
-                class="source-option"
-                :class="{ active: imageSource === 'ai' }"
-                @click="needImage && (imageSource = 'ai')"
-              >
-                <SvgIcon name="magic" :size="18" />
-                <span>AI 生成</span>
-              </div>
+            <p class="config-hint" v-if="needImage">配图方式（搜索图片/AI生成）将在下一步大纲确认页选择</p>
+          </div>
+
+          <!-- 文章风格 -->
+          <div class="config-section compact-config">
+            <div class="compact-header">
+              <h3 class="config-title">
+                <SvgIcon name="edit" :size="16" />
+                文章风格
+              </h3>
+            </div>
+            <div class="style-select-wrapper">
+              <select v-model="articleStyle" class="style-select">
+                <option value="">不指定（AI自动判断）</option>
+                <option value="popular_science">科普类（通俗易懂，面向大众）</option>
+                <option value="technical">技术类（有深度，面向有基础读者）</option>
+                <option value="essay">论文类（学术严谨，论证严密）</option>
+                <option value="prose">散文类（文笔优美，抒情叙事）</option>
+                <option value="note">笔记类（简洁实用，要点清晰）</option>
+                <option value="custom">自定义</option>
+              </select>
+            </div>
+            <div class="custom-style-input" v-if="articleStyle === 'custom'">
+              <el-input
+                v-model="articleStyleCustom"
+                placeholder="请描述你想要的文章风格，例如：幽默风趣的科普风格、严谨的学术综述风格..."
+                :maxlength="200"
+                show-word-limit
+              />
             </div>
           </div>
 
@@ -153,7 +133,7 @@
               v-model="extraRequirements"
               type="textarea"
               :rows="3"
-              placeholder="您可以说出您对文章的要求，例如文章风格：科普、攻略、专业知识等等........."
+              placeholder="您可以说出对大纲的要求，例如希望包含哪些章节、侧重哪些内容、避免什么结构等等........."
               resize="none"
             />
           </div>
@@ -282,7 +262,7 @@
     <!-- 进度弹窗 -->
     <ProgressModal
       :visible="showProgressModal"
-      type="outline"
+      :type="progressModalType"
       :task-status="currentTaskStatus"
       :progress-text="progressText"
       @close="showProgressModal = false"
@@ -310,9 +290,9 @@ const submitting = ref(false)
 const task = ref(null)
 const selectedTitle = ref('')
 const needImage = ref(false)
-const imageSource = ref('api')
 const progressText = ref('')
 const showProgressModal = ref(false)
+const progressModalType = ref('outline')  // titles / outline
 const currentTaskStatus = ref('')
 const editingIndex = ref(-1)
 const editingTitle = ref('')
@@ -320,33 +300,9 @@ const titleInput = ref(null)
 let pollTimer = null
 
 // 文章个性化配置
-const wordCount = ref(500)
-const wordCountSelect = ref(500)
-const level = ref('medium')
-const extraRequirements = ref('')
-
-const wordCountOptions = [
-  { value: 300, label: '300字' },
-  { value: 500, label: '500字' },
-  { value: 800, label: '800字' },
-]
-
-const levelOptions = [
-  { value: 'general', label: '一般' },
-  { value: 'medium', label: '中等' },
-  { value: 'advanced', label: '高级' },
-  { value: 'professional', label: '专业' },
-]
-
-function handleWordCountChange(val) {
-  // allow-create 模式下，用户输入的自定义值是字符串，转成数字
-  const num = typeof val === 'string' ? parseInt(val, 10) : val
-  if (!isNaN(num) && num >= 100 && num <= 10000) {
-    wordCount.value = num
-  } else if (typeof val === 'number') {
-    wordCount.value = val
-  }
-}
+const extraRequirements = ref('')  // 对大纲的额外要求（标题页填写）
+const articleStyle = ref('')        // 文章风格
+const articleStyleCustom = ref('')  // 自定义风格时的用户输入
 
 // 解析调研结果（ReAct格式）
 const parsedResearch = computed(() => {
@@ -380,7 +336,7 @@ function stopProgressPolling() {
   }
 }
 
-function startProgressPolling() {
+function startProgressPolling(mode = 'outline') {
   pollTimer = setInterval(async () => {
     try {
       const t = await getTask(taskId)
@@ -388,17 +344,28 @@ function startProgressPolling() {
       if (t.progress) {
         progressText.value = t.progress
       }
-      if (t.status === 'outline_generated') {
+      if (mode === 'titles' && t.status === 'title_generated') {
+        // 重新生成标题完成
+        stopProgressPolling()
+        showProgressModal.value = false
+        regenerating.value = false
+        await fetchTask()
+        ElMessage.success('标题已重新生成')
+        return
+      }
+      if (mode === 'outline' && t.status === 'outline_generated') {
         stopProgressPolling()
         showProgressModal.value = false
         submitting.value = false
         router.push(`/task/${taskId}/outline`)
+        return
       }
       if (t.status === 'failed') {
         stopProgressPolling()
         showProgressModal.value = false
+        regenerating.value = false
         submitting.value = false
-        ElMessage.error(t.error || '生成大纲失败')
+        ElMessage.error(t.error || '生成失败')
       }
     } catch (e) {
       console.error('轮询进度失败:', e)
@@ -426,16 +393,15 @@ async function fetchTask(retryCount = 0) {
     }
     if (data.need_image) {
       needImage.value = true
-      imageSource.value = data.image_source || 'api'
     }
-    // 回显文章个性化配置
-    if (data.word_count) {
-      wordCount.value = data.word_count
-      wordCountSelect.value = data.word_count
+    // 回显文章风格
+    if (data.article_style) {
+      articleStyle.value = data.article_style
     }
-    if (data.level) {
-      level.value = data.level
+    if (data.article_style_custom) {
+      articleStyleCustom.value = data.article_style_custom
     }
+    // 回显对大纲的额外要求
     if (data.extra_requirements) {
       extraRequirements.value = data.extra_requirements
     }
@@ -474,12 +440,22 @@ function cancelEdit() {
 
 async function regenerateTitles() {
   regenerating.value = true
+  progressModalType.value = 'titles'
+  progressText.value = '正在重新调研同类文章标题...'
+  currentTaskStatus.value = 'researching_title'
+  showProgressModal.value = true
+  // 先启动轮询再请求，后端是同步执行的（跑完调研+生成标题+评分才返回），
+  // 轮询必须与请求并发，才能捕捉到 researching_title / generating_titles 中间态
+  startProgressPolling('titles')
   try {
     await generateTitles(taskId)
-    await fetchTask()
-    ElMessage.success('标题已重新生成')
-  } finally {
+    // 完成与刷新由轮询回调处理（title_generated 时停止轮询、关闭弹窗、刷新数据）
+  } catch (error) {
+    console.error('重新生成标题失败:', error)
+    stopProgressPolling()
     regenerating.value = false
+    showProgressModal.value = false
+    ElMessage.error('重新生成标题失败')
   }
 }
 
@@ -489,6 +465,7 @@ async function handleSubmit() {
     return
   }
   submitting.value = true
+  progressModalType.value = 'outline'
   progressText.value = '正在提交配置...'
   currentTaskStatus.value = 'title_generated'
   showProgressModal.value = true
@@ -499,9 +476,8 @@ async function handleSubmit() {
     await submitTitleConfig(taskId, {
       title: selectedTitle.value,
       need_image: needImage.value,
-      image_source: needImage.value ? imageSource.value : null,
-      word_count: wordCount.value,
-      level: level.value,
+      article_style: articleStyle.value || null,
+      article_style_custom: articleStyle.value === 'custom' ? (articleStyleCustom.value || null) : null,
       extra_requirements: extraRequirements.value || null,
     })
     // 完成与跳转由轮询回调处理（outline_generated 跳转大纲页 / failed 报错）
@@ -999,6 +975,44 @@ onUnmounted(() => {
 .compact-source.disabled {
   opacity: 0.45;
   pointer-events: none;
+}
+
+.config-hint {
+  margin: 8px 0 0 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* 文章风格选择 */
+.style-select-wrapper {
+  margin-top: 8px;
+}
+
+.style-select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 14px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.style-select:hover {
+  border-color: var(--primary);
+}
+
+.style-select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+}
+
+.custom-style-input {
+  margin-top: 10px;
 }
 
 /* 按钮 */

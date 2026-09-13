@@ -75,6 +75,18 @@ def get_blog_detail(task_id: int, db: Session = Depends(get_db)):
         "topic": task.topic,
         "selected_title": task.selected_title,
         "outline": task.outline,
+        "title_research": task.title_research,
+        "outline_research": task.outline_research,
+        "content_research": task.content_research,
+        "writing_thoughts": task.writing_thoughts,
+        "target_word_count": task.word_count,
+        "level": task.level,
+        "extra_requirements": task.extra_requirements,
+        "content_extra_requirements": task.content_extra_requirements,
+        "article_style": task.article_style,
+        "article_style_custom": task.article_style_custom,
+        "need_image": task.need_image,
+        "image_source": task.image_source,
         "content": content,
         "formatted_content": task.formatted_content,
         "image_prompts": TaskService.parse_image_prompts(task.image_prompts),
@@ -120,20 +132,20 @@ def generate_titles(task_id: int, db: Session = Depends(get_db)):
 
 # ========== 人工介入点1：选择标题 + 配图配置，自动开始大纲调研和生成 ==========
 
-@router.post("/task/{task_id}/submit-title-config", response_model=TaskResp, summary="人工介入点1：选择标题+配图配置，自动生成大纲")
+@router.post("/task/{task_id}/submit-title-config", response_model=TaskResp, summary="人工介入点1：选择标题+是否配图+文章风格，自动生成大纲")
 def submit_title_config(task_id: int, req: TitleAndConfigReq, db: Session = Depends(get_db)):
     """
-    用户选择标题，并配置是否需要配图及配图方式
+    用户选择标题，配置是否配图、文章风格、对大纲的额外要求
     提交后自动开始：大纲调研 → 生成大纲
-    如果需要配图，大纲中会标注配图位置和要求
+    配图方式（搜索/AI生成）在大纲确认页配置
     """
     task = TaskService.get_task(db, task_id=task_id)
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
     if task.status != "title_generated":
         raise HTTPException(status_code=400, detail="当前状态不允许选择标题")
-    if req.need_image and req.image_source not in ("api", "ai"):
-        raise HTTPException(status_code=400, detail="需要配图时，image_source 必须是 api 或 ai")
+    if req.article_style == "custom" and not req.article_style_custom:
+        raise HTTPException(status_code=400, detail="选择自定义风格时，必须填写自定义风格内容")
 
     try:
         run_generate_outline(
@@ -141,9 +153,8 @@ def submit_title_config(task_id: int, req: TitleAndConfigReq, db: Session = Depe
             task_id,
             selected_title=req.title,
             need_image=req.need_image,
-            image_source=req.image_source,
-            word_count=req.word_count,
-            level=req.level,
+            article_style=req.article_style,
+            article_style_custom=req.article_style_custom,
             extra_requirements=req.extra_requirements,
         )
     except Exception as e:
@@ -155,7 +166,7 @@ def submit_title_config(task_id: int, req: TitleAndConfigReq, db: Session = Depe
 
 @router.post("/task/{task_id}/regenerate-outline", response_model=TaskResp, summary="重新生成大纲")
 def regenerate_outline(task_id: int, db: Session = Depends(get_db)):
-    """对大纲不满意时，重新生成大纲（使用已保存的标题和配图配置）"""
+    """对大纲不满意时，重新生成大纲（使用已保存的标题、配图、风格配置）"""
     task = TaskService.get_task(db, task_id=task_id)
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
@@ -170,9 +181,8 @@ def regenerate_outline(task_id: int, db: Session = Depends(get_db)):
             task_id,
             selected_title=task.selected_title,
             need_image=task.need_image,
-            image_source=task.image_source,
-            word_count=task.word_count,
-            level=task.level,
+            article_style=task.article_style,
+            article_style_custom=task.article_style_custom,
             extra_requirements=task.extra_requirements,
         )
     except Exception as e:
@@ -184,16 +194,25 @@ def regenerate_outline(task_id: int, db: Session = Depends(get_db)):
 
 # ========== 人工介入点2：确认大纲 ==========
 
-@router.post("/task/{task_id}/confirm-outline", response_model=TaskResp, summary="人工介入点2：确认大纲")
+@router.post("/task/{task_id}/confirm-outline", response_model=TaskResp, summary="人工介入点2：确认大纲 + 正文写作配置 + 配图方式")
 def confirm_outline(task_id: int, req: ConfirmOutlineReq, db: Session = Depends(get_db)):
-    """用户确认大纲，可传入修改后的大纲"""
+    """用户确认大纲，可传入修改后的大纲，同时保存正文写作配置（字数/水平/额外要求）和配图方式"""
     task = TaskService.get_task(db, task_id=task_id)
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
     if task.status != "outline_generated":
         raise HTTPException(status_code=400, detail="当前状态不允许确认大纲")
+    if task.need_image and req.image_source not in ("api", "ai"):
+        raise HTTPException(status_code=400, detail="需要配图时，image_source 必须是 api 或 ai")
 
-    TaskService.confirm_outline(db, task_id, req.outline)
+    TaskService.confirm_outline(
+        db, task_id,
+        outline=req.outline,
+        word_count=req.word_count,
+        level=req.level,
+        content_extra_requirements=req.content_extra_requirements,
+        image_source=req.image_source,
+    )
     return TaskService.get_task(db, task_id)
 
 

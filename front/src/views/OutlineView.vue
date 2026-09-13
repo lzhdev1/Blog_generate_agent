@@ -11,9 +11,121 @@
       <div class="step"><div class="step-num">4</div><span>生成文章</span></div>
     </div>
 
-    <div class="two-column-layout">
-      <!-- 左栏：大纲确认 -->
-      <div class="left-column">
+    <div class="three-column-layout">
+      <!-- 左栏：正文写作配置 -->
+      <div class="side-col left-col">
+        <!-- 正文写作配置（可编辑，确认大纲时提交给写手） -->
+        <div class="detail-card animate-fade-in-up">
+          <div class="detail-header">
+            <SvgIcon name="magic" :size="18" />
+            <h3>正文写作配置</h3>
+          </div>
+          <div class="detail-body">
+            <!-- 目标字数 -->
+            <div class="config-edit-row">
+              <div class="config-edit-label">
+                <SvgIcon name="wordcount" :size="14" />
+                目标字数
+              </div>
+              <el-select
+                v-model="wordCount"
+                placeholder="选择字数"
+                filterable
+                allow-create
+                default-first-option
+                style="width: 100%"
+                @change="handleWordCountChange"
+              >
+                <el-option v-for="wc in wordCountOptions" :key="wc.value" :label="wc.label" :value="wc.value" />
+              </el-select>
+            </div>
+            <!-- 专业水平 -->
+            <div class="config-edit-row">
+              <div class="config-edit-label">
+                <SvgIcon name="level" :size="14" />
+                专业水平
+              </div>
+              <el-select v-model="level" placeholder="选择水平" style="width: 100%">
+                <el-option v-for="lv in levelOptions" :key="lv.value" :label="lv.label" :value="lv.value" />
+              </el-select>
+            </div>
+            <!-- 对正文的额外要求 -->
+            <div class="config-edit-row">
+              <div class="config-edit-label">
+                <SvgIcon name="send" :size="14" />
+                对正文的额外要求
+              </div>
+              <el-input
+                v-model="contentExtraRequirements"
+                type="textarea"
+                :rows="3"
+                placeholder="您可以说出对正文的要求，例如文章风格：科普、攻略、专业知识、避免代码块等等........."
+                resize="none"
+              />
+            </div>
+            <!-- 配图方式（仅在标题页选择了配图时显示） -->
+            <div class="config-edit-row" v-if="task?.need_image">
+              <div class="config-edit-label">
+                <SvgIcon name="image" :size="14" />
+                配图方式
+              </div>
+              <div class="image-source-options">
+                <div
+                  class="source-option"
+                  :class="{ active: imageSource === 'api' }"
+                  @click="imageSource = 'api'"
+                >
+                  <SvgIcon name="search" :size="18" />
+                  <span>搜索图片</span>
+                </div>
+                <div
+                  class="source-option"
+                  :class="{ active: imageSource === 'ai' }"
+                  @click="imageSource = 'ai'"
+                >
+                  <SvgIcon name="magic" :size="18" />
+                  <span>AI 生成</span>
+                </div>
+              </div>
+            </div>
+            <!-- 标题页配置的只读信息 -->
+            <div class="config-readonly-section">
+              <div class="readonly-title">标题页已配置</div>
+              <div class="config-row">
+                <div class="config-label">
+                  <SvgIcon name="image" :size="14" />
+                  是否配图
+                </div>
+                <div class="config-value">
+                  <el-tag v-if="!task?.need_image" size="small" effect="plain" type="info">未配图</el-tag>
+                  <el-tag v-else size="small" effect="light" type="warning">已配图</el-tag>
+                </div>
+              </div>
+              <div class="config-row" v-if="task?.article_style">
+                <div class="config-label">
+                  <SvgIcon name="edit" :size="14" />
+                  文章风格
+                </div>
+                <div class="config-value">
+                  <el-tag size="small" effect="plain">{{ styleLabel }}</el-tag>
+                </div>
+              </div>
+              <div class="config-row extra-row" v-if="task?.extra_requirements">
+                <div class="config-label">
+                  <SvgIcon name="edit" :size="14" />
+                  对大纲的要求
+                </div>
+                <div class="config-value extra-value">
+                  <span>{{ task.extra_requirements }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 中栏：大纲确认（宽高不变） -->
+      <div class="center-col">
         <div class="content-card animate-fade-in-up">
           <div class="card-header">
             <div>
@@ -95,57 +207,8 @@
         </div>
       </div>
 
-      <!-- 右栏：生成配置 + 大纲调研 -->
-      <div class="right-column">
-        <!-- 生成配置 -->
-        <div class="detail-card animate-fade-in-up">
-          <div class="detail-header">
-            <SvgIcon name="magic" :size="18" />
-            <h3>生成配置</h3>
-          </div>
-          <div class="detail-body">
-            <div class="config-row">
-              <div class="config-label">
-                <SvgIcon name="wordcount" :size="14" />
-                目标字数
-              </div>
-              <div class="config-value">
-                <el-tag size="small" effect="light">{{ task?.word_count || 500 }}字</el-tag>
-              </div>
-            </div>
-            <div class="config-row">
-              <div class="config-label">
-                <SvgIcon name="level" :size="14" />
-                专业水平
-              </div>
-              <div class="config-value">
-                <el-tag size="small" effect="light" type="primary">{{ levelLabel }}</el-tag>
-              </div>
-            </div>
-            <div class="config-row">
-              <div class="config-label">
-                <SvgIcon name="image" :size="14" />
-                配图配置
-              </div>
-              <div class="config-value">
-                <el-tag v-if="!task?.need_image" size="small" effect="plain" type="info">未配图</el-tag>
-                <el-tag v-else-if="task?.image_source === 'api'" size="small" effect="light" type="warning">搜索图片</el-tag>
-                <el-tag v-else size="small" effect="light" type="success">AI生成</el-tag>
-              </div>
-            </div>
-            <div class="config-row extra-row">
-              <div class="config-label">
-                <SvgIcon name="send" :size="14" />
-                额外要求
-              </div>
-              <div class="config-value extra-value">
-                <span v-if="task?.extra_requirements">{{ task.extra_requirements }}</span>
-                <span v-else class="empty-text">无</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
+      <!-- 右栏：大纲调研 -->
+      <div class="side-col right-col">
         <!-- 大纲调研 -->
         <div class="detail-card animate-fade-in-up" style="animation-delay: 0.1s">
           <div class="detail-header">
@@ -224,6 +287,49 @@ const editing = ref(false)
 const task = ref(null)
 const editedOutline = ref('')
 
+// 正文写作配置（大纲确认页填写，提交给写手）
+const wordCount = ref(800)
+const level = ref('medium')
+const contentExtraRequirements = ref('')
+const imageSource = ref('api')  // 配图方式（大纲确认页填写，仅在 need_image 时有效）
+
+// 文章风格标签
+const styleLabel = computed(() => {
+  const style = task.value?.article_style
+  const map = {
+    popular_science: '科普类',
+    technical: '技术类',
+    essay: '论文类',
+    prose: '散文类',
+    note: '笔记类',
+    custom: task.value?.article_style_custom || '自定义',
+  }
+  return map[style] || style || ''
+})
+
+const wordCountOptions = [
+  { value: 500, label: '500字' },
+  { value: 800, label: '800字' },
+  { value: 1200, label: '1200字' },
+  { value: 2000, label: '2000字' },
+]
+
+const levelOptions = [
+  { value: 'general', label: '一般（入门科普）' },
+  { value: 'medium', label: '中等（有一定深度）' },
+  { value: 'advanced', label: '高级（技术细节多）' },
+  { value: 'professional', label: '专业（深入原理）' },
+]
+
+function handleWordCountChange(val) {
+  const num = typeof val === 'string' ? parseInt(val, 10) : val
+  if (!isNaN(num) && num >= 100 && num <= 10000) {
+    wordCount.value = num
+  } else if (typeof val === 'number') {
+    wordCount.value = val
+  }
+}
+
 // 解析大纲调研结果（LLM返回的是【思考】【观察】【总结】格式的纯文本）
 const parsedOutlineResearch = computed(() => {
   if (!task.value?.outline_research) return null
@@ -242,17 +348,6 @@ const parsedOutlineResearch = computed(() => {
     return { thought, observation, summary }
   }
   return { summary: text }
-})
-
-// 专业水平中文映射
-const levelLabel = computed(() => {
-  const map = {
-    general: '一般',
-    medium: '中等',
-    advanced: '高级',
-    professional: '专业'
-  }
-  return map[task.value?.level] || '中等'
 })
 
 // 进度弹窗相关
@@ -292,6 +387,19 @@ async function fetchTask() {
   try {
     task.value = await getTask(taskId)
     editedOutline.value = task.value.outline || ''
+    // 回显正文写作配置（如果之前已填写过）
+    if (task.value.word_count) {
+      wordCount.value = task.value.word_count
+    }
+    if (task.value.level) {
+      level.value = task.value.level
+    }
+    if (task.value.content_extra_requirements) {
+      contentExtraRequirements.value = task.value.content_extra_requirements
+    }
+    if (task.value.image_source) {
+      imageSource.value = task.value.image_source
+    }
   } finally {
     loading.value = false
   }
@@ -337,8 +445,14 @@ async function handleConfirm() {
   }
   confirming.value = true
   try {
-    // 传入编辑后的大纲
-    await confirmOutline(taskId, editedOutline.value)
+    // 传入编辑后的大纲 + 正文写作配置 + 配图方式
+    await confirmOutline(taskId, {
+      outline: editedOutline.value,
+      word_count: wordCount.value,
+      level: level.value,
+      content_extra_requirements: contentExtraRequirements.value || null,
+      image_source: task.value?.need_image ? imageSource.value : null,
+    })
     ElMessage.success('大纲已确认，正在生成正文...')
     router.push(`/task/${taskId}/generating`)
   } finally {
@@ -357,28 +471,39 @@ onUnmounted(() => {
 
 <style scoped>
 .outline-view {
-  max-width: 1200px;
+  max-width: none;
+  width: 100%;
   margin: 0 auto;
+  padding: 0 40px 40px;
 }
 
-/* 两栏布局 */
-.two-column-layout {
+/* 三栏布局：以整个浏览器窗口为容器，左栏贴左、中间 820px 居中、右栏贴右 */
+.three-column-layout {
+  display: grid;
+  grid-template-columns: 360px 820px 360px;
+  justify-content: space-between;
+  align-items: start;
+  gap: 0;
+  width: 100%;
+}
+
+/* 左右侧栏（配置 / 调研） */
+.side-col {
+  width: 100%;
   display: flex;
-  gap: 24px;
-  align-items: flex-start;
-}
-
-.left-column {
-  flex: 1.4;
+  flex-direction: column;
+  gap: 16px;
   min-width: 0;
 }
 
-.right-column {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  align-self: stretch;
+/* 中栏：大纲确认（内部保持 820px 宽度） */
+.center-col {
+  min-width: 0;
+}
+
+.center-col .content-card {
+  max-width: 820px;
+  margin: 0 auto;
 }
 
 /* 右栏卡片 */
@@ -389,7 +514,7 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-.right-column .detail-card:last-child .detail-body {
+.right-col .detail-card:last-child .detail-body {
   padding: 16px 20px 20px;
 }
 
@@ -483,6 +608,73 @@ onUnmounted(() => {
 
 .config-row:last-child {
   border-bottom: none;
+}
+
+/* 可编辑配置行 */
+.config-edit-row {
+  margin-bottom: 16px;
+}
+
+.config-edit-row:last-of-type {
+  margin-bottom: 0;
+}
+
+.config-edit-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 8px;
+}
+
+/* 配图方式选择 */
+.image-source-options {
+  display: flex;
+  gap: 10px;
+}
+
+.image-source-options .source-option {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid #e0e0e8;
+  border-radius: 8px;
+  background: #fafafc;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 13px;
+  font-weight: 500;
+  color: #555;
+}
+
+.image-source-options .source-option:hover {
+  border-color: #6366f1;
+  background: #f0f0ff;
+}
+
+.image-source-options .source-option.active {
+  border-color: #6366f1;
+  background: #6366f1;
+  color: #fff;
+}
+
+/* 只读配置区（标题页已配置的信息） */
+.config-readonly-section {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px dashed #e0e0e8;
+}
+
+.readonly-title {
+  font-size: 12px;
+  color: #999;
+  margin-bottom: 8px;
+  font-weight: 500;
 }
 
 .config-label {
@@ -774,5 +966,39 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+/* 响应式：三栏最小需要 360+820+360，低于 1600px 改为堆叠 */
+@media (max-width: 1600px) {
+  .three-column-layout {
+    grid-template-columns: 1fr;
+    justify-content: center;
+    gap: 24px;
+  }
+  .side-col,
+  .center-col {
+    max-width: 820px;
+    margin: 0 auto;
+    width: 100%;
+  }
+  .left-col {
+    order: 2;
+  }
+  .center-col {
+    order: 1;
+  }
+  .right-col {
+    order: 3;
+  }
+}
+
+/* 响应式：小屏幕单栏堆叠 */
+@media (max-width: 900px) {
+  .outline-view {
+    padding: 0 12px 32px;
+  }
+  .three-column-layout {
+    gap: 16px;
+  }
 }
 </style>

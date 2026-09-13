@@ -9,7 +9,8 @@ class LlmClient:
     def __init__(self):
         self.client = OpenAI(
             base_url=settings.llm_base_url,
-            api_key=settings.llm_api_key
+            api_key=settings.llm_api_key,
+            timeout=getattr(settings, "agent_timeout", 120),  # LLM 调用超时，防止 API 卡住无限等待
         )
 
     def chat_completion(
@@ -19,15 +20,18 @@ class LlmClient:
         system_prompt: Optional[str] = None,
         temperature: Optional[float] = None,
         enable_search: Optional[bool] = None,
+        max_tokens: Optional[int] = None,
     ) -> str:
         """
         传入prompt，返回大模型输出文本
-        支持指定模型、系统提示词、温度、联网搜索
+        支持指定模型、系统提示词、温度、联网搜索、最大输出token数
 
         enable_search:
           - None: 使用全局配置 settings.llm_enable_search
           - True: 强制开启千问自带联网搜索
           - False: 强制关闭联网搜索
+
+        max_tokens: 最大输出token数，默认 4096，防止 LLM 无限输出
         """
         messages = []
         if system_prompt:
@@ -42,6 +46,7 @@ class LlmClient:
             "model": model or settings.llm_model,
             "messages": messages,
             "temperature": temperature if temperature is not None else settings.llm_temperature,
+            "max_tokens": max_tokens or 4096,
         }
 
         # 千问/百炼 OpenAI 兼容模式下，通过 extra_body 开启联网搜索

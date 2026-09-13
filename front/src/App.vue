@@ -23,7 +23,7 @@
         </div>
       </div>
     </header>
-    <main class="app-main">
+    <main class="app-main" :class="{ 'app-main--full': isFullWidthPage }">
       <router-view v-slot="{ Component }">
         <transition name="fade" mode="out-in">
           <component :is="Component" />
@@ -34,11 +34,17 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import SvgIcon from '@/components/SvgIcon.vue'
 
 const router = useRouter()
 const route = useRoute()
+
+// 文章详情页和大纲确认页需要全宽三栏布局，突破 app-main 的 1200px 限制
+const isFullWidthPage = computed(() => {
+  return route.path.startsWith('/blog/') || /\/task\/\d+\/outline/.test(route.path)
+})
 
 function scrollToArticles() {
   if (route.path === '/') {
@@ -168,6 +174,12 @@ function scrollToArticles() {
   margin: 0 auto;
   padding: 32px 24px;
   min-height: calc(100vh - 68px);
+}
+
+/* 文章详情页：全宽三栏布局 */
+.app-main--full {
+  max-width: none;
+  padding: 24px 0 40px;
 }
 
 .fade-enter-active,

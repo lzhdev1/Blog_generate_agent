@@ -84,6 +84,14 @@ class TaskService:
             task.content_research = research
             db.commit()
 
+    @staticmethod
+    def save_writing_thoughts(db: Session, task_id: int, thoughts: str):
+        """保存写手写作思路"""
+        task = TaskRepository.get_task_by_id(db, task_id)
+        if task:
+            task.writing_thoughts = thoughts
+            db.commit()
+
     # ========== 节点1：标题 ==========
 
     @staticmethod
@@ -116,20 +124,18 @@ class TaskService:
         task_id: int,
         selected_title: str,
         need_image: bool,
-        image_source: Optional[str] = None,
-        word_count: Optional[int] = None,
-        level: Optional[str] = None,
+        article_style: Optional[str] = None,
+        article_style_custom: Optional[str] = None,
         extra_requirements: Optional[str] = None,
     ):
-        """用户选择标题 + 配置配图需求 + 文章个性化配置"""
+        """用户选择标题 + 是否配图 + 文章风格 + 对大纲的额外要求（配图方式在大纲确认页配置）"""
         task = TaskRepository.get_task_by_id(db, task_id)
         if not task:
             return
         task.selected_title = selected_title
         task.need_image = need_image
-        task.image_source = image_source
-        task.word_count = word_count
-        task.level = level
+        task.article_style = article_style
+        task.article_style_custom = article_style_custom
         task.extra_requirements = extra_requirements
         db.commit()
 
@@ -148,13 +154,26 @@ class TaskService:
         db.commit()
 
     @staticmethod
-    def confirm_outline(db: Session, task_id: int, outline: Optional[str] = None):
-        """用户确认大纲，可传入修改后的大纲"""
+    def confirm_outline(
+        db: Session,
+        task_id: int,
+        outline: Optional[str] = None,
+        word_count: Optional[int] = None,
+        level: Optional[str] = None,
+        content_extra_requirements: Optional[str] = None,
+        image_source: Optional[str] = None,
+    ):
+        """用户确认大纲，可传入修改后的大纲，同时保存正文写作配置（字数/水平/额外要求）和配图方式"""
         task = TaskRepository.get_task_by_id(db, task_id)
         if not task:
             return
         if outline is not None:
             task.outline = outline
+        task.word_count = word_count
+        task.level = level
+        task.content_extra_requirements = content_extra_requirements
+        if image_source:
+            task.image_source = image_source
         task.outline_confirmed = True
         task.progress = "大纲已确认，准备生成正文..."
         db.commit()

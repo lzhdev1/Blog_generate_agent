@@ -41,14 +41,21 @@ class BlogTask(Base):
     title_scores = Column(Text, nullable=True, comment="标题评分，json字符串")
     selected_title = Column(String(512), nullable=True, comment="用户选择的标题")
 
-    # 配图配置（人工介入点1）
-    need_image = Column(Boolean, default=False, comment="是否需要配图")
-    image_source = Column(String(32), nullable=True, comment="配图方式：api/ai")
+    # 配图配置（人工介入点1：标题选择页只配置是否配图，配图方式在大纲确认页配置）
+    need_image = Column(Boolean, default=False, comment="是否需要配图（标题选择页配置）")
+    image_source = Column(String(32), nullable=True, comment="配图方式：api/ai（大纲确认页配置）")
 
-    # 文章个性化配置（人工介入点1）
-    word_count = Column(Integer, nullable=True, comment="目标字数：300/500/800/自定义")
-    level = Column(String(32), nullable=True, comment="专业水平：general/medium/advanced/professional")
-    extra_requirements = Column(Text, nullable=True, comment="用户对大纲的额外要求")
+    # 文章风格（人工介入点1：标题选择页配置，传给大纲调研和大纲师）
+    article_style = Column(String(32), nullable=True, comment="文章风格：popular_science/technical/essay/prose/note/custom")
+    article_style_custom = Column(String(256), nullable=True, comment="自定义风格时的用户输入")
+
+    # 对大纲的额外要求（标题选择页填写，给大纲师）
+    extra_requirements = Column(Text, nullable=True, comment="用户对大纲的额外要求（标题页填写，给大纲师）")
+
+    # 正文写作配置（人工介入点2：大纲确认页填写，给写手）
+    word_count = Column(Integer, nullable=True, comment="目标字数（大纲确认页填写，给写手）")
+    level = Column(String(32), nullable=True, comment="专业水平（大纲确认页填写，给写手）")
+    content_extra_requirements = Column(Text, nullable=True, comment="用户对正文的额外要求（大纲确认页填写，给写手）")
 
     # 节点2：大纲
     outline = Column(Text, nullable=True, comment="博客大纲")
@@ -56,6 +63,7 @@ class BlogTask(Base):
 
     # 节点3：正文
     content = Column(Text, nullable=True, comment="博客正文markdown")
+    writing_thoughts = Column(Text, nullable=True, comment="写手写作思路")
 
     # 审稿
     review_feedback = Column(Text, nullable=True, comment="审稿意见")

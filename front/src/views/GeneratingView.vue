@@ -174,7 +174,16 @@ async function startGeneration() {
     await generateContent(taskId)
     await fetchTask()
   } catch (e) {
-    error.value = e.response?.data?.detail || '生成失败，请重试'
+    const detail = e.response?.data?.detail
+    if (detail) {
+      // 后端明确返回的业务错误（4xx/5xx）
+      error.value = detail
+      stopPolling()
+    } else {
+      // 网络层异常（超时/断连）：后端可能仍在执行，不立即判失败，
+      // 交给轮询确认最终状态（completed 正常完成 / failed 才显示错误）
+      console.error('生成请求异常（后端可能仍在执行，等待轮询确认）:', e.message)
+    }
   } finally {
     isGenerating = false
   }

@@ -526,3 +526,224 @@ class ImageAgent(BaseAgent):
                 inserted_urls.append(image_url)
 
         return result, inserted_urls
+
+    # ============================================================
+    # 7. 配图上下文分析（优化版）
+    # ============================================================
+
+    def extract_markers_with_context(self, content: str, context_chars: int = 200) -> List[Dict]:
+        """
+        从正文中提取配图标记，并附带每个标记的上下文（前后各 context_chars 字）
+        返回：[{"index": int, "description": str, "context_before": str, "context_after": str, "position_title": str, "start": int, "end": int}, ...]
+        """
+        markers = []
+        pattern = r'<!--\s*配图[：:]\s*(.+?)\s*-->'
+        for i, match in enumerate(re.finditer(pattern, content)):
+            description = match.group(1).strip()
+            start = match.start()
+            end = match.end()
+
+            # 提取上下文
+            context_before = content[max(0, start - context_chars):start].strip()
+            context_after = content[end:min(len(content), end + context_chars)].strip()
+
+            # 找到这个注释前面最近的标题，作为位置标识
+            before_text = content[:start]
+            title_matches = list(re.finditer(r'^#{1,4}\s+(.+)$', before_text, re.MULTILINE))
+            position_title = title_matches[-1].group(1).strip() if title_matches else f"第{i+1}个配图位置"
+
+            markers.append({
+                "index": i,
+                "description": description,
+                "context_before": context_before,
+                "context_after": context_after,
+                "position_title": position_title,
+                "start": start,
+                "end": end,
+            })
+
+        return markers
+
+    def analyze_image_needs(self, markers_with_context: List[Dict], image_source: str) -> List[Dict]:
+        """
+        LLM 深度分析每个配图位置的上下文，生成专业的搜图关键词或AI生图prompt
+        image_source: "api"（搜图）或 "ai"（AI生图）
+        返回：[{"index": int, "query_or_prompt": str, "description_cn": str}, ...]
+        """
+        if not markers_with_context:
+            return []
+
+        results = []
+
+        # 逐个分析（单个分析更精准，避免批量分析时上下文混淆）
+        for marker in markers_with_context:
+            idx = marker["index"]
+            description = marker["description"]
+            context_before = marker["context_before"]
+            context_after = marker["context_after"]
+            position_title = marker["position_title"]
+
+            # 无效占位描述直接跳过
+            stripped = (description or "").strip()
+            if not stripped or stripped in self.INVALID_IMAGE_MARKERS or len(stripped) < 3:
+                print(f"[image] 配图位置{idx+1}描述无效（占位词或过短），跳过分析: {stripped!r}")
+                results.append({"index": idx, "query_or_prompt": "", "description_cn": ""})
+                continue
+
+            if image_source == "api":
+                # 搜图模式：生成简洁专业的英文搜索关键词 + 中文描述
+                prompt = f"""你是一个专业的图片编辑。请分析以下文章中某个配图位置的上下文，生成精准的图片搜索关键词。
+
+【配图位置的章节标题】：{position_title}
+【配图位置的前文】：{context_before[:300]}
+【配图位置的后文】：{context_after[:300]}
+【原配图说明】：{description}
+
+请输出：
+1. 搜图关键词（英文，5-8个单词，空格分隔，简洁专业，可直接用于Pexels/Unsplash等图片库搜索）
+2. 搜图描述（中文，一句话说明这张图应该展示什么主体/场景/氛围）
+
+格式：
+关键词: <英文关键词>
+描述: <中文描述>
+
+直接输出，不要其他解释。"""
+                try:
+                    analysis = self.chat(prompt, temperature=0.3)
+                    # 解析关键词和描述
+                    query = ""
+                    desc_cn = ""
+                    for line in analysis.split("\n"):
+                        line = line.strip()
+                        if line.lower().startswith("关键词:") or line.lower().startswith("keyword:"):
+                            query = line.split(":", 1)[1].strip()
+                        elif line.startswith("描述:") or line.lower().startswith("description:"):
+                            desc_cn = line.split(":", 1)[1].strip()
+                    # 如果解析失败，用整段分析作为关键词
+                    if not query:
+                        query = analysis.strip()[:100]
+                    results.append({"index": idx, "query_or_prompt": query, "description_cn": desc_cn})
+                    print(f"[image] 配图位置{idx+1}搜图关键词: {query}")
+                except Exception as e:
+                    print(f"[image] 配图位置{idx+1}分析失败，回退原描述: {e}")
+                    results.append({"index": idx, "query_or_prompt": description, "description_cn": description})
+
+            else:
+                # AI生图模式：生成非常专业的英文生图prompt
+                prompt = f"""你是一个专业的AI绘画提示词工程师。请分析以下文章中某个配图位置的上下文，生成专业的AI绘画提示词。
+
+【配图位置的章节标题】：{position_title}
+【配图位置的前文】：{context_before[:300]}
+【配图位置的后文】：{context_after[:300]}
+【原配图说明】：{description}
+
+请输出专业的AI绘画提示词（英文，50-100词），必须包含以下要素：
+1. 主体内容（具体是什么，细节丰富）
+2. 场景环境（在哪里，背景是什么）
+3. 艺术风格（写实/插画/科技感/极简/水彩/油画等）
+4. 色调（冷暖/明暗/主色调/配色方案）
+5. 构图（特写/全景/居中/三分法/俯视/仰视等）
+6. 光线（自然光/逆光/柔光/戏剧光/霓虹光等）
+7. 画质（8K/高细节/锐利/电影感/景深等）
+8. 氛围（宁静/紧张/温暖/科技感/神秘等）
+
+直接输出提示词，不要其他解释，不要加引号。"""
+                try:
+                    analysis = self.chat(prompt, temperature=0.7)
+                    results.append({"index": idx, "query_or_prompt": analysis.strip(), "description_cn": description})
+                    print(f"[image] 配图位置{idx+1}AI生图prompt生成完成（{len(analysis)}字符）")
+                except Exception as e:
+                    print(f"[image] 配图位置{idx+1}分析失败，回退原描述: {e}")
+                    results.append({"index": idx, "query_or_prompt": description, "description_cn": description})
+
+        return results
+
+    def get_image_by_query(self, query_or_prompt: str, image_source: str) -> Optional[str]:
+        """
+        根据已分析好的关键词/prompt直接获取图片（不再做文字转换）
+        image_source: "api"（搜图）或 "ai"（AI生图）
+        """
+        stripped = (query_or_prompt or "").strip()
+        if not stripped or len(stripped) < 2:
+            return None
+
+        if image_source == "api":
+            # 搜图：用关键词直接搜索，失败时优化重试
+            image_url, success = self.search_image_with_retry(stripped, max_retries=2)
+            return image_url
+        else:
+            # AI生图：用prompt直接生成
+            return self.generate_image_dashscope(stripped)
+
+    def process_images(self, content: str, image_source: str) -> Tuple[str, List[str]]:
+        """
+        配图主入口（优化版）：
+        1. 从正文中提取配图标记 + 上下文
+        2. LLM 深度分析每个配图位置，生成专业的搜图关键词或AI生图prompt
+        3. 根据配图方式获取图片
+        4. 持久化图片到本地
+        5. 把配图标记替换成图片markdown
+        6. 配图失败的位置改成纯文本过渡句
+
+        返回：(插入图片后的正文, 成功插入的图片URL列表)
+        """
+        # 1. 提取配图标记 + 上下文
+        markers = self.extract_markers_with_context(content)
+        if not markers:
+            print("[image] 未找到配图标记，跳过配图")
+            return content, []
+
+        print(f"[image] 找到 {len(markers)} 个配图位置，开始分析...")
+
+        # 2. LLM 深度分析每个配图位置
+        analyzed = self.analyze_image_needs(markers, image_source)
+        analyzed_map = {a["index"]: a for a in analyzed}
+
+        # 3. 获取图片
+        image_urls = []
+        for marker in markers:
+            idx = marker["index"]
+            analysis = analyzed_map.get(idx, {})
+            query_or_prompt = analysis.get("query_or_prompt", "")
+            desc_cn = analysis.get("description_cn", marker["description"])
+
+            if not query_or_prompt:
+                print(f"[image] 配图位置{idx+1}无有效关键词/prompt，跳过")
+                image_urls.append(None)
+                continue
+
+            print(f"[image] 正在获取第{idx+1}/{len(markers)}张配图...")
+            image_url = self.get_image_by_query(query_or_prompt, image_source)
+            image_urls.append(image_url)
+            if not image_url:
+                print(f"[image] 配图位置{idx+1}获取失败")
+
+        # 4. 持久化图片到本地
+        persisted_urls = []
+        for i, url in enumerate(image_urls):
+            if url:
+                persisted = self.persist_image(url, f"process_{i+1}")
+                persisted_urls.append(persisted)
+            else:
+                persisted_urls.append(None)
+
+        # 5. 把配图标记替换成图片
+        content_with_images, inserted_urls = self.insert_images_by_markers(
+            content, markers, persisted_urls
+        )
+
+        # 6. 配图失败的位置改成纯文本过渡句
+        failed_markers = [markers[i] for i in range(len(markers)) if not persisted_urls[i]]
+        if failed_markers:
+            print(f"[image] 有{len(failed_markers)}处配图未找到，正在调整为文字描述...")
+            for marker in failed_markers:
+                desc_cn = analyzed_map.get(marker["index"], {}).get("description_cn", marker["description"])
+                content_with_images = self.replace_image_with_text(
+                    content_with_images, marker["position_title"], desc_cn
+                )
+
+        # 保存成功的图片URL
+        success_urls = [u for u in inserted_urls if u]
+        print(f"[image] 配图完成：成功{len(success_urls)}张，失败{len(failed_markers)}处")
+
+        return content_with_images, success_urls

@@ -37,6 +37,7 @@ class AgentState(TypedDict):
     review_result: Dict
     review_count: int          # 审稿次数，控制循环上限
     review_feedback: str
+    research_suggestions: str  # 审稿给出的调研补充建议（打回时用于重新调研）
 
     # 格式化
     formatted_content: str
