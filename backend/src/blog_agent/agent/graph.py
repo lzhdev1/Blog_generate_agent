@@ -297,10 +297,19 @@ def run_generate_content(db: Session, task_id: int) -> str:
             if not image_url:
                 failed_markers.append(marker)
 
+        # 2.5 统一转存本地：AI生图/API搜索的远程图片下载到 /app/data/images，
+        #     避免百炼 OSS 临时链接过期导致图片失效；下载失败自动回退原URL
+        TaskService.update_progress(db, task_id, "正在持久化图片...")
+        persisted_urls = []
+        for i, url in enumerate(image_urls):
+            if url:
+                url = image_agent.persist_image(url, f"{task_id}_{i+1}")
+            persisted_urls.append(url)
+
         # 3. 直接把正文中的配图标记替换成图片
         TaskService.update_progress(db, task_id, "正在将图片插入正文...")
         content_with_images, inserted_urls = image_agent.insert_images_by_markers(
-            state["content"], image_markers, image_urls
+            state["content"], image_markers, persisted_urls
         )
 
         # 4. 配图失败的位置，改成纯文本过渡句

@@ -1,4 +1,23 @@
 services:
+  # ========== PostgreSQL 数据库 ==========
+  postgres:
+    image: postgres:16-alpine
+    container_name: blog-agent-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_PORT}:5432"            # 本地调试连接用，生产环境可注释掉
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
   # ========== 后端服务 ==========
   backend:
     build:
@@ -9,19 +28,21 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app                    # 代码挂载，热更新
-      - backend_data:/app/data            # 数据库文件持久化
     env_file:
       - ./backend/.env                    # 读取环境变量
     environment:
       - PYTHONPATH=/app
-      - db_url=sqlite:////app/data/blog_agent.db  # 数据库路径放到持久化卷
+      - db_url=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}  # 生产数据库
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
 
-  # ========== 前端服务 ==========
+  # ========== 前端服务（开发模式，vite 热更新）==========
   frontend:
     build:
       context: ./front
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: blog-agent-frontend
     ports:
       - "5173:5173"
@@ -34,6 +55,21 @@ services:
       - backend
     restart: unless-stopped
 
+  # ========== 前端服务（生产模式，nginx 托管构建产物）==========
+  # 本地开发默认不启动；服务器部署：docker compose --profile prod up -d --build
+  # 端口默认 80（服务器标准），本地验证可用 FRONTEND_PORT=8080 覆盖
+  frontend-prod:
+    profiles: ["prod"]
+    build:
+      context: ./front
+      dockerfile: Dockerfile
+    container_name: blog-agent-frontend-prod
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
 # ========== 持久化卷 ==========
 volumes:
-  backend_data:
+  postgres_data:

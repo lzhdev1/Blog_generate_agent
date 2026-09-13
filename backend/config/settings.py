@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     image_gen_model: str = "wanx2.1-t2i-turbo"  # 图片生成模型
     image_api_key: Optional[str] = None         # 配图专用API Key（不填则用 llm_api_key）
     dashscope_workspace_id: Optional[str] = None  # 百炼业务空间ID（qwen-image-3.0 必需）
+    # 配图持久化目录：AI生图/API搜索到的远程图片会下载到这里，避免临时链接过期失效
+    # docker 容器内为 /app/data/images（backend 代码挂载到宿主 ./backend/data/images）
+    image_save_dir: str = "/app/data/images"
 
     # Database
     db_url: str = "sqlite:///./blog_agent.db"

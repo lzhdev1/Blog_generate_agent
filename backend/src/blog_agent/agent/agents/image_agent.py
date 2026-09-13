@@ -355,6 +355,54 @@ class ImageAgent(BaseAgent):
             prompt = self.generate_image_prompt(stripped, "ai")
             return self.generate_image_dashscope(prompt)
 
+    def persist_image(self, url: str, filename: str) -> str:
+        """
+        把远程图片下载到本地持久化，返回本地URL（/images/<filename>）
+        解决 AI 生图临时链接（OSS）过期失效的问题
+        - 已是本地 URL（/images/ 开头）直接返回
+        - 下载失败回退返回原 URL（不阻塞流程）
+        """
+        if not url or url.startswith("/images/"):
+            return url
+
+        try:
+            import os
+            save_dir = getattr(settings, "image_save_dir", "/app/data/images")
+            os.makedirs(save_dir, exist_ok=True)
+
+            # 从 URL 提取扩展名（.jpg/.png/.jpeg/.webp），没有则按内容判断
+            path = url.split("?", 1)[0]
+            ext = os.path.splitext(path)[1].lower()
+            if ext not in {".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif"}:
+                ext = ".jpg"
+
+            save_path = os.path.join(save_dir, f"{filename}{ext}")
+
+            # 已存在则直接返回（幂等）
+            if os.path.exists(save_path):
+                return f"/images/{filename}{ext}"
+
+            resp = requests.get(url, timeout=30, stream=True)
+            if resp.status_code != 200:
+                print(f"[image] 图片下载失败 HTTP {resp.status_code}: {url[:80]}")
+                return url
+
+            with open(save_path, "wb") as f:
+                for chunk in resp.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+
+            # 校验非空
+            if os.path.getsize(save_path) == 0:
+                os.remove(save_path)
+                return url
+
+            print(f"[image] 图片已持久化: {save_path}")
+            return f"/images/{filename}{ext}"
+        except Exception as e:
+            print(f"[image] 图片持久化失败，回退原URL: {e}")
+            return url
+
     # ============================================================
     # 6. 把图片插入正文
     # ============================================================

@@ -1,6 +1,10 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
+from config.settings import settings
 from src.blog_agent.api.v1.blog import router as blog_router
 
 app = FastAPI(
@@ -17,6 +21,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 配图静态文件服务：持久化后的本地图片通过 /images/<文件名> 访问
+os.makedirs(settings.image_save_dir, exist_ok=True)
+app.mount("/images", StaticFiles(directory=settings.image_save_dir), name="images")
 
 # 注册路由
 app.include_router(blog_router)

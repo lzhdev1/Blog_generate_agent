@@ -10,6 +10,7 @@ python-multipart==0.0.20      # FastAPI 文件上传支持（预留）
 
 # ========== 数据库 ==========
 SQLAlchemy==2.0.52            # ORM，数据库操作
+psycopg2-binary==2.9.10       # PostgreSQL 驱动，生产数据库连接
 
 # ========== 数据验证 & 配置 ==========
 pydantic==2.13.5              # 数据验证，Schema 定义

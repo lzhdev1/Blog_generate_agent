@@ -21,6 +21,11 @@ export default defineConfig({
       '/api': {
         target: 'http://backend:8000',
         changeOrigin: true
+      },
+      // 持久化配图：/images/xxx.png → 后端静态文件服务
+      '/images': {
+        target: 'http://backend:8000',
+        changeOrigin: true
       }
     }
   }
