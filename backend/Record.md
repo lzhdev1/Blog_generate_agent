@@ -1,0 +1,2 @@
+1.优化各个agent的prompt，初步通过prompt实现伪React，通过Few-short规范输出结果。
+2.OutlinerAgent
