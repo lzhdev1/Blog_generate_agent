@@ -13,7 +13,7 @@ class TitleAgent(BaseAgent):
 2. 先分析调研结果，判断文章所属类型，标题风格和用词需符合该类型
 3. 切入角度完全依据调研结果选择，优先采用重复度低、有差异化的角度，避免和已有标题重复
 4. 标题简洁有力，不超过30字"""
-    model_config_key = "llm_model_outliner"  # 和大纲师用同一个模型
+    model_config_key = "llm_model_title"  # 标题策划专用模型
 
     def generate_titles(self, topic: str, research: str = "") -> List[str]:
         """生成3个标题"""

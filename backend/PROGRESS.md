@@ -17,7 +17,7 @@
 | Web 框架 | FastAPI 0.141.1 |
 | ASGI 服务器 | Uvicorn 0.52.4 |
 | ORM | SQLAlchemy 2.0.52 |
-| 数据库 | **PostgreSQL 16（Docker，生产）** / SQLite（本地直接运行可选） |
+| 数据库 | **PostgreSQL 16（Docker 容器）** |
 | 数据库驱动 | psycopg2-binary 2.9.10 |
 | 数据验证 | Pydantic 2.13.5 |
 | 配置管理 | pydantic-settings 2.15.0 |
@@ -51,15 +51,13 @@ Blog_generate_agent/
     │   └── settings.py           # 配置管理（含 image_save_dir）
     │
     ├── scripts/
-    │   ├── init_db.py            # 建表脚本
-    │   ├── check_db.py           # 数据库查看脚本
-    │   └── migrate_sqlite_to_postgres.py   # SQLite→PostgreSQL 数据迁移脚本
+    │   └── init_db.py            # 建表脚本
     │
     └── src/blog_agent/
         ├── main.py               # FastAPI 入口（含 /images 静态文件挂载）
         │
         ├── db/                   # 数据库层
-        │   ├── session.py        # 数据库会话（sqlite/postgres 双适配）
+        │   ├── session.py        # 数据库会话（PostgreSQL 连接池配置）
         │   ├── models.py         # 数据模型（BlogTask 表，27列，16状态）
         │   └── repositories/
         │       └── task_repo.py  # 任务 CRUD（含删除）
@@ -114,7 +112,7 @@ front/
 ### ✅ 4.1 基础架构
 - [x] 虚拟环境搭建（Python 3.12 + .venv）
 - [x] 配置管理（pydantic-settings 读 .env）
-- [x] 数据库层（SQLAlchemy + 连接池，sqlite/postgres 双适配）
+- [x] 数据库层（SQLAlchemy + PostgreSQL 连接池配置）
 - [x] 数据库建表（BlogTask 表，27列，16个状态枚举）
 - [x] 依赖清单（requirements.txt）
 - [x] Docker 容器化（Dockerfile + docker-compose）
@@ -353,10 +351,11 @@ image_api_key=配图专用API_Key（不填则用llm_api_key）
 dashscope_workspace_id=百炼业务空间ID
 image_save_dir=/app/data/images    # 配图持久化目录（本地直接运行改 ./data/images）
 
-# ========== Database ==========
-# 本地直接运行（不用 docker）时使用 SQLite，零配置
-# Docker 环境下会被 docker-compose.yml 的 environment 覆盖为 PostgreSQL 连接串，无需修改这里
-db_url=sqlite:///./blog_agent.db
+# ========== Database（PostgreSQL）==========
+# Docker 环境下由 docker-compose.yml 的 environment 自动覆盖，无需修改这里
+# 本地调试如需直连 postgres 容器，可改为：
+# db_url=postgresql+psycopg2://blog:lisiyao@localhost:5432/blog_agent
+db_url=postgresql+psycopg2://blog:lisiyao@postgres:5432/blog_agent
 
 # ========== Celery Redis（暂未使用，预留）==========
 redis_broker_url=redis://127.0.0.1:6379/0
@@ -382,18 +381,14 @@ docker compose up -d
 # 服务器生产部署（nginx 托管构建产物）
 docker compose --profile prod up -d --build
 # 前端：http://服务器IP（80端口，可用 FRONTEND_PORT=8080 覆盖）
-
-# 数据库迁移（已执行过，新服务器不需要；如需重迁先清空 postgres 表）
-docker compose run --rm -v blog_generate_agent_backend_data:/app/data backend \
-  python scripts/migrate_sqlite_to_postgres.py /app/data/blog_agent.db
 ```
 
-### 本地直接运行方式（不使用 Docker）
+### 本地直接运行方式（不使用 Docker，需先本地安装 PostgreSQL）
 ```bash
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-# 配置 .env（db_url 保持 sqlite 或改 postgres，image_save_dir 改 ./data/images）
+# 配置 .env（db_url 指向本地 PostgreSQL，image_save_dir 改 ./data/images）
 python scripts/init_db.py
 uvicorn src.blog_agent.main:app --reload
 ```

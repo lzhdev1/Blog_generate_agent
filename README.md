@@ -17,7 +17,7 @@
 | 层级 | 技术 |
 |------|------|
 | 后端框架 | FastAPI 0.141 |
-| 数据库 | SQLite（开发）/ MySQL/PostgreSQL（生产） |
+| 数据库 | PostgreSQL 16（Docker 容器） |
 | ORM | SQLAlchemy 2.0 |
 | Agent 框架 | LangGraph 1.2 |
 | 大模型 | 阿里云百炼（OpenAI 兼容协议） |
@@ -34,8 +34,7 @@ Blog_generate_agent/
 │   ├── config/
 │   │   └── settings.py         # 配置管理
 │   ├── scripts/
-│   │   ├── init_db.py          # 建表脚本
-│   │   └── check_db.py         # 数据库查看
+│   │   └── init_db.py          # 建表脚本
 │   └── src/blog_agent/
 │       ├── main.py             # FastAPI 入口
 │       ├── db/                 # 数据库层
@@ -178,10 +177,10 @@ max_review_rounds=3
 # 配图配置
 pexels_api_key=你的Pexels_API_Key     # 图片搜索（推荐）
 # unsplash_access_key=你的Unsplash_Key # 备选
-image_gen_model=wanx2.1-t2i-turbo     # AI生成图片模型
+image_gen_model=qwen-image-3.0-pro     # AI生成图片模型
 
-# 数据库
-db_url=sqlite:///./blog_agent.db
+# 数据库（PostgreSQL，docker 环境下由 docker-compose.yml 自动覆盖）
+db_url=postgresql+psycopg2://blog:lisiyao@postgres:5432/blog_agent
 ```
 
 详细说明见 `backend/PROGRESS.md`。

@@ -17,7 +17,7 @@ class ImageAgent(BaseAgent):
 1. 根据文章内容分析哪些位置需要配图
 2. 生成精准的图片搜索关键词或AI绘画提示词
 3. 确保图片风格和文章内容匹配"""
-    model_config_key = "llm_model_formatter"  # 用便宜的模型生成提示词
+    model_config_key = "llm_model_image"  # 配图agent专用模型，用便宜的模型生成提示词即可
 
     # 无效占位描述（模型照抄格式示例时产生），命中则跳过搜索/生图，直接走降级
     INVALID_IMAGE_MARKERS = {

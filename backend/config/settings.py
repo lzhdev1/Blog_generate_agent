@@ -17,19 +17,21 @@ class Settings(BaseSettings):
     # ========== 各 Agent 模型配置（可选，不填则用默认 llm_model）==========
     # 研究员：速度快、便宜
     llm_model_researcher: Optional[str] = None
+    # 标题策划：需要创意和洞察力
+    llm_model_title: Optional[str] = None
     # 大纲师：平衡质量和速度
     llm_model_outliner: Optional[str] = None
     # 写手：正文生成需要质量
     llm_model_writer: Optional[str] = None
     # 审稿：需要最强的推理和判断能力，建议用更强的模型
     llm_model_reviewer: Optional[str] = None
-    # 排版师：简单任务，用便宜的
-    llm_model_formatter: Optional[str] = None
+    # 配图：生成搜图关键词和生图prompt，用便宜的模型即可
+    llm_model_image: Optional[str] = None
 
     # ========== 审稿配置 ==========
     # 是否启用审稿循环（关闭后写完正文直接配图/格式化，速度更快）
     enable_review: bool = True
-    # 审稿不通过时，最多自动打回修改几次（含重新调研+重写）
+    # 审稿不通过时，最多自动打回修改几次（含重新调研+重写，建议2-3次）
     max_review_rounds: int = 3
 
     # ========== 配图配置 ==========
@@ -37,15 +39,15 @@ class Settings(BaseSettings):
     unsplash_access_key: Optional[str] = None   # Unsplash API Key
     pexels_api_key: Optional[str] = None        # Pexels API Key
     # AI图片生成（方式B：百炼 qwen-image / 通义万相）
-    image_gen_model: str = "wanx2.1-t2i-turbo"  # 图片生成模型
+    image_gen_model: str = "qwen-image-3.0-pro"  # 图片生成模型（qwen-image-3.0-pro高质量 / qwen-image-3.0标准 / wanx2.1-t2i-turbo旧版快速）
     image_api_key: Optional[str] = None         # 配图专用API Key（不填则用 llm_api_key）
     dashscope_workspace_id: Optional[str] = None  # 百炼业务空间ID（qwen-image-3.0 必需）
     # 配图持久化目录：AI生图/API搜索到的远程图片会下载到这里，避免临时链接过期失效
     # docker 容器内为 /app/data/images（backend 代码挂载到宿主 ./backend/data/images）
     image_save_dir: str = "/app/data/images"
 
-    # Database
-    db_url: str = "sqlite:///./blog_agent.db"
+    # Database（PostgreSQL，docker 环境下由 docker-compose.yml 的 environment 覆盖）
+    db_url: str = "postgresql+psycopg2://blog:lisiyao@postgres:5432/blog_agent"
 
     # Celery Redis
     redis_broker_url: str = "redis://127.0.0.1:6379/0"

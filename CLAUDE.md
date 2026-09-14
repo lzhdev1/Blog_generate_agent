@@ -19,7 +19,7 @@ cd backend
 # Install dependencies
 pip install -r requirements.txt
 
-# Initialize database (SQLite)
+# Initialize database (PostgreSQL，需先启动 postgres 容器)
 python scripts/init_db.py
 
 # Run development server
@@ -145,8 +145,8 @@ image_gen_model=wanx2.1-t2i-turbo
 enable_review=true
 max_review_rounds=2
 
-# Database
-db_url=sqlite:///./blog_agent.db
+# Database (PostgreSQL)
+db_url=postgresql+psycopg2://blog:lisiyao@postgres:5432/blog_agent
 ```
 
 ## Database Schema
@@ -168,7 +168,6 @@ All endpoints under `/api/v1`:
 ## Known Limitations
 
 - **Synchronous blocking**: `generate-content` endpoint blocks for 2-5 minutes during Phase 3. Production needs Celery + Redis (currently stubbed in requirements.txt).
-- **SQLite**: Not suitable for concurrent writes. Switch to MySQL/PostgreSQL for production.
 - **Image URLs expire**: Pexels/Unsplash URLs have TTL. Download to local storage for permanence.
 - **No schema migrations**: `create_all()` doesn't update existing tables. Manual `ALTER TABLE` needed when adding columns, or integrate Alembic.
 
