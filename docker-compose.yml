@@ -7,8 +7,10 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
-    ports:
-      - "${POSTGRES_PORT}:5432"            # 本地调试连接用，生产环境可注释掉
+    # ports:
+    #   - "${POSTGRES_PORT}:5432"            # 生产环境不对外暴露数据库端口
+    expose:
+      - "5432"                                # 只在 Docker 内部网络可访问
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -24,8 +26,10 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: blog-agent-backend
-    ports:
-      - "8000:8000"
+    # ports:
+    #   - "8000:8000"                       # 生产环境不对外暴露后端端口
+    expose:
+      - "8000"                              # 只在 Docker 内部网络可访问（Nginx/前端代理访问）
     volumes:
       - ./backend:/app                    # 代码挂载，热更新
     env_file:
