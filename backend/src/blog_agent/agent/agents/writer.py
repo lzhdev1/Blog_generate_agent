@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Tuple
 
 from src.blog_agent.agent.agents.base_agent import BaseAgent
 
@@ -16,6 +16,26 @@ class WriterAgent(BaseAgent):
 5. 输出规范的 markdown 格式"""
     model_config_key = "llm_model_writer"
 
+    # 首次写作时，思路与正文合并输出使用的分隔标记
+    THOUGHTS_MARKER = "=====写作思路====="
+    CONTENT_MARKER = "=====正文====="
+
+    @staticmethod
+    def split_thoughts_and_content(resp: str) -> Tuple[str, str]:
+        """
+        拆分"写作思路+正文"合并输出
+        返回 (thoughts, content)；标记缺失时整体视为正文，思路为空
+        """
+        resp = resp or ""
+        if WriterAgent.THOUGHTS_MARKER in resp and WriterAgent.CONTENT_MARKER in resp:
+            try:
+                thoughts = resp.split(WriterAgent.THOUGHTS_MARKER)[1].split(WriterAgent.CONTENT_MARKER)[0].strip()
+                content = resp.split(WriterAgent.CONTENT_MARKER)[1].strip()
+                return thoughts, content
+            except (IndexError, ValueError):
+                pass
+        return "", resp.strip()
+
     def generate_content(
         self,
         outline: str,
@@ -25,12 +45,15 @@ class WriterAgent(BaseAgent):
         word_count: int = None,
         level: str = None,
         content_extra_requirements: str = None,
+        include_thoughts: bool = False,
     ) -> str:
         """
         生成正文
         如果有审稿意见，根据意见修改
         如果有正文调研结果，参考调研中的数据和来源
         word_count/level/content_extra_requirements 来自大纲确认页的用户配置
+        include_thoughts=True：首次写作时，一次调用同时输出写作思路+正文（省一次LLM调用），
+        用 THOUGHTS_MARKER / CONTENT_MARKER 分隔，由 split_thoughts_and_content 拆分
         """
         review_section = ""
         if review_feedback:
@@ -128,8 +151,19 @@ class WriterAgent(BaseAgent):
 7. 保留大纲中的配图注释标记（<!-- 配图：... -->），放在对应章节标题之后
 8. 除非大纲或调研明确要求展示代码（如教程、API文档类），否则不要插入代码块；确需展示数字公式时，使用 LaTeX 格式：行内公式用 $...$，独立公式用 $$...$$
 9. 直接输出文章正文，不要其他解释，不要输出"以下是文章"等引导语
-
-请直接输出文章正文："""
+"""
+        # 首次写作：一次调用同时输出写作思路+正文（省一次 LLM 调用）
+        if include_thoughts:
+            prompt += f"""
+【输出格式要求（必须严格遵守）】
+本次是首次写作，需要先输出写作思路，再输出正文，使用以下分隔标记：
+{WriterAgent.THOUGHTS_MARKER}
+（200-300字写作思路，包含：1.文章定位与文风——根据调研判断文章类型与目标读者；2.论证主线——章节组织逻辑与递进关系；3.关键素材——计划重点使用的数据、案例及发布时间；4.写作边界——不使用的过时或无关内容）
+{WriterAgent.CONTENT_MARKER}
+（完整正文，直接输出正文本身，不要再重复写作思路）
+"""
+        else:
+            prompt += "请直接输出文章正文："
         # 正文可能较长（800字以上+markdown+配图注释），设大一些防止被截断
         return self.chat(prompt, temperature=0.8, max_tokens=8192)
 

@@ -227,32 +227,50 @@ def run_generate_content(db: Session, task_id: int) -> str:
         if review_count == 0:
             TaskService.update_status(db, task_id, TaskStatus.GENERATING_CONTENT)
             TaskService.update_progress(db, task_id, "正在撰写正文...")
-            # 首次写作：先生成写作思路（展示给用户）
+            # 首次写作：一次调用同时生成写作思路+正文（省一次LLM调用，约10~25s）
             try:
-                thoughts = writer.generate_thoughts(
-                    selected_title,
+                resp = writer.generate_content(
                     outline,
-                    state.get("content_research", ""),
+                    selected_title,
+                    review_feedback="",
+                    content_research=state.get("content_research", ""),
                     word_count=word_count,
                     level=level,
                     content_extra_requirements=content_extra_requirements,
+                    include_thoughts=True,
                 )
-                TaskService.save_writing_thoughts(db, task_id, thoughts)
+                thoughts, content = WriterAgent.split_thoughts_and_content(resp)
+                TaskService.save_writing_thoughts(db, task_id, thoughts or "（写作思路生成失败）")
+                if not content:
+                    # 拆分异常（无正文）：回退为纯正文调用
+                    content = writer.generate_content(
+                        outline, selected_title,
+                        review_feedback="",
+                        content_research=state.get("content_research", ""),
+                        word_count=word_count, level=level,
+                        content_extra_requirements=content_extra_requirements,
+                    )
             except Exception as e:
-                # 思路生成失败不阻塞正文
+                # 合并调用失败不阻塞正文，回退为纯正文生成
                 TaskService.save_writing_thoughts(db, task_id, f"（写作思路生成失败：{e}）")
+                content = writer.generate_content(
+                    outline, selected_title,
+                    review_feedback="",
+                    content_research=state.get("content_research", ""),
+                    word_count=word_count, level=level,
+                    content_extra_requirements=content_extra_requirements,
+                )
         else:
             TaskService.update_progress(db, task_id, f"正在根据审稿意见修改（第{review_count}次修改）...")
-
-        content = writer.generate_content(
-            outline,
-            selected_title,
-            state["review_feedback"],
-            state.get("content_research", ""),
-            word_count=word_count,
-            level=level,
-            content_extra_requirements=content_extra_requirements,
-        )
+            content = writer.generate_content(
+                outline,
+                selected_title,
+                state["review_feedback"],
+                state.get("content_research", ""),
+                word_count=word_count,
+                level=level,
+                content_extra_requirements=content_extra_requirements,
+            )
         TaskService.save_content(db, task_id, content)
         return {**state, "content": content}
 

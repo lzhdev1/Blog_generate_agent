@@ -7,6 +7,9 @@ from typing import List, Dict, Optional, Tuple
 from src.blog_agent.agent.agents.base_agent import BaseAgent
 from config.settings import settings
 
+# 全局 HTTP Session：复用 TCP 连接，避免每次搜索/下载都新建连接（显著减少握手开销）
+_image_http = requests.Session()
+
 
 class ImageAgent(BaseAgent):
     """配图 Agent：负责生成配图提示词、搜索/生成图片、插入正文"""
@@ -223,7 +226,7 @@ class ImageAgent(BaseAgent):
                 "orientation": "landscape",
             }
             headers = {"Authorization": f"Client-ID {api_key}"}
-            resp = requests.get(url, params=params, headers=headers, timeout=10)
+            resp = _image_http.get(url, params=params, headers=headers, timeout=10)
             if resp.status_code == 200:
                 data = resp.json()
                 candidates = []
@@ -256,7 +259,7 @@ class ImageAgent(BaseAgent):
                 "orientation": "landscape",
             }
             headers = {"Authorization": api_key}
-            resp = requests.get(url, params=params, headers=headers, timeout=10)
+            resp = _image_http.get(url, params=params, headers=headers, timeout=10)
             if resp.status_code == 200:
                 data = resp.json()
                 candidates = []
@@ -326,7 +329,7 @@ class ImageAgent(BaseAgent):
                     "n": 1,
                 }
             }
-            resp = requests.post(url, headers=headers, json=data, timeout=120)
+            resp = _image_http.post(url, headers=headers, json=data, timeout=120)
             if resp.status_code == 200:
                 result = resp.json()
                 # 新接口返回格式：output.choices[0].message.content[0].image
@@ -360,7 +363,7 @@ class ImageAgent(BaseAgent):
                 "input": {"prompt": prompt},
                 "parameters": {"size": "1024*1024", "n": 1},
             }
-            resp = requests.post(url, headers=headers, json=data, timeout=30)
+            resp = _image_http.post(url, headers=headers, json=data, timeout=30)
             if resp.status_code == 200:
                 result = resp.json()
                 task_id = result.get("output", {}).get("task_id")
@@ -378,7 +381,7 @@ class ImageAgent(BaseAgent):
 
         for _ in range(max_retries):
             try:
-                resp = requests.get(url, headers=headers, timeout=10)
+                resp = _image_http.get(url, headers=headers, timeout=10)
                 if resp.status_code == 200:
                     data = resp.json()
                     status = data.get("output", {}).get("task_status")
@@ -445,7 +448,7 @@ class ImageAgent(BaseAgent):
             if os.path.exists(save_path):
                 return f"/images/{filename}{ext}"
 
-            resp = requests.get(url, timeout=30, stream=True)
+            resp = _image_http.get(url, timeout=30, stream=True)
             if resp.status_code != 200:
                 print(f"[image] 图片下载失败 HTTP {resp.status_code}: {url[:80]}")
                 return url
@@ -804,24 +807,25 @@ class ImageAgent(BaseAgent):
         analyzed = self.analyze_image_needs(markers, image_source)
         analyzed_map = {a["index"]: a for a in analyzed}
 
-        # 3. 获取图片
-        image_urls = []
-        for marker in markers:
-            idx = marker["index"]
+        # 3. 并发获取图片（搜图/生图均为 I/O 等待，线程池并行可显著缩短总耗时）
+        #    max_workers=4：兼顾并发收益与 API 限流（百炼生图 / Pexels 等）
+        from concurrent.futures import ThreadPoolExecutor
+
+        def _fetch_image(marker_item: Dict) -> Optional[str]:
+            idx = marker_item["index"]
             analysis = analyzed_map.get(idx, {})
             query_or_prompt = analysis.get("query_or_prompt", "")
-            desc_cn = analysis.get("description_cn", marker["description"])
-
             if not query_or_prompt:
                 print(f"[image] 配图位置{idx+1}无有效关键词/prompt，跳过")
-                image_urls.append(None)
-                continue
-
+                return None
             print(f"[image] 正在获取第{idx+1}/{len(markers)}张配图...")
-            image_url = self.get_image_by_query(query_or_prompt, image_source)
-            image_urls.append(image_url)
-            if not image_url:
+            url = self.get_image_by_query(query_or_prompt, image_source)
+            if not url:
                 print(f"[image] 配图位置{idx+1}获取失败")
+            return url
+
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            image_urls = list(pool.map(_fetch_image, markers))
 
         # 4. 持久化图片到本地（文件名唯一，避免复用历史图片）
         persisted_urls = []

@@ -55,6 +55,73 @@ class ReviewerAgent(BaseAgent):
         if outline:
             required_image_count = len(_re.findall(r'<!--\s*配图[：:]', outline))
 
+        # ===== 硬性约束代码级检查（不调用 LLM，秒级且 100% 准确）=====
+
+        # 1. 标题不能错：正文不得出现大纲外的一级标题行（写手被要求不输出标题行，标题由页面顶部展示）
+        outline_top_headings = set(_re.findall(r'^#\s+(.+)$', outline or '', _re.M))
+        content_top_headings = set(_re.findall(r'^#\s+(.+)$', content, _re.M))
+        illegal_headings = content_top_headings - outline_top_headings
+        title_correct = len(illegal_headings) == 0
+
+        # 2. 字数只允许多不允许少
+        word_count_ok = True
+        if word_count:
+            word_count_ok = actual_word_count >= word_count
+
+        # 3. 配图一张都不能少（大纲标记了才检查）
+        image_count_ok = True
+        if required_image_count > 0:
+            image_count_ok = actual_image_count >= required_image_count
+
+        hard_constraints = {
+            "title_correct": title_correct,
+            "word_count_ok": word_count_ok,
+            "word_count_actual": actual_word_count,
+            "word_count_target": word_count if word_count else 0,
+            "image_count_ok": image_count_ok,
+            "image_count_actual": actual_image_count,
+            "image_count_required": required_image_count,
+        }
+
+        # 硬性约束不通过：直接返回不通过，不调用 LLM 精审（省一次 qwen-max 调用）
+        if not (title_correct and word_count_ok and image_count_ok):
+            opinions = []
+            if not title_correct:
+                opinions.append({
+                    "point": 1,
+                    "where": "正文标题（一级标题行）",
+                    "why": f"硬性约束：标题一个字都不能错。正文出现大纲外的标题行：{'、'.join(list(illegal_headings)[:3])}",
+                    "expected": "移除正文中的标题行，文章标题由页面顶部展示，正文直接从大纲章节开始",
+                })
+            if not word_count_ok:
+                opinions.append({
+                    "point": len(opinions) + 1,
+                    "where": "全文",
+                    "why": f"硬性约束：字数只允许多不允许少。目标 {word_count} 字，实际 {actual_word_count} 字",
+                    "expected": f"补充内容至不少于 {word_count} 字（允许超出 200 字以内）",
+                })
+            if not image_count_ok:
+                opinions.append({
+                    "point": len(opinions) + 1,
+                    "where": "配图标记",
+                    "why": f"硬性约束：配图一张都不能少。大纲标记 {required_image_count} 张，正文实际 {actual_image_count} 张",
+                    "expected": "在对应章节恢复配图标记（<!-- 配图：描述 -->）",
+                })
+            print(f"[reviewer] 硬性约束未通过（标题:{title_correct} 字数:{word_count_ok} 配图:{image_count_ok}），跳过LLM精审")
+            return {
+                "passed": False,
+                "score": 60,
+                "hard_constraints": hard_constraints,
+                "dimension_scores": {},
+                "review_opinions": opinions,
+                "pass_reasons": [],
+                "need_re_research": False,
+                "research_type": "",
+                "research_list": [],
+                "traffic_forecast": "",
+                "hard_only": True,
+            }
+
         # 文章风格描述
         style_map = {
             "popular_science": "科普类（通俗易懂，面向大众读者）",
@@ -195,6 +262,8 @@ class ReviewerAgent(BaseAgent):
                 resp_clean = "\n".join(lines)
 
             result = json.loads(resp_clean)
+            # 硬性约束以代码计算结果为准（覆盖 LLM 输出，保证 100% 准确）
+            result["hard_constraints"] = hard_constraints
             return {
                 "passed": bool(result.get("passed", False)),
                 "score": int(result.get("score", 0)),
