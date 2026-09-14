@@ -86,48 +86,99 @@ class ImageAgent(BaseAgent):
     # 3. 搜索图片（图片网站API）
     # ============================================================
 
-    def optimize_image_query(self, description: str) -> str:
+    def generate_query_variants(self, description: str, max_variants: int = 3) -> List[str]:
         """
-        搜索失败时，把配图描述改得更通用、更容易搜到
-        比如"性能对比图表" → "数据 科技 办公"
+        搜索失败时，让 LLM 基于原关键词生成【保留核心语义】的搜索关键词变体
+        通过同义词替换、补充场景/氛围限定词变体化，不改变主题方向
+        返回：变体关键词列表
         """
-        prompt = f"""以下配图描述在图片库搜索不到，请把它改得更通用、更抽象，更容易在摄影图片库搜到。
-要求：
-1. 去掉具体的图表、示意图、架构图等搜不到的类型
-2. 改成相关的场景、物品、氛围描述
-3. 输出英文关键词，用空格分隔，不超过8个单词
-4. 直接输出关键词，不要其他解释
+        prompt = f"""以下英文图片搜索关键词在图片库搜不到合适的图。请生成 {max_variants} 个新的英文搜索关键词变体，要求：
+1. 必须保留原关键词的核心主题和主体，【禁止】改变语义方向（如"代码编辑器"不能变成"风景""办公桌"）
+2. 通过同义词替换、补充场景/氛围限定词的方式变体化
+3. 每个关键词5-8个单词，空格分隔，可直接用于Pexels/Unsplash搜索
+4. 一行一个，直接输出，不要解释、不要编号
 
-原描述：{description}
-优化后的关键词："""
-        return self.chat(prompt, temperature=0.3)
+原关键词：{description}
 
-    def search_image_with_retry(self, description: str, max_retries: int = 2) -> Tuple[Optional[str], bool]:
+{max_variants}个变体："""
+        try:
+            raw = self.chat(prompt, temperature=0.5)
+            variants = []
+            for line in raw.split("\n"):
+                line = line.strip()
+                line = re.sub(r'^\d+[.、)）\s]+', '', line)   # 去行首编号
+                line = line.strip('-').strip('*').strip('.').strip()
+                if len(line) >= 3 and line not in variants:
+                    variants.append(line)
+            return variants[:max_variants]
+        except Exception as e:
+            print(f"[image] 生成关键词变体失败: {e}")
+            return []
+
+    def search_image_with_retry(
+        self,
+        description: str,
+        max_retries: int = 2,
+        use_direct_query: bool = False,
+    ) -> Tuple[Optional[str], bool]:
         """
         带重试的图片搜索
+        - use_direct_query=True：直接把 description 作为搜索关键词
+          （调用方已通过 analyze_image_needs 生成好关键词，不再二次转换，保证语义不变）
+        - 首次失败后，让 LLM 基于原语义生成关键词变体（保留核心语义），逐个重试
         返回：(图片URL或None, 是否搜索成功)
-        第一次用原描述，失败后LLM优化描述再试，最多max_retries次
         """
-        # 第一次：用原描述生成关键词
-        query = self.generate_image_prompt(description, "api")
-        image_url = self.search_image_pexels(query)
-        if not image_url:
-            image_url = self.search_image_unsplash(query)
-
+        # 首次：直接用关键词（或让 LLM 从描述转换）
+        query = description if use_direct_query else self.generate_image_prompt(description, "api")
+        candidates = self.search_image_pexels(query)
+        if not candidates:
+            candidates = self.search_image_unsplash(query)
+        image_url = self.select_best_image(candidates, query) if candidates else None
         if image_url:
             return image_url, True
 
-        # 重试：优化描述后再搜
-        for attempt in range(max_retries):
-            print(f"配图搜索失败（第{attempt+1}次），正在优化描述重试...")
-            optimized_query = self.optimize_image_query(description)
-            image_url = self.search_image_pexels(optimized_query)
-            if not image_url:
-                image_url = self.search_image_unsplash(optimized_query)
+        # 重试：生成保留核心语义的关键词变体，逐个搜索
+        variants = self.generate_query_variants(description)
+        for attempt, variant in enumerate(variants[:max_retries]):
+            print(f"[image] 配图搜索失败（第{attempt + 1}次），使用语义变体重试: {variant}")
+            candidates = self.search_image_pexels(variant)
+            if not candidates:
+                candidates = self.search_image_unsplash(variant)
+            image_url = self.select_best_image(candidates, variant) if candidates else None
             if image_url:
                 return image_url, True
 
         return None, False
+
+    def select_best_image(self, candidates: List[Dict], query: str) -> Optional[str]:
+        """
+        从候选图片中选择与搜索关键词最相关的一张
+        相关性评分：query 中的词与图片 alt/title 文本的词重合度（precision-like）
+        无候选返回 None；无法评分时回退第一张
+        """
+        if not candidates:
+            return None
+        if len(candidates) == 1:
+            return candidates[0]["url"]
+
+        query_words = set(re.findall(r"[a-z0-9]+", query.lower()))
+        if not query_words:
+            return candidates[0]["url"]
+
+        best = candidates[0]
+        best_score = -1.0
+        for c in candidates:
+            text = f"{c.get('alt', '')} {c.get('title', '')}".lower()
+            text_words = set(re.findall(r"[a-z0-9]+", text))
+            if not text_words:
+                continue
+            overlap = len(query_words & text_words)
+            score = overlap / len(query_words)
+            if score > best_score:
+                best_score = score
+                best = c
+
+        return best["url"]
 
     def replace_image_with_text(self, content: str, position: str, description: str) -> str:
         """
@@ -154,59 +205,71 @@ class ImageAgent(BaseAgent):
 
         return new_content
 
-    def search_image_unsplash(self, query: str) -> Optional[str]:
+    def search_image_unsplash(self, query: str, limit: int = 5) -> List[Dict]:
         """
-        调用 Unsplash API 搜索图片
+        调用 Unsplash API 搜索图片，返回候选列表（含描述信息，供相关性排序）
         需要配置 UNSPLASH_ACCESS_KEY
-        返回图片URL，失败返回None
+        返回：[{"url": ..., "title": ..., "alt": ...}, ...]，失败返回 []
         """
         api_key = getattr(settings, "unsplash_access_key", None)
         if not api_key:
-            return None
+            return []
 
         try:
             url = "https://api.unsplash.com/search/photos"
             params = {
                 "query": query,
-                "per_page": 1,
+                "per_page": limit,
                 "orientation": "landscape",
             }
             headers = {"Authorization": f"Client-ID {api_key}"}
             resp = requests.get(url, params=params, headers=headers, timeout=10)
             if resp.status_code == 200:
                 data = resp.json()
-                if data.get("results"):
-                    return data["results"][0]["urls"]["regular"]
+                candidates = []
+                for r in data.get("results", [])[:limit]:
+                    candidates.append({
+                        "url": r["urls"]["regular"],
+                        "title": r.get("description") or "",
+                        "alt": r.get("alt_description") or "",
+                    })
+                return candidates
         except Exception as e:
             print(f"Unsplash搜索失败: {e}")
-        return None
+        return []
 
-    def search_image_pexels(self, query: str) -> Optional[str]:
+    def search_image_pexels(self, query: str, limit: int = 5) -> List[Dict]:
         """
-        调用 Pexels API 搜索图片
+        调用 Pexels API 搜索图片，返回候选列表（含描述信息，供相关性排序）
         需要配置 PEXELS_API_KEY
-        返回图片URL，失败返回None
+        返回：[{"url": ..., "title": ..., "alt": ...}, ...]，失败返回 []
         """
         api_key = getattr(settings, "pexels_api_key", None)
         if not api_key:
-            return None
+            return []
 
         try:
             url = "https://api.pexels.com/v1/search"
             params = {
                 "query": query,
-                "per_page": 1,
+                "per_page": limit,
                 "orientation": "landscape",
             }
             headers = {"Authorization": api_key}
             resp = requests.get(url, params=params, headers=headers, timeout=10)
             if resp.status_code == 200:
                 data = resp.json()
-                if data.get("photos"):
-                    return data["photos"][0]["src"]["large"]
+                candidates = []
+                for p in data.get("photos", [])[:limit]:
+                    candidates.append({
+                        "url": p["src"]["large"],
+                        "title": "",
+                        "alt": p.get("alt") or "",
+                    })
+                return candidates
         except Exception as e:
             print(f"Pexels搜索失败: {e}")
-        return None
+        return []
 
     # ============================================================
     # 4. AI生成图片（百炼通义万相）
@@ -629,7 +692,7 @@ class ImageAgent(BaseAgent):
                     results.append({"index": idx, "query_or_prompt": description, "description_cn": description})
 
             else:
-                # AI生图模式：生成非常专业的英文生图prompt
+                # AI生图模式：生成非常专业的英文生图prompt（单段连贯文本）
                 prompt = f"""你是一个专业的AI绘画提示词工程师。请分析以下文章中某个配图位置的上下文，生成专业的AI绘画提示词。
 
 【配图位置的章节标题】：{position_title}
@@ -637,26 +700,57 @@ class ImageAgent(BaseAgent):
 【配图位置的后文】：{context_after[:300]}
 【原配图说明】：{description}
 
-请输出专业的AI绘画提示词（英文，50-100词），必须包含以下要素：
-1. 主体内容（具体是什么，细节丰富）
-2. 场景环境（在哪里，背景是什么）
-3. 艺术风格（写实/插画/科技感/极简/水彩/油画等）
-4. 色调（冷暖/明暗/主色调/配色方案）
-5. 构图（特写/全景/居中/三分法/俯视/仰视等）
-6. 光线（自然光/逆光/柔光/戏剧光/霓虹光等）
-7. 画质（8K/高细节/锐利/电影感/景深等）
-8. 氛围（宁静/紧张/温暖/科技感/神秘等）
+请输出一段流畅、连贯的英文AI绘画提示词（50-100词），把以下要素自然融入同一段描述中：
+主体内容（具体是什么，细节丰富）、场景环境、艺术风格（写实/插画/科技感/极简/水彩/油画等）、
+色调（冷暖/明暗/主色调）、构图（特写/全景/居中/三分法等）、光线（自然光/逆光/柔光/霓虹光等）、
+画质（8K/高细节/电影感等）、氛围（宁静/紧张/温暖/科技感/神秘等）
 
-直接输出提示词，不要其他解释，不要加引号。"""
+【硬性要求】
+- 必须是一段连贯的自然语言描述
+- 【禁止】编号、禁止列表、禁止"1. 主体："这类要素标签
+- 直接输出提示词本身，不要任何解释、不要引号"""
                 try:
                     analysis = self.chat(prompt, temperature=0.7)
-                    results.append({"index": idx, "query_or_prompt": analysis.strip(), "description_cn": description})
-                    print(f"[image] 配图位置{idx+1}AI生图prompt生成完成（{len(analysis)}字符）")
+                    # 兜底清洗：即使模型仍输出编号/标签，也转成流畅单段
+                    clean = self._clean_image_prompt(analysis)
+                    results.append({"index": idx, "query_or_prompt": clean, "description_cn": description})
+                    print(f"[image] 配图位置{idx+1}AI生图prompt生成完成（{len(clean)}字符）")
                 except Exception as e:
                     print(f"[image] 配图位置{idx+1}分析失败，回退原描述: {e}")
                     results.append({"index": idx, "query_or_prompt": description, "description_cn": description})
 
         return results
+
+    def _clean_image_prompt(self, raw: str) -> str:
+        """
+        清洗 AI 绘画提示词：
+        - 去掉 "1. 主体：" "2、场景：" 这类编号/标签前缀
+        - 去掉 "- " "* " 列表符号
+        - 把多行结构化内容合并成一段流畅的英文提示词
+        - 去掉首尾引号
+        """
+        if not raw:
+            return raw
+        parts = []
+        for line in raw.split("\n"):
+            line = line.strip()
+            if not line:
+                continue
+            # 去编号前缀：1. / 1、 / 1) / 1）
+            line = re.sub(r'^\d+[.、)）:：\s]+', '', line)
+            # 去列表符号
+            line = re.sub(r'^[-*•]\s*', '', line)
+            # 去"主体：""Subject:"这类要素标签前缀
+            line = re.sub(
+                r'^(主体|场景|风格|色调|构图|光线|画质|氛围|细节|subject|scene|style|color'
+                r'|colour|composition|lighting|quality|atmosphere|detail)\s*[：:]\s*',
+                '', line, flags=re.IGNORECASE
+            )
+            line = line.strip().strip('"\'`"')
+            if line:
+                parts.append(line)
+        merged = " ".join(parts)
+        return merged if merged else raw
 
     def get_image_by_query(self, query_or_prompt: str, image_source: str) -> Optional[str]:
         """
@@ -668,25 +762,36 @@ class ImageAgent(BaseAgent):
             return None
 
         if image_source == "api":
-            # 搜图：用关键词直接搜索，失败时优化重试
-            image_url, success = self.search_image_with_retry(stripped, max_retries=2)
+            # 搜图：query_or_prompt 已是 analyze_image_needs 分析好的关键词，直接搜索，不再二次转换
+            # 若为纯中文（分析失败回退原描述的情况），先转成英文关键词
+            if not re.search(r'[a-zA-Z]', stripped):
+                stripped = self.generate_image_prompt(stripped, "api")
+            image_url, success = self.search_image_with_retry(
+                stripped, max_retries=2, use_direct_query=True
+            )
             return image_url
         else:
-            # AI生图：用prompt直接生成
-            return self.generate_image_dashscope(stripped)
+            # AI生图：先清洗 prompt（去编号/标签），再传给生图模型，避免结构化文本导致画面偏离
+            clean_prompt = self._clean_image_prompt(stripped)
+            return self.generate_image_dashscope(clean_prompt)
 
-    def process_images(self, content: str, image_source: str) -> Tuple[str, List[str]]:
+    def process_images(self, content: str, image_source: str, task_id: int = None) -> Tuple[str, List[str]]:
         """
         配图主入口（优化版）：
         1. 从正文中提取配图标记 + 上下文
         2. LLM 深度分析每个配图位置，生成专业的搜图关键词或AI生图prompt
         3. 根据配图方式获取图片
-        4. 持久化图片到本地
+        4. 持久化图片到本地（文件名带任务ID+运行唯一标识，避免跨任务/跨次生成复用旧图）
         5. 把配图标记替换成图片markdown
         6. 配图失败的位置改成纯文本过渡句
 
         返回：(插入图片后的正文, 成功插入的图片URL列表)
         """
+        # 本次配图运行唯一标识：保证每次生成的图片文件名都不同，不复用历史任务/历史次生成的图片
+        import uuid
+        run_id = uuid.uuid4().hex[:8]
+        file_prefix = f"task{task_id}_{run_id}" if task_id is not None else f"img_{run_id}"
+
         # 1. 提取配图标记 + 上下文
         markers = self.extract_markers_with_context(content)
         if not markers:
@@ -718,11 +823,11 @@ class ImageAgent(BaseAgent):
             if not image_url:
                 print(f"[image] 配图位置{idx+1}获取失败")
 
-        # 4. 持久化图片到本地
+        # 4. 持久化图片到本地（文件名唯一，避免复用历史图片）
         persisted_urls = []
         for i, url in enumerate(image_urls):
             if url:
-                persisted = self.persist_image(url, f"process_{i+1}")
+                persisted = self.persist_image(url, f"{file_prefix}_{i+1}")
                 persisted_urls.append(persisted)
             else:
                 persisted_urls.append(None)

@@ -381,7 +381,7 @@ def run_generate_content(db: Session, task_id: int) -> str:
 
         image_source = state.get("image_source", "ai")
         content_with_images, inserted_urls = image_agent.process_images(
-            state["content"], image_source
+            state["content"], image_source, task_id=task_id
         )
 
         # 保存图片URL
