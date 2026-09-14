@@ -188,7 +188,7 @@ onUnmounted(() => {
 }
 
 .create-card {
-  background: white;
+  background: var(--bg-card);
   border-radius: 24px;
   padding: 48px 40px;
   box-shadow: var(--shadow-lg);
@@ -273,7 +273,7 @@ onUnmounted(() => {
 
 .example-tag {
   padding: 6px 14px;
-  background: #f8fafc;
+  background: var(--bg-soft);
   border: 1px solid var(--border);
   border-radius: 20px;
   font-size: 13px;
@@ -285,7 +285,7 @@ onUnmounted(() => {
 .example-tag:hover {
   border-color: var(--primary);
   color: var(--primary);
-  background: #f5f3ff;
+  background: var(--panel-gradient);
 }
 
 .actions {
@@ -297,7 +297,7 @@ onUnmounted(() => {
 .btn-secondary {
   padding: 12px 24px;
   border: 1px solid var(--border);
-  background: white;
+  background: var(--bg-card);
   border-radius: 12px;
   font-size: 14px;
   font-weight: 500;

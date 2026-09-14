@@ -309,7 +309,7 @@ onMounted(() => {
   align-items: center;
   gap: 6px;
   padding: 6px 16px;
-  background: linear-gradient(135deg, #eef2ff 0%, #f5f3ff 100%);
+  background: var(--panel-gradient);
   border: 1px solid #c7d2fe;
   border-radius: 20px;
   font-size: 13px;
@@ -353,7 +353,7 @@ onMounted(() => {
   align-items: center;
   gap: 12px;
   padding: 16px;
-  background: white;
+  background: var(--bg-card);
   border-radius: 20px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
   border: 2px solid var(--border);
@@ -434,7 +434,7 @@ onMounted(() => {
 
 .example-tag {
   padding: 6px 14px;
-  background: white;
+  background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 20px;
   font-size: 13px;
@@ -446,7 +446,7 @@ onMounted(() => {
 .example-tag:hover {
   border-color: var(--primary);
   color: var(--primary);
-  background: #f5f3ff;
+  background: var(--panel-gradient);
 }
 
 /* 文章列表 */
@@ -480,7 +480,7 @@ onMounted(() => {
 
 .article-card {
   position: relative;
-  background: white;
+  background: var(--bg-card);
   border-radius: 16px;
   padding: 20px;
   cursor: pointer;
@@ -540,7 +540,7 @@ onMounted(() => {
   background: currentColor;
 }
 
-.status-pending { background: #f1f5f9; color: #64748b; }
+.status-pending { background: var(--bg-soft); color: var(--text-secondary); }
 .status-processing { background: #dbeafe; color: #2563eb; }
 .status-warning { background: #fef3c7; color: #d97706; }
 .status-success { background: #d1fae5; color: #059669; }
@@ -594,7 +594,7 @@ onMounted(() => {
   gap: 4px;
   font-size: 11px;
   color: var(--warning);
-  background: #fffbeb;
+  background: var(--bg-card)beb;
   padding: 2px 8px;
   border-radius: 8px;
 }
@@ -616,7 +616,7 @@ onMounted(() => {
   height: 80px;
   margin: 0 auto 16px;
   border-radius: 50%;
-  background: #f1f5f9;
+  background: var(--bg-soft);
   display: flex;
   align-items: center;
   justify-content: center;

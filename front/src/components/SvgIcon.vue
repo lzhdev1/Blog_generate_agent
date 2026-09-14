@@ -112,6 +112,15 @@
       <path d="M4 20h6M4 14h10M4 8h14M4 4h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       <path d="M18 16l3-3-3-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
     </template>
+    <!-- 太阳（亮色主题） -->
+    <template v-else-if="name === 'sun'">
+      <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/>
+      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </template>
+    <!-- 月亮（暗色主题） -->
+    <template v-else-if="name === 'moon'">
+      <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+    </template>
     <!-- 默认：圆点 -->
     <template v-else>
       <circle cx="12" cy="12" r="4" fill="currentColor"/>

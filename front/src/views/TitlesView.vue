@@ -594,8 +594,8 @@ onUnmounted(() => {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: #e2e8f0;
-  color: #94a3b8;
+  background: var(--border);
+  color: var(--text-muted);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -628,14 +628,14 @@ onUnmounted(() => {
 .step-line {
   width: 60px;
   height: 2px;
-  background: #e2e8f0;
+  background: var(--border);
   margin: 0 8px;
   margin-bottom: 22px;
 }
 
 /* 内容卡片 */
 .content-card {
-  background: white;
+  background: var(--bg-card);
   border-radius: 20px;
   padding: 32px;
   box-shadow: var(--shadow-md);
@@ -666,7 +666,7 @@ onUnmounted(() => {
   gap: 6px;
   padding: 8px 14px;
   border: 1px solid var(--border);
-  background: white;
+  background: var(--bg-card);
   border-radius: 10px;
   cursor: pointer;
   font-size: 13px;
@@ -690,7 +690,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
   padding: 14px 18px;
-  background: linear-gradient(135deg, #f5f3ff 0%, #eef2ff 100%);
+  background: var(--panel-gradient);
   border-radius: 12px;
   margin-bottom: 24px;
   color: var(--primary-dark);
@@ -728,12 +728,12 @@ onUnmounted(() => {
 
 .title-card:hover {
   border-color: var(--primary-light);
-  background: #fafaff;
+  background: var(--bg-card);
 }
 
 .title-card.selected {
   border-color: var(--primary);
-  background: linear-gradient(135deg, #f5f3ff 0%, #eef2ff 100%);
+  background: var(--panel-gradient);
   box-shadow: 0 4px 16px rgba(99, 102, 241, 0.15);
 }
 
@@ -741,7 +741,7 @@ onUnmounted(() => {
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: #f1f5f9;
+  background: var(--bg-soft);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -778,7 +778,7 @@ onUnmounted(() => {
   height: 28px;
   border-radius: 50%;
   border: 1px solid var(--border);
-  background: white;
+  background: var(--bg-card);
   color: var(--text-secondary);
   display: flex;
   align-items: center;
@@ -790,7 +790,7 @@ onUnmounted(() => {
 .edit-btn:hover {
   border-color: var(--primary);
   color: var(--primary);
-  background: #f5f3ff;
+  background: var(--panel-gradient);
 }
 
 .title-check {
@@ -813,12 +813,12 @@ onUnmounted(() => {
   font-size: 16px;
   font-weight: 600;
   outline: none;
-  background: white;
+  background: var(--bg-card);
 }
 
 /* 配置区域 */
 .config-section {
-  background: #f8fafc;
+  background: var(--bg-soft);
   border-radius: 14px;
   padding: 20px;
   margin-bottom: 28px;
@@ -867,7 +867,7 @@ onUnmounted(() => {
   width: 48px;
   height: 26px;
   border-radius: 13px;
-  background: #cbd5e1;
+  background: var(--border);
   position: relative;
   transition: all 0.3s ease;
 }
@@ -880,7 +880,7 @@ onUnmounted(() => {
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: white;
+  background: var(--bg-card);
   position: absolute;
   top: 2px;
   left: 2px;
@@ -923,7 +923,7 @@ onUnmounted(() => {
 
 .source-option.active {
   border-color: var(--primary);
-  background: #f5f3ff;
+  background: var(--panel-gradient);
 }
 
 .option-title {
@@ -1038,7 +1038,7 @@ onUnmounted(() => {
 .btn-secondary {
   padding: 12px 24px;
   border: 1px solid var(--border);
-  background: white;
+  background: var(--bg-card);
   border-radius: 12px;
   font-size: 14px;
   font-weight: 500;
@@ -1083,7 +1083,7 @@ onUnmounted(() => {
 
 /* 右侧详情卡片 */
 .detail-card {
-  background: white;
+  background: var(--bg-card);
   border-radius: 16px;
   box-shadow: var(--shadow-md);
   overflow: hidden;
@@ -1095,7 +1095,7 @@ onUnmounted(() => {
   gap: 8px;
   padding: 16px 20px;
   border-bottom: 1px solid var(--border);
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  background: linear-gradient(135deg, var(--bg-soft) 0%, var(--bg-soft) 100%);
 }
 
 .detail-header h3 {
@@ -1191,7 +1191,7 @@ onUnmounted(() => {
 
 .score-card.selected {
   border-color: var(--primary);
-  background: linear-gradient(135deg, #f5f3ff 0%, #eef2ff 100%);
+  background: var(--panel-gradient);
 }
 
 .score-header {
@@ -1205,7 +1205,7 @@ onUnmounted(() => {
   width: 24px;
   height: 24px;
   border-radius: 6px;
-  background: #f1f5f9;
+  background: var(--bg-soft);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1248,7 +1248,7 @@ onUnmounted(() => {
 .bar-track {
   flex: 1;
   height: 6px;
-  background: #f1f5f9;
+  background: var(--bg-soft);
   border-radius: 3px;
   overflow: hidden;
 }

@@ -379,7 +379,7 @@ const REVIEW_DIMENSIONS = [
 
 // 热度预期的色温配置
 const HEAT_LEVEL_CONFIG = {
-  '一般': { color: '#94a3b8', bg: '#f1f5f9' },
+  '一般': { color: '#94a3b8', bg: 'var(--bg-soft)' },
   '中等': { color: '#3b82f6', bg: '#eff6ff' },
   '高': { color: '#22c55e', bg: '#f0fdf4' },
   '热': { color: '#f97316', bg: '#fff7ed' },
@@ -463,7 +463,7 @@ onMounted(() => {
   gap: 6px;
   padding: 8px 14px;
   border: 1px solid var(--border);
-  background: white;
+  background: var(--bg-card);
   border-radius: 10px;
   font-size: 13px;
   font-weight: 500;
@@ -516,7 +516,7 @@ onMounted(() => {
 .content-col .blog-card {
   max-width: 820px;
   margin: 0 auto;
-  background: white;
+  background: var(--bg-card);
   border-radius: 20px;
   box-shadow: var(--shadow-md);
   overflow: hidden;
@@ -540,7 +540,7 @@ onMounted(() => {
 }
 
 .side-card {
-  background: white;
+  background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 14px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
@@ -555,7 +555,7 @@ onMounted(() => {
   font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  background: linear-gradient(135deg, var(--bg-soft) 0%, var(--bg-soft) 100%);
 }
 
 .side-title.collapsible {
@@ -564,7 +564,7 @@ onMounted(() => {
 }
 
 .side-title.collapsible:hover {
-  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  background: linear-gradient(135deg, var(--bg-soft) 0%, var(--border) 100%);
 }
 
 .side-title .arrow {
@@ -592,12 +592,12 @@ onMounted(() => {
 }
 
 .side-body::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: var(--border);
   border-radius: 3px;
 }
 
 .side-body::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: var(--text-muted);
 }
 
 .selected-title {
@@ -607,7 +607,7 @@ onMounted(() => {
   font-weight: 600;
   line-height: 1.6;
   color: var(--primary);
-  background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+  background: var(--panel-gradient);
 }
 
 .config-table {
@@ -664,7 +664,7 @@ onMounted(() => {
   margin-top: 10px;
   padding: 6px 12px;
   border: 1px solid var(--border);
-  background: #f8fafc;
+  background: var(--bg-soft);
   border-radius: 8px;
   font-size: 12px;
   color: var(--primary);
@@ -674,7 +674,7 @@ onMounted(() => {
 
 .expand-btn:hover {
   border-color: var(--primary);
-  background: #eef2ff;
+  background: var(--panel-gradient);
 }
 
 /* ===== 审稿记录卡片 ===== */
@@ -725,7 +725,7 @@ onMounted(() => {
 .review-dimensions {
   margin-bottom: 16px;
   padding: 12px;
-  background: #f8fafc;
+  background: var(--bg-soft);
   border-radius: 8px;
 }
 
@@ -750,7 +750,7 @@ onMounted(() => {
 .dim-bar-wrap {
   flex: 1;
   height: 6px;
-  background: #e2e8f0;
+  background: var(--border);
   border-radius: 3px;
   overflow: hidden;
 }
@@ -773,7 +773,7 @@ onMounted(() => {
 .review-meta {
   margin-bottom: 16px;
   padding: 12px;
-  background: #f8fafc;
+  background: var(--bg-soft);
   border-radius: 8px;
 }
 
@@ -994,12 +994,12 @@ onMounted(() => {
 }
 
 .blog-content::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: var(--border);
   border-radius: 3px;
 }
 
 .blog-content::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: var(--text-muted);
 }
 
 /* ===== 响应式 ===== */

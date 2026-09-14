@@ -164,12 +164,20 @@ front/
 - [x] **批量分析配图位置**：一次LLM调用分析多个配图位置的上下文和描述
 - [x] **专业搜图关键词**：简洁明了且专业的英文关键词+搜图描述
 - [x] **专业AI生图prompt**：50-100词，含9要素（主体/场景/风格/光线/构图/色调/细节/质量/负面提示）
-- [x] 智能重试：搜不到时 LLM 优化描述，最多重试2次
+- [x] **智能重试**：搜不到时生成"保留核心语义"的关键词变体（同义词替换/场景限定，禁止抽象化偏离主题），最多重试2次
 - [x] 失败降级：多次搜不到自动改成纯文本过渡句
 - [x] 图片自动插入正文对应章节
 - [x] **图片本地持久化**：AI生图/API搜图生成后立即下载到 `backend/data/images/`，
       数据库存 `/images/xxx` 本地路径，后端 `/images` 静态服务 + 前端代理提供访问，
       彻底解决百炼 OSS 临时链接过期问题
+- [x] **搜图关键词直用**（2026-09-14）：`analyze_image_needs` 分析好的关键词直接用于搜索，
+      不再让 LLM 二次转换（修复"图与描述不符"核心bug）
+- [x] **相关性选图**（2026-09-14）：搜索取前5张候选，按关键词与图片 alt/title 描述的词重合度
+      选最相关的一张（不再无脑取第一张）
+- [x] **AI生图prompt清洗**（2026-09-14）：`_clean_image_prompt` 去编号/标签/列表符号合并成
+      流畅单段；源头 prompt 要求模型直接输出单段连贯文本
+- [x] **图片文件唯一化**（2026-09-14）：文件名 `task{task_id}_{run_id}_{序号}`，
+      修复"新文章复用旧文章图片"bug（persist_image 幂等 + 文件名写死 process_{i+1} 导致）
 
 ### ✅ 4.7 审稿系统（重新设计）
 - [x] **硬性约束3条**（违反任何一条直接不通过）：
@@ -250,6 +258,18 @@ front/
   - 端口可用 `${FRONTEND_PORT:-80}` 覆盖
 - [x] **.env.example 补全**：20项全覆盖模板（与 settings.py 核对无缺失无多余，无密钥泄漏）
 - [x] **.env 清理**：移除已废弃的 `llm_model_formatter`（排版降级为纯规则），db_url 加注释说明 docker 环境下自动覆盖
+- [x] **域名 + HTTPS**（2026-09-14）：注册 `lzhshow.top`（阿里云），DNS 云解析（dns3/dns4.hichina.com），
+      免费 SSL 证书（个人测试证书），外层服务器 Nginx 配置 443 HTTPS + 80→443 跳转
+- [x] **两层 Nginx 架构**（2026-09-14）：
+  - 外层：服务器系统 Nginx（HTTPS/gzip/安全头/反代 `127.0.0.1:8080`）
+  - 内层：前端 prod 容器 Nginx（静态托管 + Vue Router 回退 + `/api`、`/images` 反代 backend:8000）
+- [x] **端口收敛**（2026-09-14）：生产不对外暴露后端 8000 与数据库 5432（`expose` + 前端仅监听 `127.0.0.1:8080`）
+- [x] **前端 504 网关超时处理**（2026-09-14）：新增 `isTimeoutError()` 工具，各页面超时不再弹错，
+      改为"超时继续轮询、以任务最终状态为准"（Home/Titles/Outline/Create/BlogDetail 全部覆盖）
+- [x] **Nginx 接口超时 600s**（2026-09-14）：内层 `front/nginx.conf` 的 `/api` 已配
+      `proxy_read_timeout 600s; proxy_send_timeout 600s;`；外层服务器 Nginx 需同步（待确认）
+- [x] **git 治理**（2026-09-14）：`backend/data/images/` 加入 .gitignore，9 个误提交的图片文件
+      已 `git rm --cached` 移除跟踪（本地文件保留），彻底解决服务器 pull 冲突
 
 ### ✅ 4.13 内容质量修复
 - [x] **写手提示词重构**（writer.py）：去掉"技术博客写手"身份预设 → 通用文章写手，文风由大纲与调研决定
@@ -269,6 +289,43 @@ front/
 - [x] 三栏布局太紧凑（改为以浏览器窗口为容器，中间栏保持原宽度）
 - [x] 侧栏展开内容显示不全（超出20行上下滚动）
 - [x] 正文展示高度控制（超出上下滚动）
+- [x] 配图与描述不符（2026-09-14，4个缺陷）：搜图关键词二次转换 / 重试抽象化偏离主题 /
+      只取第一张无校验 / AI生图prompt带编号（详见 4.6）
+- [x] 新文章复用旧文章图片（2026-09-14）：persist_image 幂等 + 文件名写死，改文件名唯一化
+- [x] 图片文件误提交 git（2026-09-14）：gitignore 忽略 + git rm --cached 移除 9 个文件
+
+### ✅ 4.15 耗时优化（2026-09-14，共 4 项，端到端缩短约 40~90s）
+- [x] **配图并发获取**（image_agent.py）：`ThreadPoolExecutor(max_workers=4)` 取代串行 for
+  - 搜图/AI 生图均为 I/O 等待，3 张 AI 生图从串行 60~180s → 并行 20~60s
+  - 并发上限 4 防 API 限流；单张失败不影响其他张（原降级逻辑保留）
+- [x] **HTTP Session 连接复用**（image_agent.py）：模块级 `_image_http = requests.Session()`，
+  6 处 requests.get/post（搜图/生图/任务轮询/图片下载）全部改用 Session，复用 TCP 连接
+- [x] **写手"思路+正文"合并调用**（writer.py + graph.py）：
+  - `generate_content(include_thoughts=True)` 一次调用输出思路+正文，`=====写作思路=====` / `=====正文=====` 分隔
+  - `split_thoughts_and_content()` 拆分；首次写作走合并，省一次 LLM 调用（约 10~25s）
+  - 拆分异常/调用异常自动回退纯正文生成，不阻塞任务；打回重写仍纯正文、不重复生成思路
+- [x] **审稿硬性约束纯规则前置**（reviewer.py）：
+  - 标题（正文一级标题行与大纲差集）/ 字数（实际≥目标）/ 配图（实际≥标记）改代码精确计算
+  - 任一不通过 → 直接返回不通过（带 1.2.3... 意见），**跳过 qwen-max 精审**（省 20~50s）
+  - LLM 输出中 `hard_constraints` 以代码计算结果覆盖；质量 5 维度仍由 LLM 精审，不降级
+- 明确不做的 3 项：正文调研预跑（大纲可编辑）、调研结果缓存（需 Redis）、标题生成/评分合并（同 LLM 自评无意义）
+
+### ✅ 4.16 明暗主题切换（2026-09-14，前端全站）
+- [x] **主题机制**：`html.dark` class（Element Plus 官方暗色）+ `data-theme` 属性（自定义变量）
+  - main.js 引入 `element-plus/theme-chalk/dark/css-vars.css`
+  - App.vue header 右侧新增切换按钮（SvgIcon sun/moon），点击即时切换
+  - 持久化：`localStorage['blog-agent-theme']`，首次访问自动跟随系统偏好
+  - index.html 首屏内联脚本预应用主题，刷新不闪白
+- [x] **全局变量体系**（main.css）：`[data-theme='dark']` 暗色变量集
+  - 新增可换肤变量：`--bg-soft`（悬浮面板）、`--panel-gradient`、`--panel-gray-gradient`、
+    `--header-bg`（毛玻璃头）、`--modal-mask`（弹窗遮罩）
+  - 暗色专项覆盖：markdown 代码块/引用/表格/配图标记、滚动条、输入框、卡片、header
+- [x] **全站硬编码颜色变量化**：6 个视图 + ProgressModal 共约 80 处
+  浅色背景（white/#fff/#f8fafc/#f5f3ff 等）、文字色（#333/#444/#555/#1a1a2e 等）、
+  边框、浅紫/浅灰渐变 → 全部替换为 CSS 变量；品牌紫与状态徽章色（绿/红/黄）保留
+- [x] **验证**：跟随系统/手动切换/刷新持久化闭环通过；首页/文章详情三栏页/标题选择页暗色渲染正常；
+  全部 Vue 文件编译通过
+
 
 ---
 
@@ -282,11 +339,13 @@ front/
 - [ ] 单元测试（pytest）
 
 ### 🔲 5.2 生产加固（优先级：高）
+- [x] HTTPS（服务器上配置 TLS 证书）—— 已完成：lzhshow.top + 免费 SSL + 外层 Nginx 443
 - [ ] **数据库自动备份**：cron + pg_dump，异地存储（防数据丢失）
 - [ ] 后端生产启动（uvicorn 去掉 --reload，或 Gunicorn 多 worker）
-- [ ] HTTPS（服务器上配置 TLS 证书）
 - [ ] CORS 白名单（当前 allow_origins=["*"]）
 - [ ] **Agent 评估集**：测试用例 + 期望输出，改 prompt 前跑回归
+- [ ] **密钥管理**：.env 明文 → Docker secrets / 阿里云 KMS（含 chmod 600、轮换预案）
+- [ ] 外层服务器 Nginx 确认/补充 `proxy_read_timeout 600s`（内层已配）
 
 ### 🔲 5.3 功能扩展（优先级：中）
 - [ ] 向量数据库/RAG（知识库，参考已有文章）
@@ -298,6 +357,7 @@ front/
 - [ ] 配图生成后质量审核（当前审稿时图片还没生成）
 
 ### 🔲 5.4 性能优化（优先级：中）
+- [x] 已落地（2026-09-14，详见 4.15）：配图并发获取 / HTTP Session 复用 / 思路+正文合并 / 审稿硬性约束纯规则
 - [ ] 异步任务（Celery + Redis，现在是同步阻塞，生成正文时接口会等待）
 - [ ] 流式输出（SSE/WebSocket，替代轮询）
 - [ ] 断点续跑（LangGraph checkpoint，服务重启后恢复任务）
@@ -432,6 +492,13 @@ uvicorn src.blog_agent.main:app --reload
 6. **本地 80 端口可能被系统占用**（Windows http.sys），验证生产前端用 `FRONTEND_PORT=8080`
 7. **审稿时图片还没生成**：配图agent在审稿通过后才执行，所以审稿只检查配图标记数量，不检查实际图片质量（已移除配图符合度维度）
 8. **frontend-prod 容器默认不启动**：它有 `profiles: ["prod"]` 标记，只有加 `--profile prod` 才启动；本地开发不需要它
+9. **图片文件已从 git 移除跟踪**（2026-09-14）：`backend/data/images/` 已加入 .gitignore，
+   新生成的图片不会再进仓库；服务器 pull 前如遇旧图片冲突，先备份目录再拉取
+10. **生产部署流程**：本地改代码 → `git push` → 服务器 `git pull && docker compose --profile prod up -d --build`；
+    后端改码挂载热更新一般自动生效，不生效 `docker compose restart backend`；
+    前端改码必须重建镜像（构建产物打进镜像）
+11. **密钥仍是 .env 明文**：LLM Key / DB 密码 / 图片 Key 明文在服务器 .env，
+    待做 docker secrets / KMS（见 5.2）
 
 ---
 

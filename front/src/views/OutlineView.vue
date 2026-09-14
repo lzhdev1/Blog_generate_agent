@@ -523,7 +523,7 @@ onUnmounted(() => {
 
 /* 右栏卡片 */
 .detail-card {
-  background: #fff;
+  background: var(--bg-card);
   border-radius: 16px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
   overflow: hidden;
@@ -536,9 +536,9 @@ onUnmounted(() => {
 .research-scroll {
   max-height: 460px;
   overflow-y: auto;
-  border: 1px solid #f0f0f5;
+  border: 1px solid var(--border);
   border-radius: 10px;
-  background: #fafafc;
+  background: var(--bg-card);
 }
 
 .research-scroll-inner {
@@ -566,7 +566,7 @@ onUnmounted(() => {
 
 .section-content {
   font-size: 13px;
-  color: #444;
+  color: var(--text-secondary);
   line-height: 1.7;
   padding-left: 20px;
 }
@@ -598,7 +598,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 10px;
   padding: 18px 20px 14px;
-  border-bottom: 1px solid #f0f0f5;
+  border-bottom: 1px solid var(--border);
   color: #667eea;
 }
 
@@ -606,7 +606,7 @@ onUnmounted(() => {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
-  color: #1a1a2e;
+  color: var(--text-primary);
 }
 
 .detail-body {
@@ -618,7 +618,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   padding: 10px 0;
-  border-bottom: 1px solid #f5f5fa;
+  border-bottom: 1px solid var(--border);
 }
 
 .config-row:last-child {
@@ -640,7 +640,7 @@ onUnmounted(() => {
   gap: 6px;
   font-size: 13px;
   font-weight: 600;
-  color: #555;
+  color: var(--text-secondary);
   margin-bottom: 8px;
 }
 
@@ -657,19 +657,19 @@ onUnmounted(() => {
   justify-content: center;
   gap: 6px;
   padding: 10px 12px;
-  border: 1px solid #e0e0e8;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: #fafafc;
+  background: var(--bg-card);
   cursor: pointer;
   transition: all 0.2s;
   font-size: 13px;
   font-weight: 500;
-  color: #555;
+  color: var(--text-secondary);
 }
 
 .image-source-options .source-option:hover {
   border-color: #6366f1;
-  background: #f0f0ff;
+  background: var(--panel-gradient);
 }
 
 .image-source-options .source-option.active {
@@ -682,12 +682,12 @@ onUnmounted(() => {
 .config-readonly-section {
   margin-top: 20px;
   padding-top: 16px;
-  border-top: 1px dashed #e0e0e8;
+  border-top: 1px dashed var(--border);
 }
 
 .readonly-title {
   font-size: 12px;
-  color: #999;
+  color: var(--text-muted);
   margin-bottom: 8px;
   font-weight: 500;
 }
@@ -698,7 +698,7 @@ onUnmounted(() => {
   gap: 6px;
   width: 90px;
   font-size: 13px;
-  color: #888;
+  color: var(--text-muted);
   flex-shrink: 0;
 }
 
@@ -712,12 +712,12 @@ onUnmounted(() => {
 
 .extra-value {
   font-size: 13px;
-  color: #333;
+  color: var(--text-primary);
   line-height: 1.6;
 }
 
 .empty-text {
-  color: #bbb;
+  color: var(--text-muted);
   font-style: italic;
 }
 
@@ -727,7 +727,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   padding: 40px 20px;
-  color: #ccc;
+  color: var(--text-muted);
   gap: 12px;
 }
 
@@ -754,8 +754,8 @@ onUnmounted(() => {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: #e2e8f0;
-  color: #94a3b8;
+  background: var(--border);
+  color: var(--text-muted);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -787,13 +787,13 @@ onUnmounted(() => {
 .step-line {
   width: 60px;
   height: 2px;
-  background: #e2e8f0;
+  background: var(--border);
   margin: 0 8px;
   margin-bottom: 22px;
 }
 
 .content-card {
-  background: white;
+  background: var(--bg-card);
   border-radius: 20px;
   padding: 32px;
   box-shadow: var(--shadow-md);
@@ -830,7 +830,7 @@ onUnmounted(() => {
   gap: 6px;
   padding: 8px 14px;
   border: 1px solid var(--border);
-  background: white;
+  background: var(--bg-card);
   border-radius: 10px;
   cursor: pointer;
   font-size: 13px;
@@ -860,7 +860,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 14px;
   padding: 18px 20px;
-  background: linear-gradient(135deg, #f5f3ff 0%, #eef2ff 100%);
+  background: var(--panel-gradient);
   border-radius: 14px;
   margin-bottom: 24px;
 }
@@ -903,7 +903,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
   padding: 14px 18px;
-  background: #f8fafc;
+  background: var(--bg-soft);
   border-bottom: 1px solid var(--border);
   font-weight: 600;
   font-size: 14px;
@@ -940,7 +940,7 @@ onUnmounted(() => {
   gap: 6px;
   padding: 12px 24px;
   border: 1px solid var(--border);
-  background: white;
+  background: var(--bg-card);
   border-radius: 12px;
   font-size: 14px;
   font-weight: 500;

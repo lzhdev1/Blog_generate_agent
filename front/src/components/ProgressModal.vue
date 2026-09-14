@@ -136,7 +136,7 @@ function handleClose() {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--modal-mask);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
@@ -145,7 +145,7 @@ function handleClose() {
 }
 
 .modal-card {
-  background: white;
+  background: var(--bg-card);
   border-radius: 20px;
   padding: 32px;
   width: 420px;
@@ -202,7 +202,7 @@ function handleClose() {
 }
 
 .step-item.step-active {
-  background: linear-gradient(135deg, #f5f3ff 0%, #eef2ff 100%);
+  background: var(--panel-gradient);
 }
 
 .step-item.step-done {
@@ -226,8 +226,8 @@ function handleClose() {
 }
 
 .step-pending .step-icon {
-  background: #e2e8f0;
-  color: #94a3b8;
+  background: var(--border);
+  color: var(--text-muted);
 }
 
 .step-active .step-icon {
@@ -280,7 +280,7 @@ function handleClose() {
 }
 
 .btn-text:hover {
-  background: #f1f5f9;
+  background: var(--bg-soft);
   color: var(--text-primary);
 }
 </style>

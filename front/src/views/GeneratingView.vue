@@ -234,8 +234,8 @@ onUnmounted(() => {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: #e2e8f0;
-  color: #94a3b8;
+  background: var(--border);
+  color: var(--text-muted);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -267,13 +267,13 @@ onUnmounted(() => {
 .step-line {
   width: 50px;
   height: 2px;
-  background: #e2e8f0;
+  background: var(--border);
   margin: 0 8px;
   margin-bottom: 22px;
 }
 
 .content-card {
-  background: white;
+  background: var(--bg-card);
   border-radius: 20px;
   padding: 40px 32px;
   box-shadow: var(--shadow-md);
@@ -316,7 +316,7 @@ onUnmounted(() => {
 
 .progress-bar-wrapper {
   height: 8px;
-  background: #f1f5f9;
+  background: var(--bg-soft);
   border-radius: 4px;
   overflow: hidden;
   margin-bottom: 10px;
@@ -338,7 +338,7 @@ onUnmounted(() => {
 
 .agent-timeline {
   text-align: left;
-  background: #f8fafc;
+  background: var(--bg-soft);
   border-radius: 14px;
   padding: 20px;
   margin-bottom: 28px;
@@ -354,7 +354,7 @@ onUnmounted(() => {
 }
 
 .agent-item + .agent-item {
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--border);
 }
 
 .agent-item.active {
@@ -369,8 +369,8 @@ onUnmounted(() => {
   width: 40px;
   height: 40px;
   border-radius: 10px;
-  background: #e2e8f0;
-  color: #64748b;
+  background: var(--border);
+  color: var(--text-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -444,7 +444,7 @@ onUnmounted(() => {
 .btn-secondary {
   padding: 12px 24px;
   border: 1px solid var(--border);
-  background: white;
+  background: var(--bg-card);
   border-radius: 12px;
   font-size: 14px;
   font-weight: 500;

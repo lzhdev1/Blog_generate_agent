@@ -12,6 +12,13 @@
           </div>
         </router-link>
         <div class="header-actions">
+          <button
+            class="theme-toggle"
+            :title="isDark ? '切换到亮色主题' : '切换到暗色主题'"
+            @click="toggleTheme"
+          >
+            <SvgIcon :name="isDark ? 'sun' : 'moon'" :size="18" />
+          </button>
           <a href="#" class="nav-link" @click.prevent="scrollToArticles">
             <SvgIcon name="document" :size="18" />
             <span>我的文章</span>
@@ -34,12 +41,44 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import SvgIcon from '@/components/SvgIcon.vue'
 
 const router = useRouter()
 const route = useRoute()
+
+// ===== 明暗主题切换 =====
+const THEME_KEY = 'blog-agent-theme'
+const isDark = ref(false)
+
+function applyTheme(dark) {
+  const root = document.documentElement
+  if (dark) {
+    root.classList.add('dark') // Element Plus 暗色变量
+    root.setAttribute('data-theme', 'dark') // 自定义 CSS 变量
+  } else {
+    root.classList.remove('dark')
+    root.setAttribute('data-theme', 'light')
+  }
+  localStorage.setItem(THEME_KEY, dark ? 'dark' : 'light')
+}
+
+function toggleTheme() {
+  isDark.value = !isDark.value
+  applyTheme(isDark.value)
+}
+
+onMounted(() => {
+  // 优先读取用户选择；无记录时跟随系统偏好
+  const saved = localStorage.getItem(THEME_KEY)
+  if (saved) {
+    isDark.value = saved === 'dark'
+  } else if (window.matchMedia) {
+    isDark.value = window.matchMedia('(prefers-color-scheme: dark)').matches
+  }
+  applyTheme(isDark.value)
+})
 
 // 文章详情页和大纲确认页需要全宽三栏布局，突破 app-main 的 1200px 限制
 const isFullWidthPage = computed(() => {
@@ -71,7 +110,7 @@ function scrollToArticles() {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(255, 255, 255, 0.85);
+  background: var(--header-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border);
@@ -146,8 +185,29 @@ function scrollToArticles() {
 }
 
 .nav-link:hover {
-  background: #f1f5f9;
+  background: var(--bg-soft);
   color: var(--text-primary);
+}
+
+/* 主题切换按钮 */
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.theme-toggle:hover {
+  color: var(--text-primary);
+  background: var(--bg-soft);
+  transform: translateY(-1px);
 }
 
 .create-btn {

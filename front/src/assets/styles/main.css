@@ -13,6 +13,7 @@
   --text-muted: #94a3b8;
   --bg-primary: #f8fafc;
   --bg-card: #ffffff;
+  --bg-soft: #f1f5f9;          /* 浅色面板/悬浮背景 */
   --border: #e2e8f0;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
@@ -22,6 +23,42 @@
   --radius-md: 12px;
   --radius-lg: 16px;
   --radius-xl: 24px;
+  --panel-gradient: linear-gradient(135deg, #f5f3ff 0%, #eef2ff 100%);
+  --panel-gray-gradient: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  --header-bg: rgba(255, 255, 255, 0.85);
+  --modal-mask: rgba(0, 0, 0, 0.5);
+  color-scheme: light;
+}
+
+/* ========== 暗色主题变量 ========== */
+[data-theme='dark'] {
+  --primary: #818cf8;
+  --primary-dark: #a5b4fc;
+  --primary-light: #6366f1;
+  --success: #34d399;
+  --warning: #fbbf24;
+  --danger: #f87171;
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --bg-primary: #0f172a;
+  --bg-card: #1e293b;
+  --bg-soft: #334155;
+  --border: #334155;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
+  --panel-gradient: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+  --panel-gray-gradient: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  --header-bg: rgba(15, 23, 42, 0.85);
+  --modal-mask: rgba(0, 0, 0, 0.7);
+  color-scheme: dark;
+}
+
+/* 页面切换过渡（可选） */
+body {
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 * {
@@ -276,4 +313,86 @@ a {
 
 .el-textarea__inner {
   border-radius: var(--radius-md);
+}
+
+/* ========== 暗色主题覆盖 ========== */
+[data-theme='dark'] body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+[data-theme='dark'] ::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+
+[data-theme='dark'] ::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* App header */
+[data-theme='dark'] .app-header {
+  background: rgba(15, 23, 42, 0.85);
+  border-bottom: 1px solid var(--border);
+}
+
+[data-theme='dark'] .nav-link:hover {
+  background: var(--bg-soft);
+}
+
+/* Markdown */
+[data-theme='dark'] .markdown-body code {
+  background: #334155;
+  color: #a5b4fc;
+}
+
+[data-theme='dark'] .markdown-body pre {
+  background: #0b1120;
+  color: #e2e8f0;
+  border: 1px solid var(--border);
+}
+
+[data-theme='dark'] .markdown-body blockquote {
+  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+  color: #c7d2fe;
+}
+
+[data-theme='dark'] .markdown-body tr:nth-child(even) {
+  background: #1e293b;
+}
+
+[data-theme='dark'] .markdown-body th,
+[data-theme='dark'] .markdown-body td {
+  border-color: #334155;
+}
+
+/* 配图标记（暗色下加深底色、提亮文字） */
+[data-theme='dark'] .image-marker {
+  background: linear-gradient(135deg, #78350f 0%, #92400e 100%);
+  border-color: #f59e0b;
+  color: #fef3c7;
+}
+
+/* Element Plus 暗色下输入框/选择器背景统一 */
+[data-theme='dark'] .el-input__wrapper,
+[data-theme='dark'] .el-textarea__inner,
+[data-theme='dark'] .el-select__wrapper {
+  background-color: var(--bg-card);
+}
+
+[data-theme='dark'] .el-card {
+  background-color: var(--bg-card);
+}
+
+/* 暗色下页面内硬编码的浅紫/浅灰渐变面板 */
+[data-theme='dark'] .hero-section,
+[data-theme='dark'] .panel-gradient,
+[data-theme='dark'] .config-panel,
+[data-theme='dark'] .outline-editor,
+[data-theme='dark'] .titles-list,
+[data-theme='dark'] .title-card,
+[data-theme='dark'] .article-list,
+[data-theme='dark'] .timeline-panel,
+[data-theme='dark'] .detail-panel {
+  background: var(--bg-card) !important;
+  border-color: var(--border) !important;
 }
