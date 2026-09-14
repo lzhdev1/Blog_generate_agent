@@ -275,6 +275,7 @@ import SvgIcon from '@/components/SvgIcon.vue'
 import MarkdownRender from '@/components/MarkdownRender.vue'
 import ProgressModal from '@/components/ProgressModal.vue'
 import { getTask, regenerateOutline, confirmOutline } from '@/api/task'
+import { isTimeoutError } from '@/utils/request'
 
 const route = useRoute()
 const router = useRouter()
@@ -364,6 +365,20 @@ function startProgressPolling() {
       if (t.progress) {
         progressText.value = t.progress
       }
+      // 重新生成大纲完成
+      if (t.status === 'outline_generated') {
+        stopProgressPolling()
+        showProgressModal.value = false
+        regenerating.value = false
+        await fetchTask()
+        ElMessage.success('大纲已重新生成')
+      }
+      if (t.status === 'failed') {
+        stopProgressPolling()
+        showProgressModal.value = false
+        regenerating.value = false
+        ElMessage.error(t.error || '重新生成大纲失败')
+      }
     } catch (e) {
       console.error('轮询进度失败:', e)
     }
@@ -420,15 +435,15 @@ async function regenerate() {
     // 启动轮询
     startProgressPolling()
 
-    // 异步调用重新生成大纲
+    // 异步调用重新生成大纲；完成/失败统一由轮询回调处理（outline_generated / failed）
     await regenerateOutline(taskId)
-
-    // 完成后停止轮询，关闭弹窗，刷新数据
-    stopProgressPolling()
-    showProgressModal.value = false
-    await fetchTask()
-    ElMessage.success('大纲已重新生成')
   } catch (error) {
+    // 网关/连接超时：任务可能仍在后台重新生成大纲，继续轮询等待，不误报失败
+    if (isTimeoutError(error)) {
+      console.warn('请求超时，任务可能仍在后台处理，继续轮询等待:', error)
+      progressText.value = '处理时间较长，任务仍在后台运行中，请耐心等待...'
+      return
+    }
     console.error('重新生成大纲失败:', error)
     stopProgressPolling()
     showProgressModal.value = false

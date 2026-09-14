@@ -122,6 +122,7 @@ import SvgIcon from '@/components/SvgIcon.vue'
 import ProgressModal from '@/components/ProgressModal.vue'
 import { useTaskStore } from '@/stores/task'
 import { createTask, generateTitles, getTask, deleteTask } from '@/api/task'
+import { isTimeoutError } from '@/utils/request'
 
 const router = useRouter()
 const taskStore = useTaskStore()
@@ -222,6 +223,12 @@ async function handleCreate() {
     startProgressPolling(task.id)
     // 异步触发生成标题（不阻塞）
     generateTitles(task.id).catch(err => {
+      // 网关/连接超时：任务可能仍在后台生成标题，继续轮询等待，不误报失败
+      if (isTimeoutError(err)) {
+        console.warn('请求超时，任务可能仍在后台处理，继续轮询等待:', err)
+        progressText.value = '处理时间较长，任务仍在后台运行中，请耐心等待...'
+        return
+      }
       console.error('生成标题失败:', err)
       stopProgressPolling()
       showProgressModal.value = false

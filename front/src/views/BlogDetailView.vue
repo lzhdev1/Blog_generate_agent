@@ -229,6 +229,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import SvgIcon from '@/components/SvgIcon.vue'
 import MarkdownRender from '@/components/MarkdownRender.vue'
 import { getBlogDetail, generateContent } from '@/api/task'
+import { isTimeoutError } from '@/utils/request'
 
 const route = useRoute()
 const router = useRouter()
@@ -424,7 +425,14 @@ async function regenerate() {
     ElMessage.success('重新生成任务已提交')
     router.push(`/task/${blogId}/generating`)
   } catch (e) {
-    if (e !== 'cancel') console.error(e)
+    if (e === 'cancel') return
+    // 网关/连接超时：任务可能仍在后台生成，跳转到生成页由轮询确认最终状态
+    if (isTimeoutError(e)) {
+      console.warn('请求超时，任务可能仍在后台处理，跳转到生成页等待:', e)
+      router.push(`/task/${blogId}/generating`)
+      return
+    }
+    console.error(e)
   }
 }
 

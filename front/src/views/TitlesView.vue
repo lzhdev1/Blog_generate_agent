@@ -278,6 +278,7 @@ import SvgIcon from '@/components/SvgIcon.vue'
 import ProgressModal from '@/components/ProgressModal.vue'
 import MarkdownRender from '@/components/MarkdownRender.vue'
 import { getTask, generateTitles, submitTitleConfig } from '@/api/task'
+import { isTimeoutError } from '@/utils/request'
 
 const route = useRoute()
 const router = useRouter()
@@ -451,6 +452,12 @@ async function regenerateTitles() {
     await generateTitles(taskId)
     // 完成与刷新由轮询回调处理（title_generated 时停止轮询、关闭弹窗、刷新数据）
   } catch (error) {
+    // 网关/连接超时：任务可能仍在后台运行，继续轮询等待，不误报失败
+    if (isTimeoutError(error)) {
+      console.warn('请求超时，任务可能仍在后台处理，继续轮询等待:', error)
+      progressText.value = '处理时间较长，任务仍在后台运行中，请耐心等待...'
+      return
+    }
     console.error('重新生成标题失败:', error)
     stopProgressPolling()
     regenerating.value = false
@@ -482,6 +489,12 @@ async function handleSubmit() {
     })
     // 完成与跳转由轮询回调处理（outline_generated 跳转大纲页 / failed 报错）
   } catch (error) {
+    // 网关/连接超时：后端可能仍在跑调研+生成大纲，继续轮询等待，不误报失败
+    if (isTimeoutError(error)) {
+      console.warn('请求超时，任务可能仍在后台处理，继续轮询等待:', error)
+      progressText.value = '处理时间较长，任务仍在后台运行中，请耐心等待...'
+      return
+    }
     console.error('提交配置失败:', error)
     stopProgressPolling()
     submitting.value = false

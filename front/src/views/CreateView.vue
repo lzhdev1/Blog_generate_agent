@@ -67,6 +67,7 @@ import { ElMessage } from 'element-plus'
 import SvgIcon from '@/components/SvgIcon.vue'
 import ProgressModal from '@/components/ProgressModal.vue'
 import { createTask, generateTitles, getTask } from '@/api/task'
+import { isTimeoutError } from '@/utils/request'
 
 const router = useRouter()
 const topic = ref('')
@@ -78,6 +79,8 @@ const currentTaskStatus = ref('')
 const progressText = ref('')
 const currentTaskId = ref(null)
 let pollTimer = null
+// 标记：请求发生超时（任务可能仍在后台），此时完成/失败交给轮询兜底处理
+let timeoutFollowUp = false
 
 const examples = [
   'Python 快速入门指南',
@@ -94,6 +97,21 @@ function startProgressPolling() {
       currentTaskStatus.value = t.status
       if (t.progress) {
         progressText.value = t.progress
+      }
+      // 超时兜底场景：由轮询检测完成/失败
+      if (t.status === 'title_generated' && timeoutFollowUp) {
+        stopProgressPolling()
+        showProgressModal.value = false
+        creating.value = false
+        ElMessage.success('标题已生成')
+        router.push(`/task/${currentTaskId.value}/titles`)
+        return
+      }
+      if (t.status === 'failed') {
+        stopProgressPolling()
+        showProgressModal.value = false
+        creating.value = false
+        ElMessage.error(t.error || '生成标题失败')
       }
     } catch (e) {
       console.error('轮询进度失败:', e)
@@ -135,11 +153,20 @@ async function handleCreate() {
     // 4. 异步调用 generateTitles（不阻塞轮询）
     await generateTitles(task.id)
 
-    // 5. 生成完成，停止轮询，跳转
-    stopProgressPolling()
-    showProgressModal.value = false
-    router.push(`/task/${task.id}/titles`)
+    // 5. 生成完成，停止轮询，跳转（超时兜底场景下由轮询负责跳转）
+    if (!timeoutFollowUp) {
+      stopProgressPolling()
+      showProgressModal.value = false
+      router.push(`/task/${task.id}/titles`)
+    }
   } catch (error) {
+    // 网关/连接超时：任务可能仍在后台生成标题，继续轮询等待，不误报失败
+    if (isTimeoutError(error)) {
+      console.warn('请求超时，任务可能仍在后台处理，继续轮询等待:', error)
+      timeoutFollowUp = true
+      progressText.value = '处理时间较长，任务仍在后台运行中，请耐心等待...'
+      return
+    }
     console.error('创建任务失败:', error)
     stopProgressPolling()
     showProgressModal.value = false
