@@ -4,21 +4,39 @@
     <div class="hero-section animate-fade-in-up">
       <div class="hero-badge">
         <SvgIcon name="spark" :size="16" />
-        <span>AI 驱动的多 Agent 博客生成系统</span>
+        <span>{{ $t('home.badge') }}</span>
       </div>
       <h1 class="hero-title">
-        精彩博客
-        <span class="gradient-text">一触即发</span>
+        {{ $t('home.titlePart1') }}
+        <span class="gradient-text">{{ $t('home.titlePart2') }}</span>
       </h1>
 
       <!-- 问答输入框 -->
       <div class="input-card">
+        <!-- 背景词云（推荐主题，入场从底部散出 + 持续漂浮） -->
+        <div class="word-cloud">
+          <span
+            v-for="(w, i) in cloudWords"
+            :key="i"
+            class="cloud-word"
+            :class="{ entered: cloudEntered }"
+            :style="{
+              left: cloudEntered ? w.left : '50%',
+              top: cloudEntered ? w.top : '50%',
+              fontSize: w.size + 'px',
+              '--op': w.opacity,
+              '--dur': w.dur + 's',
+              '--burst-delay': '0s',
+              '--float-delay': '0.48s'
+            }"
+          >{{ w.text }}</span>
+        </div>
         <div class="input-wrapper">
           <el-input
             v-model="topic"
             type="textarea"
             :rows="2"
-            placeholder="输入你想写的博客主题，例如：Python 快速入门指南..."
+            :placeholder="$t('home.placeholder')"
             resize="none"
             :disabled="creating"
             @keydown.enter.ctrl="handleCreate"
@@ -34,11 +52,11 @@
     <!-- 全部文章 -->
     <div id="articles-section" class="articles-section">
       <div class="section-header">
-        <h2>全部文章</h2>
+        <h2>{{ $t('home.allArticles') }}</h2>
         <div class="section-actions">
           <button class="shuffle-btn" :disabled="shuffling" @click="fetchArticles">
             <SvgIcon name="refresh" :size="15" />
-            <span>换一批</span>
+            <span>{{ $t('home.shuffle') }}</span>
           </button>
         </div>
       </div>
@@ -60,11 +78,11 @@
         >
           <div class="card-top">
             <span class="card-type" :class="a.is_demo ? 'is-demo' : 'is-user'">
-              {{ a.is_demo ? '演示' : '用户' }}
+              {{ a.is_demo ? $t('home.demo') : $t('home.user') }}
             </span>
             <span class="card-price" :class="a.download_price > 0 ? 'is-paid' : 'is-free'">
               <SvgIcon name="download" :size="12" />
-              {{ a.download_price > 0 ? `¥${a.download_price}` : '免费' }}
+              {{ a.download_price > 0 ? `¥${a.download_price}` : $t('home.free') }}
             </span>
           </div>
           <h3 class="card-topic">{{ a.title }}</h3>
@@ -127,6 +145,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import SvgIcon from '@/components/SvgIcon.vue'
 import ProgressModal from '@/components/ProgressModal.vue'
@@ -136,6 +155,7 @@ import { isTimeoutError } from '@/utils/request'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
+const { t } = useI18n()
 const authStore = useAuthStore()
 
 // ===== 全部文章（随机展示 + 换一批） =====
@@ -201,6 +221,42 @@ const progressText = ref('')
 const showProgressModal = ref(false)
 const currentTaskStatus = ref('')
 let pollTimer = null
+
+// ===== 环绕 + 背景词云（多领域推荐主题，漂浮动画） =====
+// 背景组：贴近输入框上/下边框浮动，词被输入框半遮半露，营造立体感
+// 环绕组：位于输入框四周，横向铺开、纵向收窄
+const cloudWords = [
+  // —— 背景组 · 贴上边框（骑跨输入框上沿） ——
+  { text: 'Python', left: '6%', top: '30%', size: 22, dur: 7, delay: 0, opacity: 0.46, bg: true },
+  { text: '机器学习', left: '38%', top: '32%', size: 17, dur: 6.8, delay: 2.6, opacity: 0.42, bg: true },
+  { text: '机器人', left: '70%', top: '29%', size: 17, dur: 8.2, delay: 1.4, opacity: 0.42, bg: true },
+  { text: '读书', left: '93%', top: '31%', size: 15, dur: 7.4, delay: 0.8, opacity: 0.38, bg: true },
+  // —— 背景组 · 贴下边框（骑跨输入框下沿） ——
+  { text: 'Docker', left: '12%', top: '76%', size: 19, dur: 8, delay: 0.6, opacity: 0.44, bg: true },
+  { text: '大模型', left: '42%', top: '78%', size: 16, dur: 8.5, delay: 1.8, opacity: 0.4, bg: true },
+  { text: '美食', left: '72%', top: '75%', size: 17, dur: 6.5, delay: 3.0, opacity: 0.42, bg: true },
+  { text: '猫', left: '92%', top: '79%', size: 15, dur: 7.7, delay: 2.2, opacity: 0.38, bg: true },
+  // —— 环绕组 · 上方 ——
+  { text: 'Vue 3', left: '24%', top: '4%', size: 20, dur: 8, delay: 0.4, opacity: 0.55 },
+  { text: 'LangGraph', left: '52%', top: '0%', size: 19, dur: 6.5, delay: 1.2, opacity: 0.5 },
+  { text: 'AI Agent', left: '80%', top: '8%', size: 17, dur: 7.5, delay: 2.1, opacity: 0.46 },
+  { text: '诗歌', left: '68%', top: '14%', size: 16, dur: 9, delay: 3.2, opacity: 0.42 },
+  // —— 环绕组 · 下方 ——
+  { text: 'FastAPI', left: '30%', top: '94%', size: 21, dur: 7.8, delay: 0.5, opacity: 0.55 },
+  { text: '云原生', left: '58%', top: '98%', size: 17, dur: 6, delay: 0.3, opacity: 0.48 },
+  { text: '旅行', left: '82%', top: '92%', size: 17, dur: 8.8, delay: 1.5, opacity: 0.46 },
+  { text: '音乐', left: '8%', top: '96%', size: 16, dur: 7.2, delay: 2.8, opacity: 0.44 },
+  // —— 环绕组 · 两侧（横向铺开） ——
+  { text: '自动化', left: '-4%', top: '36%', size: 16, dur: 6.2, delay: 2.4, opacity: 0.44 },
+  { text: '咖啡', left: '-3%', top: '60%', size: 14, dur: 8.4, delay: 0.7, opacity: 0.38 },
+  { text: 'DevOps', left: '99%', top: '30%', size: 16, dur: 8.8, delay: 1.5, opacity: 0.44 },
+  { text: '摄影', left: '100%', top: '55%', size: 15, dur: 7.6, delay: 3.4, opacity: 0.4 },
+  { text: '小说', left: '101%', top: '74%', size: 15, dur: 6.9, delay: 1.1, opacity: 0.4 },
+  { text: '天文', left: '44%', top: '-4%', size: 15, dur: 8.6, delay: 2.6, opacity: 0.42 }
+]
+
+// 词云入场控制（进入页面后从底部散出）
+const cloudEntered = ref(false)
 
 function formatTime(timeStr) {
   if (!timeStr) return ''
@@ -292,6 +348,16 @@ onUnmounted(() => {
 
 onMounted(() => {
   fetchArticles()
+  // 词云入场：先渲染"集中在中心"的初始状态，再触发爆炸扩散。
+  // rAF + setTimeout 双保险：页面导航节流时 rAF 可能不触发，setTimeout 兜底
+  let fired = false
+  const fire = () => {
+    if (fired) return
+    fired = true
+    cloudEntered.value = true
+  }
+  requestAnimationFrame(fire)
+  setTimeout(fire, 120)
 })
 </script>
 
@@ -347,20 +413,80 @@ onMounted(() => {
 
 /* 输入框 */
 .input-card {
+  position: relative;
   max-width: 640px;
   margin: 0 auto;
+  padding: 42px 0;
+}
+
+/* 环绕词云层（输入框上下左右漂浮） */
+.word-cloud {
+  position: absolute;
+  inset: -20px -50px;
+  z-index: 0;
+  overflow: visible;
+  pointer-events: none;
+  transform: translateY(24px);
+}
+
+.cloud-word {
+  position: absolute;
+  font-weight: 700;
+  color: var(--primary);
+  white-space: nowrap;
+  user-select: none;
+  /* 初始：集中在输入框中心，缩小不可见 */
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) scale(0.1);
+  opacity: 0;
+  transition:
+    left 0.45s cubic-bezier(0.22, 0.61, 0.36, 1) var(--burst-delay, 0s),
+    top 0.45s cubic-bezier(0.22, 0.61, 0.36, 1) var(--burst-delay, 0s),
+    transform 0.45s cubic-bezier(0.22, 0.61, 0.36, 1) var(--burst-delay, 0s),
+    opacity 0.32s ease var(--burst-delay, 0s);
+}
+
+.cloud-word.entered {
+  /* 入场：从中心爆炸扩散到各自位置 */
+  opacity: var(--op, 0.5);
+  transform: translate(-50%, -50%) scale(1);
+  /* 入场完成后持续漂浮 */
+  animation: cloudFloat var(--dur, 8s) ease-in-out var(--float-delay, 1s) infinite;
+}
+
+[data-theme='dark'] .cloud-word {
+  color: #818cf8;
+}
+
+@keyframes cloudFloat {
+  0%, 100% { transform: translate(-50%, -50%) translateY(0) translateX(0); }
+  33% { transform: translate(-50%, -50%) translateY(-9px) translateX(5px); }
+  66% { transform: translate(-50%, -50%) translateY(7px) translateX(-5px); }
 }
 
 .input-wrapper {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 16px;
-  background: var(--bg-card);
+  background: rgba(255, 255, 255, 0.88);
   border-radius: 20px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
   border: 2px solid var(--border);
   transition: all 0.3s ease;
+}
+
+[data-theme='dark'] .input-wrapper {
+  background: rgba(24, 26, 40, 0.82);
+}
+
+/* 输入框本体透明，露出背景词云 */
+.input-wrapper :deep(.el-textarea__inner) {
+  background: transparent;
+  box-shadow: none;
 }
 
 .input-wrapper:focus-within {

@@ -228,6 +228,20 @@ class TaskService:
         task.status = TaskStatus.COMPLETED
         task.progress = "全部完成"
         db.commit()
+        # 系统通知：任务完成（仅通知注册作者，演示数据不通知）
+        if task.user_id:
+            from src.blog_agent.api.v1.notifications import create_notification
+            try:
+                create_notification(
+                    db,
+                    user_id=task.user_id,
+                    ntype="system",
+                    content=f"你的文章《{task.selected_title or task.topic}》已生成完成，快去查看吧",
+                    task_id=task_id,
+                )
+                db.commit()
+            except Exception:
+                db.rollback()
 
     # ========== 失败处理 ==========
 

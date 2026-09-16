@@ -146,6 +146,16 @@
     <template v-else-if="name === 'like'">
       <path d="M7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3m7-7l-2-2a3.5 3.5 0 00-5 5l4 5v6a2 2 0 002 2h6a2 2 0 002-1.5l2.5-8a2 2 0 00-2-2.5H14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
     </template>
+    <!-- 铃铛（消息通知） -->
+    <template v-else-if="name === 'bell'">
+      <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M13.73 21a2 2 0 01-3.46 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </template>
+    <!-- 钱币（付费） -->
+    <template v-else-if="name === 'coin'">
+      <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+      <path d="M12 6v12M15 9.5c0-1.4-1.3-2.5-3-2.5s-3 1.1-3 2.5c0 3.5 6 2 6 5.5 0 1.4-1.3 2.5-3 2.5s-3-1.1-3-2.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </template>
     <!-- 默认：圆点 -->
     <template v-else>
       <circle cx="12" cy="12" r="4" fill="currentColor"/>

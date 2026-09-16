@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
 
 from src.blog_agent.api.deps import get_db, get_current_user, get_optional_user
+from src.blog_agent.api.v1.notifications import create_notification
 from src.blog_agent.db.models import BlogTask, User, Favorite, Like, Purchase, DownloadRecord, TaskStatus
 from src.blog_agent.schemas.article_schema import (
     ArticleCardResp,
@@ -150,6 +151,16 @@ def toggle_like(task_id: int, db: Session = Depends(get_db),
         db.commit()
         return {"liked": False, "like_count": _like_count(db, task_id)}
     db.add(Like(user_id=current_user.id, task_id=task_id))
+    # 通知作者（自己给自己点赞不通知）
+    if task.user_id and task.user_id != current_user.id:
+        create_notification(
+            db,
+            user_id=task.user_id,
+            ntype="like",
+            content=f"用户「{current_user.nickname}」点赞了你的文章《{task.selected_title or task.topic}》",
+            task_id=task_id,
+            actor_name=current_user.nickname,
+        )
     db.commit()
     return {"liked": True, "like_count": _like_count(db, task_id)}
 
@@ -157,13 +168,23 @@ def toggle_like(task_id: int, db: Session = Depends(get_db),
 @router.post("/articles/{task_id}/favorite", summary="收藏/取消收藏")
 def toggle_favorite(task_id: int, db: Session = Depends(get_db),
                     current_user: User = Depends(get_current_user)):
-    _get_public_task(db, task_id)
+    task = _get_public_task(db, task_id)
     row = db.query(Favorite).filter(Favorite.user_id == current_user.id, Favorite.task_id == task_id).first()
     if row:
         db.delete(row)
         db.commit()
         return {"favorited": False}
     db.add(Favorite(user_id=current_user.id, task_id=task_id))
+    # 通知作者（自己收藏自己的文章不通知）
+    if task.user_id and task.user_id != current_user.id:
+        create_notification(
+            db,
+            user_id=task.user_id,
+            ntype="favorite",
+            content=f"用户「{current_user.nickname}」收藏了你的文章《{task.selected_title or task.topic}》",
+            task_id=task_id,
+            actor_name=current_user.nickname,
+        )
     db.commit()
     return {"favorited": True}
 
@@ -203,6 +224,16 @@ def purchase_article(task_id: int, db: Session = Depends(get_db),
         author = db.query(User).filter(User.id == task.user_id).first()
         if author:
             author.balance += price
+            # 通知作者（自己购买自己的文章不通知）
+            if task.user_id != current_user.id:
+                create_notification(
+                    db,
+                    user_id=task.user_id,
+                    ntype="purchase",
+                    content=f"用户「{current_user.nickname}」付费 {price} 元购买了你的文章《{task.selected_title or task.topic}》",
+                    task_id=task_id,
+                    actor_name=current_user.nickname,
+                )
     db.commit()
     db.refresh(current_user)
     return PurchaseResp(message="购买成功", balance=float(current_user.balance), task_id=task_id)

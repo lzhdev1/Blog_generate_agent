@@ -4,11 +4,7 @@
       <div class="header-inner">
         <router-link to="/" class="logo">
           <div class="logo-icon">
-            <SvgIcon name="magic" :size="24" />
-          </div>
-          <div class="logo-text">
-            <span class="logo-title">BlogAgent</span>
-            <span class="logo-subtitle">AI 博客生成器</span>
+            <img src="@/assets/logo.png" alt="BlogAgent" />
           </div>
         </router-link>
         <div class="header-actions">
@@ -21,12 +17,16 @@
           </button>
           <router-link to="/articles" class="nav-link">
             <SvgIcon name="document" :size="18" />
-            <span>全部文章</span>
+            <span>{{ $t('nav.allArticles') }}</span>
           </router-link>
-          <router-link v-if="authStore.isLoggedIn" to="/create" class="create-btn">
-            <SvgIcon name="plus" :size="18" />
-            <span>创建新文章</span>
-          </router-link>
+          <button
+            class="lang-toggle"
+            :title="$t('nav.switchLang')"
+            @click="toggleLang"
+          >
+            <span>{{ lang === 'zh' ? '中' : 'EN' }}</span>
+          </button>
+          <NotificationBell />
           <UserMenu />
         </div>
       </div>
@@ -44,13 +44,24 @@
 <script setup>
 import { computed, ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import SvgIcon from '@/components/SvgIcon.vue'
 import UserMenu from '@/components/UserMenu.vue'
+import NotificationBell from '@/components/NotificationBell.vue'
 import { useAuthStore } from '@/stores/auth'
+import { setLocale } from '@/i18n'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const { locale } = useI18n()
+const lang = computed(() => locale.value)
+
+function toggleLang() {
+  const next = locale.value === 'zh' ? 'en' : 'zh'
+  locale.value = next
+  setLocale(next)
+}
 
 // ===== 明暗主题切换 =====
 const THEME_KEY = 'blog-agent-theme'
@@ -74,13 +85,9 @@ function toggleTheme() {
 }
 
 onMounted(() => {
-  // 优先读取用户选择；无记录时跟随系统偏好
+  // 优先读取用户选择；无记录时默认亮色（白色背景）
   const saved = localStorage.getItem(THEME_KEY)
-  if (saved) {
-    isDark.value = saved === 'dark'
-  } else if (window.matchMedia) {
-    isDark.value = window.matchMedia('(prefers-color-scheme: dark)').matches
-  }
+  isDark.value = saved ? saved === 'dark' : false
   applyTheme(isDark.value)
 })
 
@@ -96,19 +103,21 @@ const isFullWidthPage = computed(() => {
   top: 0;
   z-index: 100;
   background: var(--header-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
   border-bottom: 1px solid var(--border);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
 }
 
 .header-inner {
-  max-width: 1200px;
-  margin: 0 auto;
+  width: 100%;
+  max-width: none;
+  margin: 0;
   height: 68px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
+  padding: 0 32px;
 }
 
 .logo {
@@ -119,15 +128,14 @@ const isFullWidthPage = computed(() => {
 }
 
 .logo-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  background: var(--primary-gradient);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  height: 56px;
+  flex-shrink: 0;
+}
+
+.logo-icon img {
+  height: 100%;
+  width: auto;
+  display: block;
 }
 
 .logo-text {
@@ -182,8 +190,8 @@ const isFullWidthPage = computed(() => {
   width: 38px;
   height: 38px;
   border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--bg-card);
+  border: none;
+  background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.2s ease;
@@ -195,23 +203,26 @@ const isFullWidthPage = computed(() => {
   transform: translateY(-1px);
 }
 
-.create-btn {
+.lang-toggle {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 10px 20px;
+  justify-content: center;
+  min-width: 38px;
+  height: 38px;
+  padding: 0 8px;
   border-radius: 10px;
-  background: var(--primary-gradient);
-  color: white;
-  font-size: 14px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
   font-weight: 600;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-  transition: all 0.3s ease;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.create-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+.lang-toggle:hover {
+  color: var(--text-primary);
+  background: var(--bg-soft);
 }
 
 .app-main {

@@ -38,12 +38,6 @@ const routes = [
     meta: { title: '个人信息', requiresAuth: true }
   },
   {
-    path: '/create',
-    name: 'Create',
-    component: () => import('@/views/CreateView.vue'),
-    meta: { title: '创建任务', requiresAuth: true }
-  },
-  {
     path: '/task/:id/titles',
     name: 'Titles',
     component: () => import('@/views/TitlesView.vue'),

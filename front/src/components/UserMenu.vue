@@ -2,8 +2,8 @@
   <div class="user-menu">
     <!-- 未登录 -->
     <template v-if="!authStore.isLoggedIn">
-      <router-link to="/login" class="login-link">登录</router-link>
-      <router-link to="/register" class="register-link">注册</router-link>
+      <router-link to="/login" class="login-link">{{ $t('nav.login') }}</router-link>
+      <router-link to="/register" class="register-link">{{ $t('nav.register') }}</router-link>
     </template>
 
     <!-- 已登录 -->
@@ -15,13 +15,13 @@
       <template #dropdown>
         <el-dropdown-menu>
           <el-dropdown-item command="profile">
-            <SvgIcon name="user" :size="16" /> 个人信息
+            <SvgIcon name="user" :size="16" /> {{ $t('userMenu.profile') }}
           </el-dropdown-item>
           <el-dropdown-item command="my-articles">
-            <SvgIcon name="document" :size="16" /> 我的文章
+            <SvgIcon name="document" :size="16" /> {{ $t('userMenu.myArticles') }}
           </el-dropdown-item>
           <el-dropdown-item command="logout" divided>
-            <SvgIcon name="logout" :size="16" /> 退出登录
+            <SvgIcon name="logout" :size="16" /> {{ $t('userMenu.logout') }}
           </el-dropdown-item>
         </el-dropdown-menu>
       </template>
@@ -31,12 +31,14 @@
 
 <script setup>
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import SvgIcon from '@/components/SvgIcon.vue'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const { t } = useI18n()
 
 function handleCommand(command) {
   if (command === 'profile') {
@@ -45,7 +47,7 @@ function handleCommand(command) {
     router.push('/my-articles')
   } else if (command === 'logout') {
     authStore.logout()
-    ElMessage.success('已退出登录')
+    ElMessage.success(t('userMenu.loggedOut'))
     router.push('/')
   }
 }

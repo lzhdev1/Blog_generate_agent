@@ -560,7 +560,7 @@ onUnmounted(() => {
   gap: 6px;
   font-size: 13px;
   font-weight: 600;
-  color: #667eea;
+  color: #4f46e5;
   margin-bottom: 8px;
 }
 
@@ -590,7 +590,7 @@ onUnmounted(() => {
 }
 
 .section-content :deep(strong) {
-  color: #667eea;
+  color: #4f46e5;
 }
 
 .detail-header {
@@ -599,7 +599,7 @@ onUnmounted(() => {
   gap: 10px;
   padding: 18px 20px 14px;
   border-bottom: 1px solid var(--border);
-  color: #667eea;
+  color: #4f46e5;
 }
 
 .detail-header h3 {

@@ -1157,7 +1157,7 @@ onUnmounted(() => {
 }
 
 .section-content :deep(strong) {
-  color: #667eea;
+  color: #4f46e5;
 }
 
 .empty-detail {

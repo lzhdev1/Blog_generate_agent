@@ -158,3 +158,24 @@ class DownloadRecord(Base):
     title = Column(String(512), nullable=True, comment="下载时的文章标题快照")
     content_snapshot = Column(Text, nullable=True, comment="下载时的正文内容快照")
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+class NotificationType(StrEnum):
+    LIKE = "like"            # 收到点赞
+    FAVORITE = "favorite"    # 收到收藏
+    PURCHASE = "purchase"    # 收到付费
+    SYSTEM = "system"        # 系统消息
+
+
+class Notification(Base):
+    """站内消息通知"""
+    __tablename__ = "notifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True, comment="接收者（文章作者/用户本人）")
+    type = Column(Enum(NotificationType), nullable=False, default=NotificationType.SYSTEM, comment="通知类型")
+    content = Column(String(512), nullable=False, comment="通知内容")
+    task_id = Column(Integer, ForeignKey("blog_task.id"), nullable=True, comment="关联文章")
+    actor_name = Column(String(64), nullable=True, comment="触发者昵称")
+    is_read = Column(Boolean, default=False, index=True, comment="是否已读")
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, index=True)
