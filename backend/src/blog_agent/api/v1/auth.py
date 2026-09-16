@@ -69,7 +69,13 @@ def delete_account(current_user: User = Depends(get_current_user), db: Session =
     return {"message": "账号已注销"}
 
 
-@router.post("/recharge", summary="模拟充值（开发期）")
+@router.post("/recharge", summary="模拟充值（开发期：模拟支付确认码 888888）")
 def recharge(req: RechargeReq, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """模拟支付闭环：支付确认码固定为 888888（settings.email_code_default）。
+    将来接真实支付网关时，此接口改为由支付回调驱动，前端逻辑不变。
+    """
+    from config.settings import settings
+    if req.verify_code != settings.email_code_default:
+        raise HTTPException(status_code=400, detail="支付确认码错误（开发阶段固定 888888）")
     user = auth_service.recharge_balance(db, current_user, req.amount)
     return {"message": "充值成功", "balance": float(user.balance)}

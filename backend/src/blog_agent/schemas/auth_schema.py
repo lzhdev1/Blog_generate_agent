@@ -60,6 +60,10 @@ class SendCodeReq(BaseModel):
 class RechargeReq(BaseModel):
     """模拟充值（开发期用，后续接真实支付网关）"""
     amount: float = Field(..., gt=0, le=10000, description="充值金额（元）")
+    verify_code: str | None = Field(
+        default=None, max_length=6,
+        description="模拟支付确认码（开发阶段固定 888888，将来接真实支付网关后改为支付回调）"
+    )
 
 
 class ChangePasswordReq(BaseModel):

@@ -1,26 +1,70 @@
 <template>
   <div class="blog-detail-view">
     <!-- 顶部操作栏 -->
-    <div class="blog-toolbar">
+        <div class="blog-toolbar">
       <button class="toolbar-btn" @click="$router.push('/')">
         <SvgIcon name="back" :size="18" />
-        <span>返回列表</span>
+        <span>返回</span>
       </button>
       <div class="toolbar-actions">
-        <button class="toolbar-btn" @click="copyContent">
-          <SvgIcon name="copy" :size="16" />
-          <span>复制全文</span>
-        </button>
-        <button class="toolbar-btn primary" @click="regenerate">
-          <SvgIcon name="refresh" :size="16" />
-          <span>重新生成</span>
-        </button>
+        <!-- 非作者：点赞/收藏/下载/购买 -->
+        <template v-if="blog && !blog.is_owner">
+          <button class="toolbar-btn" :class="{ 'active': liked }" @click="handleLike">
+            <SvgIcon name="like" :size="16" />
+            <span>{{ liked ? '已赞' : '点赞' }} {{ likeCount }}</span>
+          </button>
+          <button class="toolbar-btn" :class="{ 'active': favorited }" @click="handleFavorite">
+            <SvgIcon name="star" :size="16" />
+            <span>{{ favorited ? '已收藏' : '收藏' }}</span>
+          </button>
+          <button v-if="!isDemoArticle" class="toolbar-btn" @click="handleDownload">
+            <SvgIcon name="download" :size="16" />
+            <span>{{ canDownload || purchased ? '下载' : '不可下载' }}</span>
+          </button>
+          <button v-if="needPurchase" class="toolbar-btn primary" @click="handlePurchase">
+            <span>购买全文 ¥{{ downloadPrice }}</span>
+          </button>
+        </template>
+        <!-- 作者：复制/公开配置/重新生成 -->
+        <template v-else-if="blog && blog.is_owner">
+          <button class="toolbar-btn" @click="copyContent">
+            <SvgIcon name="copy" :size="16" />
+            <span>复制全文</span>
+          </button>
+          <button class="toolbar-btn" @click="visibilityDialog = true">
+            <SvgIcon name="format" :size="16" />
+            <span>{{ articleMeta?.is_public ? '已公开' : '公开配置' }}</span>
+          </button>
+          <button class="toolbar-btn primary" @click="regenerate">
+            <SvgIcon name="refresh" :size="16" />
+            <span>重新生成</span>
+          </button>
+        </template>
       </div>
     </div>
 
+    <!-- 公开/下载配置弹窗（作者） -->
+    <el-dialog v-model="visibilityDialog" title="公开与下载配置" width="440px">
+      <el-form label-position="top">
+        <el-form-item label="是否公开（展示在全部文章页，他人可阅读）">
+          <el-switch v-model="visForm.is_public" />
+        </el-form-item>
+        <el-form-item label="是否允许下载">
+          <el-switch v-model="visForm.allow_download" />
+        </el-form-item>
+        <el-form-item v-if="visForm.allow_download" label="下载价格（元，0=免费）">
+          <el-input-number v-model="visForm.download_price" :min="0" :max="100000" :step="1" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="visibilityDialog = false">取消</el-button>
+        <el-button type="primary" :loading="savingVis" @click="saveVisibility">保存</el-button>
+      </template>
+    </el-dialog>
+
     <div v-if="blog" class="three-column">
       <!-- ========== 左栏：标题 / 大纲配置 / 大纲结构 ========== -->
-      <aside class="side-col left-col">
+      <aside v-if="blog.is_owner" class="side-col left-col">
         <div class="side-card">
           <div class="side-title">
             <SvgIcon name="spark" :size="14" />
@@ -77,7 +121,7 @@
       </aside>
 
       <!-- ========== 中间栏：正文（宽度保持原样） ========== -->
-      <main class="content-col">
+      <main class="content-col" :class="{ 'content-col--standalone': !blog.is_owner }">
         <div class="blog-card animate-fade-in-up">
           <article class="blog-article">
             <header class="blog-header">
@@ -112,7 +156,7 @@
       </main>
 
       <!-- ========== 右栏：审稿记录 / 写手思路 / 调研结果 ========== -->
-      <aside class="side-col right-col">
+      <aside v-if="blog.is_owner" class="side-col right-col">
         <!-- 审稿记录（最上边，默认展开） -->
         <div class="side-card">
           <div class="side-title collapsible" @click="toggle('review')">
@@ -229,7 +273,11 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import SvgIcon from '@/components/SvgIcon.vue'
 import MarkdownRender from '@/components/MarkdownRender.vue'
 import { getBlogDetail, generateContent } from '@/api/task'
+import { getArticle, toggleLike, toggleFavorite, downloadArticle, purchaseArticle, updateVisibility } from '@/api/article'
 import { isTimeoutError } from '@/utils/request'
+import { useAuthStore } from '@/stores/auth'
+
+const authStore = useAuthStore()
 
 const route = useRoute()
 const router = useRouter()
@@ -238,6 +286,23 @@ const blogId = route.params.id
 const loading = ref(false)
 const blog = ref(null)
 const contentResFull = ref(false)
+
+// ===== 公开访问模式（非作者交互） =====
+const articleMeta = ref(null)      // getArticle 返回的元信息
+const likeCount = ref(0)
+const liked = ref(false)
+const favorited = ref(false)
+const purchased = ref(false)
+const visibilityDialog = ref(false)
+const savingVis = ref(false)
+const visForm = reactive({ is_public: false, allow_download: false, download_price: 0 })
+
+const isDemoArticle = computed(() => !!articleMeta.value?.is_demo)
+const downloadPrice = computed(() => articleMeta.value?.download_price || 0)
+const canDownload = computed(() => isDemoArticle.value || !!articleMeta.value?.allow_download)
+const needPurchase = computed(() =>
+  !isDemoArticle.value && downloadPrice.value > 0 && !purchased.value
+)
 
 // 侧栏卡片折叠状态（默认只展开审稿记录）
 const opened = reactive({
@@ -394,9 +459,91 @@ function renderStars(count) {
 async function fetchBlog() {
   loading.value = true
   try {
-    blog.value = await getBlogDetail(blogId)
+    // 1) 先取公开详情（匿名/他人/作者都能看，登录后带交互状态）
+    const a = await getArticle(blogId)
+    articleMeta.value = a
+    likeCount.value = a.like_count
+    liked.value = a.liked
+    favorited.value = a.favorited
+    purchased.value = a.purchased
+    blog.value = {
+      selected_title: a.title,
+      topic: a.topic,
+      content: a.content,
+      formatted_content: a.content,
+      created_at: a.created_at,
+      is_owner: a.is_owner
+    }
+    // 2) 作者本人：再拉全量过程数据（调研/思路/审稿/大纲配置）
+    if (a.is_owner) {
+      const full = await getBlogDetail(blogId)
+      blog.value = { ...blog.value, ...full, is_owner: true }
+      visForm.is_public = full.is_public
+      visForm.allow_download = full.allow_download
+      visForm.download_price = Number(full.download_price || 0)
+    }
+  } catch (e) {
+    blog.value = null
   } finally {
     loading.value = false
+  }
+}
+
+// ===== 公开访问交互 =====
+async function handleLike() {
+  try {
+    const res = await toggleLike(blogId)
+    liked.value = res.liked
+    likeCount.value = res.like_count
+  } catch (e) { /* 401 已由拦截器处理 */ }
+}
+
+async function handleFavorite() {
+  try {
+    const res = await toggleFavorite(blogId)
+    favorited.value = res.favorited
+    ElMessage.success(res.favorited ? '已收藏' : '已取消收藏')
+  } catch (e) { /* 401 已由拦截器处理 */ }
+}
+
+async function handleDownload() {
+  try {
+    const res = await downloadArticle(blogId)
+    const blob = new Blob([res.content], { type: 'text/markdown;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${res.title || 'article'}.md`
+    a.click()
+    URL.revokeObjectURL(url)
+    ElMessage.success(res.message || '下载成功')
+    purchased.value = true
+  } catch (e) { /* 未购买/不可下载已由拦截器提示 */ }
+}
+
+async function handlePurchase() {
+  try {
+    const res = await purchaseArticle(blogId)
+    purchased.value = true
+    ElMessage.success(`购买成功，剩余余额 ¥${res.balance}`)
+    if (authStore.user) authStore.user.balance = res.balance
+  } catch (e) { /* 余额不足等已由拦截器提示 */ }
+}
+
+// ===== 作者：公开/下载配置 =====
+async function saveVisibility() {
+  savingVis.value = true
+  try {
+    const res = await updateVisibility(blogId, {
+      is_public: visForm.is_public,
+      allow_download: visForm.allow_download,
+      download_price: visForm.download_price
+    })
+    articleMeta.value = { ...articleMeta.value, is_public: res.is_public, allow_download: res.allow_download, download_price: res.download_price }
+    ElMessage.success('配置已保存')
+    visibilityDialog.value = false
+  } catch (e) { /* 拦截器已提示 */ } finally {
+    savingVis.value = false
   }
 }
 
@@ -483,6 +630,12 @@ onMounted(() => {
   color: white;
 }
 
+.toolbar-btn.active {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: rgba(99, 102, 241, 0.08);
+}
+
 .toolbar-btn.primary:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
@@ -511,6 +664,14 @@ onMounted(() => {
 /* 中间正文列：内部保持原 820px 宽度 */
 .content-col {
   min-width: 0;
+}
+
+/* 非作者阅读模式：中间栏居中，左右留白 */
+.content-col--standalone {
+  grid-column: 1 / -1;
+  justify-self: center;
+  width: 100%;
+  max-width: 820px;
 }
 
 .content-col .blog-card {

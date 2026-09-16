@@ -20,6 +20,24 @@ const routes = [
     meta: { title: '注册' }
   },
   {
+    path: '/articles',
+    name: 'AllArticles',
+    component: () => import('@/views/AllArticlesView.vue'),
+    meta: { title: '全部文章' }
+  },
+  {
+    path: '/my-articles',
+    name: 'MyArticles',
+    component: () => import('@/views/MyArticlesView.vue'),
+    meta: { title: '我的文章', requiresAuth: true }
+  },
+  {
+    path: '/profile',
+    name: 'Profile',
+    component: () => import('@/views/ProfileView.vue'),
+    meta: { title: '个人信息', requiresAuth: true }
+  },
+  {
     path: '/create',
     name: 'Create',
     component: () => import('@/views/CreateView.vue'),

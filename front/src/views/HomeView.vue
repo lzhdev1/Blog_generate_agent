@@ -52,42 +52,55 @@
       </div>
     </div>
 
-    <!-- 我的文章 -->
-    <div id="articles-section" class="articles-section" v-if="taskList.length > 0">
+    <!-- 全部文章 -->
+    <div id="articles-section" class="articles-section">
       <div class="section-header">
-        <h2>我的文章</h2>
-        <span class="article-count">{{ taskList.length }} 篇</span>
+        <h2>全部文章</h2>
+        <div class="section-actions">
+          <span class="article-count">{{ articleTotal }} 篇</span>
+          <el-button size="small" :loading="shuffling" @click="fetchArticles">
+            <SvgIcon name="refresh" :size="14" />
+            换一批
+          </el-button>
+        </div>
       </div>
-      <div class="article-grid">
+
+      <div v-if="articlesLoading && !articles.length" class="article-grid">
+        <div v-for="i in 4" :key="i" class="article-card skeleton-card">
+          <el-skeleton animated :rows="3" />
+        </div>
+      </div>
+
+      <el-empty v-else-if="!articles.length" description="暂无公开文章" />
+
+      <div v-else class="article-grid">
         <div
-          v-for="task in taskList"
-          :key="task.id"
+          v-for="a in articles"
+          :key="a.task_id"
           class="article-card"
-          @click="goToTask(task)"
+          @click="goArticle(a.task_id)"
         >
-          <button class="card-delete" title="删除" @click.stop="handleDelete(task)">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="3 6 5 6 21 6"></polyline>
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-            </svg>
-          </button>
-          <div class="card-status" :class="getStatusClass(task.status)">
-            <span class="status-dot"></span>
-            {{ getStatusText(task.status) }}
+          <div class="card-top">
+            <span class="card-type" :class="a.is_demo ? 'is-demo' : 'is-user'">
+              {{ a.is_demo ? '演示' : '用户' }}
+            </span>
+            <span class="card-like">
+              <SvgIcon name="like" :size="13" /> {{ a.like_count }}
+            </span>
           </div>
-          <h3 class="card-topic">{{ task.topic }}</h3>
-          <p v-if="task.selected_title" class="card-title">{{ task.selected_title }}</p>
+          <h3 class="card-topic">{{ a.title }}</h3>
+          <p v-if="a.topic" class="card-title">{{ a.topic }}</p>
           <div class="card-footer">
             <div class="card-meta">
-              <SvgIcon name="clock" :size="14" />
-              <span>{{ formatTime(task.created_at) }}</span>
+              <SvgIcon name="user" :size="13" />
+              <span>{{ a.nickname || '匿名' }}</span>
             </div>
             <div class="card-badges">
-              <span v-if="task.need_image" class="badge">
-                <SvgIcon name="image" :size="12" />
-                配图
+              <span v-if="a.allow_download && !a.is_demo" class="badge badge-download">
+                <SvgIcon name="download" :size="12" />
+                {{ a.download_price > 0 ? `¥${a.download_price}` : '免费' }}
               </span>
-              <span class="badge-id">#{{ task.id }}</span>
+              <span class="badge-id">#{{ a.task_id }}</span>
             </div>
           </div>
         </div>
@@ -95,7 +108,7 @@
     </div>
 
     <!-- 空状态 -->
-    <div v-else-if="!loading" class="empty-state">
+    <div v-if="!articlesLoading && !articles.length" class="empty-state">
       <div class="empty-icon">
         <SvgIcon name="document" :size="48" />
       </div>
@@ -116,18 +129,37 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { storeToRefs } from 'pinia'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import SvgIcon from '@/components/SvgIcon.vue'
 import ProgressModal from '@/components/ProgressModal.vue'
-import { useTaskStore } from '@/stores/task'
-import { createTask, generateTitles, getTask, deleteTask } from '@/api/task'
+import { createTask, generateTitles, getTask } from '@/api/task'
+import { getArticles } from '@/api/article'
 import { isTimeoutError } from '@/utils/request'
 
 const router = useRouter()
-const taskStore = useTaskStore()
-const { taskList, loading } = storeToRefs(taskStore)
-const { fetchTaskList } = taskStore
+
+// ===== 全部文章（随机展示 + 换一批） =====
+const articles = ref([])
+const articleTotal = ref(0)
+const articlesLoading = ref(false)
+const shuffling = ref(false)
+
+async function fetchArticles() {
+  shuffling.value = true
+  if (!articles.value.length) articlesLoading.value = true
+  try {
+    const res = await getArticles({ limit: 8, offset: 0, random: true })
+    articles.value = res.items || []
+    articleTotal.value = res.total || 0
+  } finally {
+    articlesLoading.value = false
+    shuffling.value = false
+  }
+}
+
+function goArticle(taskId) {
+  router.push(/blog/)
+}
 
 const topic = ref('')
 const creating = ref(false)
@@ -143,28 +175,6 @@ const examples = [
   'FastAPI 高性能后端开发',
   'LangGraph 多 Agent 开发教程'
 ]
-
-const statusMap = {
-  'pending': { text: '待生成', class: 'status-pending' },
-  'researching_title': { text: '标题调研中', class: 'status-processing' },
-  'title_generated': { text: '待选标题', class: 'status-warning' },
-  'researching_outline': { text: '大纲调研中', class: 'status-processing' },
-  'outline_generated': { text: '待确认大纲', class: 'status-warning' },
-  'generating_content': { text: '生成正文中', class: 'status-processing' },
-  'reviewing': { text: '审稿中', class: 'status-processing' },
-  'generating_images': { text: '配图中', class: 'status-processing' },
-  'formatting': { text: '格式化中', class: 'status-processing' },
-  'completed': { text: '已完成', class: 'status-success' },
-  'failed': { text: '失败', class: 'status-failed' }
-}
-
-function getStatusText(status) {
-  return statusMap[status]?.text || status
-}
-
-function getStatusClass(status) {
-  return statusMap[status]?.class || 'status-pending'
-}
 
 function formatTime(timeStr) {
   if (!timeStr) return ''
@@ -247,48 +257,8 @@ onUnmounted(() => {
   stopProgressPolling()
 })
 
-async function handleDelete(task) {
-  try {
-    await ElMessageBox.confirm(
-      `确定要删除「${task.topic}」吗？删除后无法恢复。`,
-      '删除确认',
-      {
-        confirmButtonText: '删除',
-        cancelButtonText: '取消',
-        type: 'warning',
-        confirmButtonClass: 'el-button--danger'
-      }
-    )
-  } catch {
-    return // 用户取消
-  }
-  try {
-    await deleteTask(task.id)
-    ElMessage.success('删除成功')
-    fetchTaskList()
-  } catch (e) {
-    console.error('删除失败:', e)
-    ElMessage.error('删除失败')
-  }
-}
-
-function goToTask(task) {
-  const status = task.status
-  if (['completed', 'content_generated'].includes(status)) {
-    router.push(`/blog/${task.id}`)
-  } else if (['outline_generated'].includes(status)) {
-    router.push(`/task/${task.id}/outline`)
-  } else if (['generating_content', 'reviewing', 'generating_images', 'formatting'].includes(status)) {
-    router.push(`/task/${task.id}/generating`)
-  } else if (['title_generated', 'researching_title'].includes(status)) {
-    router.push(`/task/${task.id}/titles`)
-  } else {
-    router.push(`/task/${task.id}/titles`)
-  }
-}
-
 onMounted(() => {
-  fetchTaskList()
+  fetchArticles()
 })
 </script>
 
