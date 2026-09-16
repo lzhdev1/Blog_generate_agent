@@ -1,0 +1,34 @@
+name: 自动部署
+
+# 只在 main 分支收到 push 时触发
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:   # 支持手动触发
+
+jobs:
+  deploy:
+    name: 部署到服务器
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH 执行部署脚本
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
+          # 前端镜像构建（npm install + vite build）耗时较长，给足超时
+          timeout: 900s
+          # 任何一条命令失败立即停止，方便定位
+          script_stop: true
+          script: |
+            set -e
+            cd /opt/Blog_generate_agent
+            echo "=== 1. 拉取最新代码 ==="
+            git pull --ff-only origin main
+            echo "=== 2. 重建前端生产镜像 ==="
+            docker compose --profile prod build frontend-prod
+            echo "=== 3. 启动/更新容器 ==="
+            docker compose --profile prod up -d
+            echo "=== 部署完成: $(date) ==="
