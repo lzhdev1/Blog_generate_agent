@@ -11,7 +11,34 @@ jobs:
     name: 部署到服务器
     runs-on: ubuntu-latest
     steps:
-      - name: SSH 执行部署脚本
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      # 服务器在阿里云，直连 github.com 拉取会超时（国内网络），
+      # 所以改由 Actions runner（可访问 GitHub）把代码 rsync 推到服务器，
+      # 服务器只负责构建镜像、起容器和跑数据库迁移。
+      - name: 同步代码到服务器（rsync）
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          SERVER_PORT: ${{ secrets.SERVER_PORT }}
+          SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SERVER_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          # 排除服务器本地文件：.env 密钥、运行时图片、node_modules 等
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p ${SERVER_PORT}" \
+            --exclude '.git' \
+            --exclude '.env' \
+            --exclude 'backend/.env' \
+            --exclude 'backend/data' \
+            --exclude 'front/node_modules' \
+            --exclude 'front/dist' \
+            ./ ${SERVER_USER}@${SERVER_HOST}:/root/myspace/Blog_generate_agent/
+
+      - name: SSH 执行部署
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -25,20 +52,16 @@ jobs:
           script: |
             set -e
             cd /root/myspace/Blog_generate_agent
-            echo "=== 1. 清理运行时生成的图片（避免 git pull 覆盖冲突）==="
-            git clean -fd -- backend/data/images || true
-            echo "=== 2. 拉取最新代码 ==="
-            git pull --ff-only origin main
-            echo "=== 3. 重建后端镜像（安装新增 Python 依赖，如 bcrypt）==="
+            echo "=== 1. 重建后端镜像（安装新增 Python 依赖，如 bcrypt）==="
             docker compose build backend
-            echo "=== 4. 重建前端生产镜像 ==="
+            echo "=== 2. 重建前端生产镜像 ==="
             docker compose --profile prod build frontend-prod
-            echo "=== 5. 启动/更新容器 ==="
+            echo "=== 3. 启动/更新容器 ==="
             docker compose --profile prod up -d
-            echo "=== 6. 等待后端启动 ==="
+            echo "=== 4. 等待后端启动 ==="
             sleep 8
-            echo "=== 7. 数据库迁移（幂等：补齐已存在表的新增列）==="
+            echo "=== 5. 数据库迁移（幂等：补齐已存在表的新增列）==="
             docker exec blog-agent-backend python -m scripts.migrate
-            echo "=== 8. 创建新表（幂等）==="
+            echo "=== 6. 创建新表（幂等）==="
             docker exec blog-agent-backend python -m scripts.init_db
             echo "=== 部署完成: $(date) ==="
