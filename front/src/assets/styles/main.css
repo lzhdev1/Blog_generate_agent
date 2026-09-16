@@ -382,17 +382,3 @@ a {
 [data-theme='dark'] .el-card {
   background-color: var(--bg-card);
 }
-
-/* 暗色下页面内硬编码的浅紫/浅灰渐变面板 */
-[data-theme='dark'] .hero-section,
-[data-theme='dark'] .panel-gradient,
-[data-theme='dark'] .config-panel,
-[data-theme='dark'] .outline-editor,
-[data-theme='dark'] .titles-list,
-[data-theme='dark'] .title-card,
-[data-theme='dark'] .article-list,
-[data-theme='dark'] .timeline-panel,
-[data-theme='dark'] .detail-panel {
-  background: var(--bg-card) !important;
-  border-color: var(--border) !important;
-}
