@@ -158,7 +158,7 @@ async function fetchArticles() {
 }
 
 function goArticle(taskId) {
-  router.push(/blog/)
+  router.push(`/blog/${taskId}`)
 }
 
 const topic = ref('')
