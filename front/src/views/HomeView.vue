@@ -7,12 +7,9 @@
         <span>AI 驱动的多 Agent 博客生成系统</span>
       </div>
       <h1 class="hero-title">
-        让 AI 帮你写出
-        <span class="gradient-text">精彩博客</span>
+        精彩博客
+        <span class="gradient-text">一触即发</span>
       </h1>
-      <p class="hero-desc">
-        输入主题，多 Agent 协作完成调研、标题、大纲、正文、审稿、配图、排版全流程
-      </p>
 
       <!-- 问答输入框 -->
       <div class="input-card">
@@ -30,24 +27,6 @@
             <SvgIcon v-if="!creating" name="send" :size="20" />
             <SvgIcon v-else name="loading" :size="20" class="animate-spin" />
           </button>
-        </div>
-        <div class="input-hint">
-          <span>按 Ctrl + Enter 快速生成</span>
-        </div>
-      </div>
-
-      <!-- 示例主题 -->
-      <div class="examples">
-        <span class="examples-label">试试这些主题：</span>
-        <div class="example-tags">
-          <span
-            v-for="example in examples"
-            :key="example"
-            class="example-tag"
-            @click="topic = example"
-          >
-            {{ example }}
-          </span>
         </div>
       </div>
     </div>
@@ -154,8 +133,10 @@ import ProgressModal from '@/components/ProgressModal.vue'
 import { createTask, generateTitles, getTask } from '@/api/task'
 import { getArticles, toggleLike, toggleFavorite, downloadArticle } from '@/api/article'
 import { isTimeoutError } from '@/utils/request'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
+const authStore = useAuthStore()
 
 // ===== 全部文章（随机展示 + 换一批） =====
 const articles = ref([])
@@ -221,14 +202,6 @@ const showProgressModal = ref(false)
 const currentTaskStatus = ref('')
 let pollTimer = null
 
-const examples = [
-  'Python 快速入门指南',
-  'Vue 3 组合式 API 最佳实践',
-  'Docker 容器化部署实战',
-  'FastAPI 高性能后端开发',
-  'LangGraph 多 Agent 开发教程'
-]
-
 function formatTime(timeStr) {
   if (!timeStr) return ''
   const date = new Date(timeStr)
@@ -270,6 +243,13 @@ function stopProgressPolling() {
 }
 
 async function handleCreate() {
+  // 未登录不允许发起生成任务：提示并跳转登录页（登录后跳回首页）
+  if (!authStore.isLoggedIn) {
+    ElMessage.warning('请先登录后再创建文章')
+    router.push({ path: '/login', query: { redirect: '/' } })
+    return
+  }
+
   if (!topic.value.trim()) {
     ElMessage.warning('请输入博客主题')
     return
