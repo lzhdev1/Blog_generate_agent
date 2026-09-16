@@ -24,7 +24,7 @@ jobs:
           script_stop: true
           script: |
             set -e
-            cd /opt/Blog_generate_agent
+            cd /root/myspace/Blog_generate_agent
             echo "=== 1. 拉取最新代码 ==="
             git pull --ff-only origin main
             echo "=== 2. 重建前端生产镜像 ==="
