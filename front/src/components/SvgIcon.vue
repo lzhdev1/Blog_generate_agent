@@ -121,6 +121,31 @@
     <template v-else-if="name === 'moon'">
       <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
     </template>
+    <!-- 菜单（汉堡） -->
+    <template v-else-if="name === 'menu'">
+      <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </template>
+    <!-- 用户 -->
+    <template v-else-if="name === 'user'">
+      <circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/>
+      <path d="M4 21c0-4 3.6-6 8-6s8 2 8 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </template>
+    <!-- 退出登录 -->
+    <template v-else-if="name === 'logout'">
+      <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </template>
+    <!-- 下载 -->
+    <template v-else-if="name === 'download'">
+      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </template>
+    <!-- 收藏/星标 -->
+    <template v-else-if="name === 'star'">
+      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+    </template>
+    <!-- 点赞 -->
+    <template v-else-if="name === 'like'">
+      <path d="M7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3m7-7l-2-2a3.5 3.5 0 00-5 5l4 5v6a2 2 0 002 2h6a2 2 0 002-1.5l2.5-8a2 2 0 00-2-2.5H14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </template>
     <!-- 默认：圆点 -->
     <template v-else>
       <circle cx="12" cy="12" r="4" fill="currentColor"/>

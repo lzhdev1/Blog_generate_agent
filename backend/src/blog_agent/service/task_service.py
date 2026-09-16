@@ -13,9 +13,9 @@ class TaskService:
     # ========== 基础查询 ==========
 
     @staticmethod
-    def create_task(db: Session, topic: str) -> BlogTask:
+    def create_task(db: Session, topic: str, user_id: Optional[int] = None) -> BlogTask:
         """创建博客生成任务"""
-        return TaskRepository.create_task(db, topic=topic)
+        return TaskRepository.create_task(db, topic=topic, user_id=user_id)
 
     @staticmethod
     def get_task(db: Session, task_id: int) -> Optional[BlogTask]:
@@ -28,11 +28,14 @@ class TaskService:
         return TaskRepository.delete_task(db, task_id=task_id)
 
     @staticmethod
-    def list_tasks(db: Session, limit: int = 20, offset: int = 0):
-        """任务列表（简单分页）"""
-        total = db.query(BlogTask).count()
+    def list_tasks(db: Session, limit: int = 20, offset: int = 0, user_id: Optional[int] = None):
+        """任务列表（分页）。user_id 非空时只返回该用户的私有任务；is_demo 数据不在此列表"""
+        query = db.query(BlogTask)
+        if user_id is not None:
+            query = query.filter(BlogTask.user_id == user_id)
+        total = query.count()
         items = (
-            db.query(BlogTask)
+            query
             .order_by(BlogTask.created_at.desc())
             .offset(offset)
             .limit(limit)

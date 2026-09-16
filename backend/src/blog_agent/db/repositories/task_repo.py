@@ -7,8 +7,8 @@ from src.blog_agent.db.models import BlogTask, TaskStatus
 class TaskRepository:
 
     @staticmethod
-    def create_task(db: Session, topic: str) -> BlogTask:
-        task = BlogTask(topic=topic)
+    def create_task(db: Session, topic: str, user_id: int | None = None) -> BlogTask:
+        task = BlogTask(topic=topic, user_id=user_id)
         db.add(task)
         db.commit()
         db.refresh(task)

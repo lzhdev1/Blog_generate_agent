@@ -145,3 +145,16 @@ class Purchase(Base):
     download_count = Column(Integer, default=0, comment="下载次数")
     last_download_at = Column(DateTime, nullable=True, comment="最近下载时间")
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+class DownloadRecord(Base):
+    """文章下载记录（含免费/已购下载，快照内容，作者注销不影响下载用户）"""
+    __tablename__ = "downloads"
+    __table_args__ = (UniqueConstraint("user_id", "task_id", name="uq_download_user_task"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    task_id = Column(Integer, ForeignKey("blog_task.id"), nullable=False, index=True)
+    title = Column(String(512), nullable=True, comment="下载时的文章标题快照")
+    content_snapshot = Column(Text, nullable=True, comment="下载时的正文内容快照")
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)

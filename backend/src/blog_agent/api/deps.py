@@ -1,4 +1,4 @@
-from typing import Generator
+from typing import Generator, Optional
 
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -39,4 +39,20 @@ def get_current_user(
         raise HTTPException(status_code=401, detail="用户不存在")
     if not user.is_active:
         raise HTTPException(status_code=403, detail="账号已被注销")
+    return user
+
+
+def get_optional_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+    db: Session = Depends(get_db),
+) -> Optional[User]:
+    """可选登录：有有效 token 返回用户，无 token 返回 None（公开接口用，不抛 401）"""
+    if credentials is None:
+        return None
+    user_id = decode_access_token(credentials.credentials)
+    if user_id is None:
+        return None
+    user = get_user_by_id(db, user_id)
+    if user is None or not user.is_active:
+        return None
     return user

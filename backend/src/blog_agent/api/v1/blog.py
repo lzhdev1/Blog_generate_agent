@@ -1,14 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from src.blog_agent.api.deps import get_db
-from src.blog_agent.db.models import TaskStatus
+from src.blog_agent.api.deps import get_db, get_current_user
+from src.blog_agent.db.models import TaskStatus, User
 from src.blog_agent.schemas.task_schema import (
     TaskCreateReq,
     TaskResp,
     TaskListResp,
     TitleAndConfigReq,
     ConfirmOutlineReq,
+    VisibilityReq,
 )
 from src.blog_agent.schemas.blog_schema import BlogDetailResp
 from src.blog_agent.service.task_service import TaskService
@@ -21,51 +22,74 @@ from src.blog_agent.agent.graph import (
 router = APIRouter(prefix="/api/v1", tags=["博客任务"])
 
 
+def _get_owned_task(db: Session, task_id: int, user: User) -> "BlogTask":
+    """查询任务并校验归属：非本人任务（非 demo）一律拒绝"""
+    task = TaskService.get_task(db, task_id=task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    if task.is_demo or task.user_id != user.id:
+        raise HTTPException(status_code=403, detail="无权访问该任务")
+    return task
+
+
 # ========== 基础接口 ==========
 
 @router.post("/task", response_model=TaskResp, summary="创建博客生成任务")
-def create_task(req: TaskCreateReq, db: Session = Depends(get_db)):
-    """创建一个博客生成任务，状态为 pending"""
-    task = TaskService.create_task(db, topic=req.topic)
+def create_task(req: TaskCreateReq, db: Session = Depends(get_db),
+                current_user: User = Depends(get_current_user)):
+    """创建一个博客生成任务，状态为 pending，归属当前用户"""
+    task = TaskService.create_task(db, topic=req.topic, user_id=current_user.id)
     return task
 
 
 @router.get("/task/{task_id}", response_model=TaskResp, summary="查询任务状态")
-def get_task(task_id: int, db: Session = Depends(get_db)):
+def get_task(task_id: int, db: Session = Depends(get_db),
+             current_user: User = Depends(get_current_user)):
     """根据 task_id 查询任务状态（前端轮询用，包含实时进度）"""
-    task = TaskService.get_task(db, task_id=task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="任务不存在")
-    return task
+    return _get_owned_task(db, task_id, current_user)
 
 
 @router.delete("/task/{task_id}", summary="删除任务")
-def delete_task(task_id: int, db: Session = Depends(get_db)):
+def delete_task(task_id: int, db: Session = Depends(get_db),
+                current_user: User = Depends(get_current_user)):
     """根据 task_id 删除任务及其所有数据"""
-    task = TaskService.get_task(db, task_id=task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="任务不存在")
+    _get_owned_task(db, task_id, current_user)
     TaskService.delete_task(db, task_id=task_id)
     return {"message": "删除成功", "task_id": task_id}
 
 
-@router.get("/task", response_model=TaskListResp, summary="任务列表")
+@router.get("/task", response_model=TaskListResp, summary="我的任务列表")
 def list_tasks(
     limit: int = 20,
     offset: int = 0,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    """分页查询任务列表"""
-    total, items = TaskService.list_tasks(db, limit=limit, offset=offset)
+    """分页查询当前用户的任务列表（数据隔离，不含他人及演示数据）"""
+    total, items = TaskService.list_tasks(db, limit=limit, offset=offset, user_id=current_user.id)
     return {"total": total, "items": items}
 
 
-@router.get("/blog/{task_id}", response_model=BlogDetailResp, summary="查询博客详情")
-def get_blog_detail(task_id: int, db: Session = Depends(get_db)):
-    """任务完成后，查询完整博客内容"""
-    task = TaskService.get_task(db, task_id=task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="任务不存在")
+@router.put("/task/{task_id}/visibility", response_model=TaskResp, summary="配置文章可见性（公开/下载/价格）")
+def update_visibility(task_id: int, req: VisibilityReq, db: Session = Depends(get_db),
+                      current_user: User = Depends(get_current_user)):
+    """作者配置文章：是否公开、是否允许下载、下载价格"""
+    task = _get_owned_task(db, task_id, current_user)
+    if task.status not in ("content_generated", "completed"):
+        raise HTTPException(status_code=400, detail="任务未完成，暂不能配置公开/下载")
+    task.is_public = req.is_public
+    task.allow_download = req.allow_download
+    task.download_price = req.download_price
+    db.commit()
+    db.refresh(task)
+    return task
+
+
+@router.get("/blog/{task_id}", response_model=BlogDetailResp, summary="查询博客详情（作者本人）")
+def get_blog_detail(task_id: int, db: Session = Depends(get_db),
+                    current_user: User = Depends(get_current_user)):
+    """任务完成后，作者本人查询完整博客内容（含调研、思路、审稿等过程数据）"""
+    task = _get_owned_task(db, task_id, current_user)
     if task.status not in ("content_generated", "completed"):
         raise HTTPException(status_code=400, detail="任务尚未完成，无法查看博客详情")
 
@@ -100,15 +124,14 @@ def get_blog_detail(task_id: int, db: Session = Depends(get_db)):
 # ========== 节点1：调研 + 生成标题 ==========
 
 @router.post("/task/{task_id}/generate-titles", response_model=TaskResp, summary="节点1：调研并生成标题（支持重新生成）")
-def generate_titles(task_id: int, db: Session = Depends(get_db)):
+def generate_titles(task_id: int, db: Session = Depends(get_db),
+                    current_user: User = Depends(get_current_user)):
     """
     先调研同类文章标题（避免重复），再生成3个标题
     支持 pending 和 title_generated 状态（重新生成）
     执行过程中可通过 GET /task/{id} 查看实时进度
     """
-    task = TaskService.get_task(db, task_id=task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="任务不存在")
+    task = _get_owned_task(db, task_id, current_user)
     if task.status not in ("pending", "title_generated"):
         raise HTTPException(status_code=400, detail="当前状态不允许生成标题")
 
@@ -133,15 +156,14 @@ def generate_titles(task_id: int, db: Session = Depends(get_db)):
 # ========== 人工介入点1：选择标题 + 配图配置，自动开始大纲调研和生成 ==========
 
 @router.post("/task/{task_id}/submit-title-config", response_model=TaskResp, summary="人工介入点1：选择标题+是否配图+文章风格，自动生成大纲")
-def submit_title_config(task_id: int, req: TitleAndConfigReq, db: Session = Depends(get_db)):
+def submit_title_config(task_id: int, req: TitleAndConfigReq, db: Session = Depends(get_db),
+                        current_user: User = Depends(get_current_user)):
     """
     用户选择标题，配置是否配图、文章风格、对大纲的额外要求
     提交后自动开始：大纲调研 → 生成大纲
     配图方式（搜索/AI生成）在大纲确认页配置
     """
-    task = TaskService.get_task(db, task_id=task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="任务不存在")
+    task = _get_owned_task(db, task_id, current_user)
     if task.status != "title_generated":
         raise HTTPException(status_code=400, detail="当前状态不允许选择标题")
     if req.article_style == "custom" and not req.article_style_custom:
@@ -165,11 +187,10 @@ def submit_title_config(task_id: int, req: TitleAndConfigReq, db: Session = Depe
 
 
 @router.post("/task/{task_id}/regenerate-outline", response_model=TaskResp, summary="重新生成大纲")
-def regenerate_outline(task_id: int, db: Session = Depends(get_db)):
+def regenerate_outline(task_id: int, db: Session = Depends(get_db),
+                       current_user: User = Depends(get_current_user)):
     """对大纲不满意时，重新生成大纲（使用已保存的标题、配图、风格配置）"""
-    task = TaskService.get_task(db, task_id=task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="任务不存在")
+    task = _get_owned_task(db, task_id, current_user)
     if task.status != "outline_generated":
         raise HTTPException(status_code=400, detail="当前状态不允许重新生成大纲")
     if not task.selected_title:
@@ -195,11 +216,10 @@ def regenerate_outline(task_id: int, db: Session = Depends(get_db)):
 # ========== 人工介入点2：确认大纲 ==========
 
 @router.post("/task/{task_id}/confirm-outline", response_model=TaskResp, summary="人工介入点2：确认大纲 + 正文写作配置 + 配图方式")
-def confirm_outline(task_id: int, req: ConfirmOutlineReq, db: Session = Depends(get_db)):
+def confirm_outline(task_id: int, req: ConfirmOutlineReq, db: Session = Depends(get_db),
+                    current_user: User = Depends(get_current_user)):
     """用户确认大纲，可传入修改后的大纲，同时保存正文写作配置（字数/水平/额外要求）和配图方式"""
-    task = TaskService.get_task(db, task_id=task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="任务不存在")
+    task = _get_owned_task(db, task_id, current_user)
     if task.status != "outline_generated":
         raise HTTPException(status_code=400, detail="当前状态不允许确认大纲")
     if task.need_image and req.image_source not in ("api", "ai"):
@@ -219,11 +239,10 @@ def confirm_outline(task_id: int, req: ConfirmOutlineReq, db: Session = Depends(
 # ========== 节点3：生成正文 ==========
 
 @router.post("/task/{task_id}/generate-content", response_model=TaskResp, summary="节点3：生成正文")
-def generate_content(task_id: int, db: Session = Depends(get_db)):
+def generate_content(task_id: int, db: Session = Depends(get_db),
+                     current_user: User = Depends(get_current_user)):
     """根据已确认的大纲，调 LLM 生成正文"""
-    task = TaskService.get_task(db, task_id=task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="任务不存在")
+    task = _get_owned_task(db, task_id, current_user)
     if not task.outline_confirmed:
         raise HTTPException(status_code=400, detail="请先确认大纲")
 

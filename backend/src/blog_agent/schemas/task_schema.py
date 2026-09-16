@@ -63,6 +63,13 @@ class TaskResp(BaseModel):
     status: str
     progress: Optional[str] = None
 
+    # 作者与可见性
+    user_id: Optional[int] = None
+    is_demo: bool = False
+    is_public: bool = False
+    allow_download: bool = False
+    download_price: float = 0
+
     # 调研结果
     title_research: Optional[str] = None
     outline_research: Optional[str] = None
@@ -121,6 +128,27 @@ class TaskResp(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class VisibilityReq(BaseModel):
+    """文章可见性配置 —— 请求体"""
+    is_public: bool = Field(description="是否公开", default=False)
+    allow_download: bool = Field(description="是否允许下载", default=False)
+    download_price: float = Field(description="下载价格（元，0=免费）", default=0, ge=0, le=100000)
+
+
+class ArticleCardResp(BaseModel):
+    """公开文章卡片 —— 响应体（全部文章页/首页随机展示用）"""
+    task_id: int
+    title: str
+    topic: str
+    nickname: Optional[str] = None        # 作者昵称
+    is_demo: bool = False                 # 演示数据标记
+    allow_download: bool = False
+    download_price: float = 0
+    like_count: int = 0
+    created_at: Optional[datetime] = None
+    status: str = ""
 
 
 class TaskListResp(BaseModel):

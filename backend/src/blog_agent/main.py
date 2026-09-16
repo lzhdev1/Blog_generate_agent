@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from config.settings import settings
 from src.blog_agent.api.v1.auth import router as auth_router
 from src.blog_agent.api.v1.blog import router as blog_router
+from src.blog_agent.api.v1.articles import router as articles_router
 
 app = FastAPI(
     title="博客生成 Agent API",
@@ -30,6 +31,7 @@ app.mount("/images", StaticFiles(directory=settings.image_save_dir), name="image
 # 注册路由
 app.include_router(auth_router)
 app.include_router(blog_router)
+app.include_router(articles_router)
 
 
 @app.get("/", summary="健康检查")

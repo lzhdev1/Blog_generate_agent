@@ -19,14 +19,15 @@
           >
             <SvgIcon :name="isDark ? 'sun' : 'moon'" :size="18" />
           </button>
-          <a href="#" class="nav-link" @click.prevent="scrollToArticles">
+          <router-link to="/articles" class="nav-link">
             <SvgIcon name="document" :size="18" />
-            <span>我的文章</span>
-          </a>
-          <router-link to="/create" class="create-btn">
+            <span>全部文章</span>
+          </router-link>
+          <router-link v-if="authStore.isLoggedIn" to="/create" class="create-btn">
             <SvgIcon name="plus" :size="18" />
             <span>创建新文章</span>
           </router-link>
+          <UserMenu />
         </div>
       </div>
     </header>
@@ -44,9 +45,12 @@
 import { computed, ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import SvgIcon from '@/components/SvgIcon.vue'
+import UserMenu from '@/components/UserMenu.vue'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const route = useRoute()
+const authStore = useAuthStore()
 
 // ===== 明暗主题切换 =====
 const THEME_KEY = 'blog-agent-theme'
@@ -84,25 +88,6 @@ onMounted(() => {
 const isFullWidthPage = computed(() => {
   return route.path.startsWith('/blog/') || /\/task\/\d+\/outline/.test(route.path)
 })
-
-function scrollToArticles() {
-  if (route.path === '/') {
-    // 已经在首页，滚动到文章列表
-    const el = document.getElementById('articles-section')
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' })
-    }
-  } else {
-    // 不在首页，先跳转到首页，然后滚动
-    router.push('/')
-    setTimeout(() => {
-      const el = document.getElementById('articles-section')
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth' })
-      }
-    }, 300)
-  }
-}
 </script>
 
 <style scoped>
