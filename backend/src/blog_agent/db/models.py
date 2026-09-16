@@ -1,5 +1,8 @@
 import datetime
-from sqlalchemy import Column, Integer, String, Text, Enum, DateTime, Boolean
+from sqlalchemy import (
+    Column, Integer, String, Text, Enum, DateTime, Boolean,
+    ForeignKey, Numeric, UniqueConstraint,
+)
 from enum import StrEnum
 
 from .session import Base
@@ -28,6 +31,14 @@ class BlogTask(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     topic = Column(String(512), nullable=False, comment="博客主题")
+
+    # 作者与可见性（注册登录体系）
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True, comment="作者用户ID（NULL=老数据/系统）")
+    is_demo = Column(Boolean, default=False, comment="演示数据标记（老测试数据）")
+    is_public = Column(Boolean, default=False, comment="是否公开（他人可见）")
+    allow_download = Column(Boolean, default=False, comment="是否允许下载")
+    download_price = Column(Numeric(10, 2), default=0, comment="下载价格（元）")
+
     status = Column(Enum(TaskStatus), default=TaskStatus.PENDING, nullable=False)
     progress = Column(String(256), nullable=True, comment="当前执行进度提示")
 
@@ -80,3 +91,57 @@ class BlogTask(Base):
     error = Column(Text, nullable=True, comment="错误信息")
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+
+class User(Base):
+    """用户账号"""
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(64), unique=True, nullable=False, index=True, comment="登录用户名（数字+大小写字母）")
+    email = Column(String(128), unique=True, nullable=False, index=True, comment="登录邮箱")
+    nickname = Column(String(64), nullable=False, comment="显示昵称")
+    password_hash = Column(String(256), nullable=False, comment="bcrypt 密码哈希")
+    email_verified = Column(Boolean, default=False, comment="邮箱是否已验证")
+    is_active = Column(Boolean, default=True, comment="账号是否有效")
+    balance = Column(Numeric(10, 2), default=0, comment="账户余额（元，模拟支付扣款用）")
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+
+class Favorite(Base):
+    """文章收藏"""
+    __tablename__ = "favorites"
+    __table_args__ = (UniqueConstraint("user_id", "task_id", name="uq_favorite_user_task"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    task_id = Column(Integer, ForeignKey("blog_task.id"), nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+class Like(Base):
+    """文章点赞"""
+    __tablename__ = "likes"
+    __table_args__ = (UniqueConstraint("user_id", "task_id", name="uq_like_user_task"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    task_id = Column(Integer, ForeignKey("blog_task.id"), nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+class Purchase(Base):
+    """付费购买记录（付费成功即快照文章内容，作者注销不影响付费用户）"""
+    __tablename__ = "purchases"
+    __table_args__ = (UniqueConstraint("user_id", "task_id", name="uq_purchase_user_task"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    task_id = Column(Integer, ForeignKey("blog_task.id"), nullable=False, index=True)
+    title = Column(String(512), nullable=True, comment="购买时的文章标题快照")
+    content_snapshot = Column(Text, nullable=True, comment="购买时的正文内容快照")
+    price = Column(Numeric(10, 2), default=0, comment="成交价格（元）")
+    download_count = Column(Integer, default=0, comment="下载次数")
+    last_download_at = Column(DateTime, nullable=True, comment="最近下载时间")
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)

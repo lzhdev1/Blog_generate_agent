@@ -15,6 +15,11 @@ psycopg2-binary==2.9.10       # PostgreSQL 驱动，生产数据库连接
 # ========== 数据验证 & 配置 ==========
 pydantic==2.13.5              # 数据验证，Schema 定义
 pydantic-settings==2.15.0     # 配置管理，读取 .env 文件
+email-validator==2.2.0        # Email 格式校验（Pydantic EmailStr）
+
+# ========== 认证 & 安全 ==========
+bcrypt==4.2.0                 # 密码哈希（带盐，抗彩虹表）
+PyJWT==2.10.1                 # JWT 签发与校验
 
 # ========== 大模型 ==========
 openai==3.9.0                 # OpenAI 兼容 SDK，对接阿里云百炼

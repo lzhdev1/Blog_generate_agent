@@ -5,12 +5,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from config.settings import settings
+from src.blog_agent.api.v1.auth import router as auth_router
 from src.blog_agent.api.v1.blog import router as blog_router
 
 app = FastAPI(
     title="博客生成 Agent API",
     description="AI 自动生成博客的后端服务",
-    version="0.1.0",
+    version="0.2.0",
 )
 
 # 跨域配置：允许前端访问
@@ -27,6 +28,7 @@ os.makedirs(settings.image_save_dir, exist_ok=True)
 app.mount("/images", StaticFiles(directory=settings.image_save_dir), name="images")
 
 # 注册路由
+app.include_router(auth_router)
 app.include_router(blog_router)
 
 

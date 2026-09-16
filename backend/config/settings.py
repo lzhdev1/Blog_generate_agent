@@ -56,5 +56,14 @@ class Settings(BaseSettings):
     # Agent
     agent_timeout: int = 120
 
+    # ========== 用户认证配置 ==========
+    # JWT 密钥：生产环境务必用随机长字符串（.env 注入，如 openssl rand -hex 32）
+    jwt_secret: str = "dev-secret-change-me-in-production"
+    jwt_algorithm: str = "HS256"
+    jwt_expire_minutes: int = 10080  # 7 天
+
+    # 邮箱验证码：开发阶段固定 888888；接入真实 SMTP 后改为随机生成并发送邮件
+    email_code_default: str = "888888"
+
 
 settings = Settings()
