@@ -29,13 +29,13 @@
             <SvgIcon name="user" :size="13" /> {{ a.nickname || '匿名' }}
           </span>
           <span class="card-stats">
-            <span class="stat">
+            <span class="stat" :class="{ active: a.liked }" title="点赞" @click.stop="handleLike(a)">
               <SvgIcon name="like" :size="13" /> {{ a.like_count }}
             </span>
-            <span class="stat">
+            <span class="stat" :class="{ 'active-fav': a.favorited }" title="收藏" @click.stop="handleFavorite(a)">
               <SvgIcon name="star" :size="13" /> {{ a.favorite_count }}
             </span>
-            <span v-if="a.allow_download || a.is_demo" class="stat">
+            <span v-if="a.allow_download || a.is_demo" class="stat" title="下载" @click.stop="handleDownload(a)">
               <SvgIcon name="download" :size="13" />
             </span>
           </span>
@@ -52,8 +52,9 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import SvgIcon from '@/components/SvgIcon.vue'
-import { getArticles } from '@/api/article'
+import { getArticles, toggleLike, toggleFavorite, downloadArticle } from '@/api/article'
 
 const router = useRouter()
 const items = ref([])
@@ -94,6 +95,40 @@ function loadMore() {
 
 function goDetail(taskId) {
   router.push(`/blog/${taskId}`)
+}
+
+// ===== 卡片交互：点赞 / 收藏 / 下载 =====
+function handleLike(a) {
+  toggleLike(a.task_id).then(res => {
+    a.like_count = res.like_count
+    a.liked = res.liked
+  })
+}
+
+function handleFavorite(a) {
+  toggleFavorite(a.task_id).then(res => {
+    a.favorited = res.favorited
+    a.favorite_count = Math.max(0, (a.favorite_count || 0) + (res.favorited ? 1 : -1))
+  })
+}
+
+function handleDownload(a) {
+  downloadArticle(a.task_id)
+    .then(res => {
+      const blob = new Blob([res.content || ''], { type: 'text/markdown;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `${res.title || 'article'}.md`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      ElMessage.success('下载成功')
+    })
+    .catch(() => {
+      // 未购买/未登录等提示已由请求拦截器统一弹出
+    })
 }
 
 onMounted(() => fetchArticles(true))
@@ -245,6 +280,31 @@ onMounted(() => fetchArticles(true))
   gap: 3px;
   font-size: 12px;
   color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.2s ease;
+}
+
+.stat:hover {
+  color: var(--primary);
+}
+
+/* 已点赞：玫红高亮 */
+.stat.active {
+  color: #f43f5e;
+}
+
+.stat.active svg {
+  stroke: #f43f5e;
+}
+
+/* 已收藏：金色高亮 */
+.stat.active-fav {
+  color: #f59e0b;
+}
+
+.stat.active-fav svg {
+  stroke: #f59e0b;
 }
 
 .empty-state {

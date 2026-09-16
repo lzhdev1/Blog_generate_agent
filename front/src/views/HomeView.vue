@@ -57,11 +57,10 @@
       <div class="section-header">
         <h2>全部文章</h2>
         <div class="section-actions">
-          <span class="article-count">{{ articleTotal }} 篇</span>
-          <el-button size="small" :loading="shuffling" @click="fetchArticles">
-            <SvgIcon name="refresh" :size="14" />
-            换一批
-          </el-button>
+          <button class="shuffle-btn" :disabled="shuffling" @click="fetchArticles">
+            <SvgIcon name="refresh" :size="15" />
+            <span>换一批</span>
+          </button>
         </div>
       </div>
 
@@ -97,13 +96,28 @@
               <span>{{ a.nickname || '匿名' }}</span>
             </div>
             <div class="card-stats">
-              <span class="stat">
+              <span
+                class="stat"
+                :class="{ active: a.liked }"
+                title="点赞"
+                @click.stop="handleLike(a)"
+              >
                 <SvgIcon name="like" :size="13" /> {{ a.like_count }}
               </span>
-              <span class="stat">
+              <span
+                class="stat"
+                :class="{ 'active-fav': a.favorited }"
+                title="收藏"
+                @click.stop="handleFavorite(a)"
+              >
                 <SvgIcon name="star" :size="13" /> {{ a.favorite_count }}
               </span>
-              <span v-if="a.allow_download || a.is_demo" class="stat">
+              <span
+                v-if="a.allow_download || a.is_demo"
+                class="stat"
+                title="下载"
+                @click.stop="handleDownload(a)"
+              >
                 <SvgIcon name="download" :size="13" />
               </span>
             </div>
@@ -138,7 +152,7 @@ import { ElMessage } from 'element-plus'
 import SvgIcon from '@/components/SvgIcon.vue'
 import ProgressModal from '@/components/ProgressModal.vue'
 import { createTask, generateTitles, getTask } from '@/api/task'
-import { getArticles } from '@/api/article'
+import { getArticles, toggleLike, toggleFavorite, downloadArticle } from '@/api/article'
 import { isTimeoutError } from '@/utils/request'
 
 const router = useRouter()
@@ -164,6 +178,40 @@ async function fetchArticles() {
 
 function goArticle(taskId) {
   router.push(`/blog/${taskId}`)
+}
+
+// ===== 卡片交互：点赞 / 收藏 / 下载 =====
+function handleLike(a) {
+  toggleLike(a.task_id).then(res => {
+    a.like_count = res.like_count
+    a.liked = res.liked
+  })
+}
+
+function handleFavorite(a) {
+  toggleFavorite(a.task_id).then(res => {
+    a.favorited = res.favorited
+    a.favorite_count = Math.max(0, (a.favorite_count || 0) + (res.favorited ? 1 : -1))
+  })
+}
+
+function handleDownload(a) {
+  downloadArticle(a.task_id)
+    .then(res => {
+      const blob = new Blob([res.content || ''], { type: 'text/markdown;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `${res.title || 'article'}.md`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      ElMessage.success('下载成功')
+    })
+    .catch(() => {
+      // 未购买/未登录等提示已由请求拦截器统一弹出
+    })
 }
 
 const topic = ref('')
@@ -447,6 +495,31 @@ onMounted(() => {
   color: var(--text-muted);
 }
 
+/* 换一批：文字按钮（无边框无背景） */
+.shuffle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.shuffle-btn:hover {
+  color: var(--primary);
+  background: var(--bg-soft);
+}
+
+.shuffle-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .article-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -603,6 +676,31 @@ onMounted(() => {
   gap: 3px;
   font-size: 12px;
   color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.2s ease;
+}
+
+.stat:hover {
+  color: var(--primary);
+}
+
+/* 已点赞：玫红高亮 */
+.stat.active {
+  color: #f43f5e;
+}
+
+.stat.active svg {
+  stroke: #f43f5e;
+}
+
+/* 已收藏：金色高亮 */
+.stat.active-fav {
+  color: #f59e0b;
+}
+
+.stat.active-fav svg {
+  stroke: #f59e0b;
 }
 
 /* 空状态 */

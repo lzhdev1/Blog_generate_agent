@@ -47,7 +47,7 @@ def _nickname(db: Session, user_id: Optional[int]) -> str:
     return u.nickname if u else "未知作者"
 
 
-def _card(db: Session, task: BlogTask) -> ArticleCardResp:
+def _card(db: Session, task: BlogTask, uid: Optional[int] = None) -> ArticleCardResp:
     return ArticleCardResp(
         task_id=task.id,
         title=task.selected_title or task.topic,
@@ -58,9 +58,23 @@ def _card(db: Session, task: BlogTask) -> ArticleCardResp:
         download_price=float(task.download_price or 0),
         like_count=_like_count(db, task.id),
         favorite_count=_favorite_count(db, task.id),
+        liked=_is_liked(db, uid, task.id) if uid else False,
+        favorited=_is_favorited(db, uid, task.id) if uid else False,
         created_at=task.created_at,
         status=task.status,
     )
+
+
+def _is_liked(db: Session, uid: Optional[int], task_id: int) -> bool:
+    if uid is None:
+        return False
+    return db.query(Like).filter(Like.user_id == uid, Like.task_id == task_id).first() is not None
+
+
+def _is_favorited(db: Session, uid: Optional[int], task_id: int) -> bool:
+    if uid is None:
+        return False
+    return db.query(Favorite).filter(Favorite.user_id == uid, Favorite.task_id == task_id).first() is not None
 
 
 # ========== 全部文章（公开文章流） ==========
@@ -71,6 +85,7 @@ def list_articles(
     offset: int = 0,
     random: bool = True,
     db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_user),
 ):
     """公开文章列表：演示数据 + 用户公开的文章。random=true 随机排序（首页/换一批用）"""
     query = (
@@ -85,7 +100,8 @@ def list_articles(
     else:
         q = q.order_by(BlogTask.created_at.desc())
     items = q.offset(offset).limit(limit).all()
-    return {"total": total, "items": [_card(db, t) for t in items]}
+    uid = current_user.id if current_user else None
+    return {"total": total, "items": [_card(db, t, uid) for t in items]}
 
 
 # ========== 文章详情 ==========
