@@ -17,8 +17,9 @@
           <span class="card-type" :class="a.is_demo ? 'is-demo' : 'is-user'">
             {{ a.is_demo ? '演示' : '用户' }}
           </span>
-          <span class="card-like">
-            <SvgIcon name="like" :size="14" /> {{ a.like_count }}
+          <span class="card-price" :class="a.download_price > 0 ? 'is-paid' : 'is-free'">
+            <SvgIcon name="download" :size="12" />
+            {{ a.download_price > 0 ? `¥${a.download_price}` : '免费' }}
           </span>
         </div>
         <h3 class="card-title">{{ a.title }}</h3>
@@ -27,12 +28,17 @@
           <span class="card-author">
             <SvgIcon name="user" :size="13" /> {{ a.nickname || '匿名' }}
           </span>
-          <span v-if="a.allow_download && !a.is_demo" class="card-download">
-            <SvgIcon name="download" :size="13" />
-            {{ a.download_price > 0 ? `¥${a.download_price}` : '免费' }}
+          <span class="card-stats">
+            <span class="stat">
+              <SvgIcon name="like" :size="13" /> {{ a.like_count }}
+            </span>
+            <span class="stat">
+              <SvgIcon name="star" :size="13" /> {{ a.favorite_count }}
+            </span>
+            <span v-if="a.allow_download || a.is_demo" class="stat">
+              <SvgIcon name="download" :size="13" />
+            </span>
           </span>
-          <span v-else-if="a.is_demo" class="card-download">演示</span>
-          <span v-else class="card-download muted">不可下载</span>
         </div>
       </div>
     </div>
@@ -163,12 +169,28 @@ onMounted(() => fetchArticles(true))
   color: var(--primary);
 }
 
-.card-like {
-  display: flex;
+.card-price {
+  display: inline-flex;
   align-items: center;
   gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
   font-size: 12px;
-  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.card-price.is-free {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.card-price.is-paid {
+  background: #fff7ed;
+  color: #ea580c;
+}
+
+.card-price.is-paid svg {
+  stroke: #ea580c;
 }
 
 .card-title {
@@ -198,12 +220,11 @@ onMounted(() => fetchArticles(true))
   justify-content: space-between;
   align-items: center;
   margin-top: auto;
-  padding-top: 6px;
-  border-top: 1px dashed var(--border);
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
 }
 
-.card-author,
-.card-download {
+.card-author {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -211,14 +232,19 @@ onMounted(() => fetchArticles(true))
   color: var(--text-secondary);
 }
 
-.card-download {
-  color: var(--success, #67c23a);
-  font-weight: 600;
+.card-stats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-muted);
 }
 
-.card-download.muted {
-  color: var(--text-muted);
-  font-weight: 400;
+.stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 
 .empty-state {

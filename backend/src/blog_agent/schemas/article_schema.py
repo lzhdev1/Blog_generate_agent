@@ -13,6 +13,7 @@ class ArticleCardResp(BaseModel):
     allow_download: bool = False
     download_price: float = 0
     like_count: int = 0
+    favorite_count: int = 0
     created_at: Optional[datetime] = None
     status: str = ""
 

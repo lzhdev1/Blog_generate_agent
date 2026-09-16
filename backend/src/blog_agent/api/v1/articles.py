@@ -36,6 +36,10 @@ def _like_count(db: Session, task_id: int) -> int:
     return db.query(Like).filter(Like.task_id == task_id).count()
 
 
+def _favorite_count(db: Session, task_id: int) -> int:
+    return db.query(Favorite).filter(Favorite.task_id == task_id).count()
+
+
 def _nickname(db: Session, user_id: Optional[int]) -> str:
     if user_id is None:
         return "演示"
@@ -53,6 +57,7 @@ def _card(db: Session, task: BlogTask) -> ArticleCardResp:
         allow_download=task.allow_download,
         download_price=float(task.download_price or 0),
         like_count=_like_count(db, task.id),
+        favorite_count=_favorite_count(db, task.id),
         created_at=task.created_at,
         status=task.status,
     )

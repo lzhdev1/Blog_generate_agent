@@ -84,23 +84,28 @@
             <span class="card-type" :class="a.is_demo ? 'is-demo' : 'is-user'">
               {{ a.is_demo ? '演示' : '用户' }}
             </span>
-            <span class="card-like">
-              <SvgIcon name="like" :size="13" /> {{ a.like_count }}
+            <span class="card-price" :class="a.download_price > 0 ? 'is-paid' : 'is-free'">
+              <SvgIcon name="download" :size="12" />
+              {{ a.download_price > 0 ? `¥${a.download_price}` : '免费' }}
             </span>
           </div>
           <h3 class="card-topic">{{ a.title }}</h3>
           <p v-if="a.topic" class="card-title">{{ a.topic }}</p>
           <div class="card-footer">
-            <div class="card-meta">
+            <div class="card-author">
               <SvgIcon name="user" :size="13" />
               <span>{{ a.nickname || '匿名' }}</span>
             </div>
-            <div class="card-badges">
-              <span v-if="a.allow_download && !a.is_demo" class="badge badge-download">
-                <SvgIcon name="download" :size="12" />
-                {{ a.download_price > 0 ? `¥${a.download_price}` : '免费' }}
+            <div class="card-stats">
+              <span class="stat">
+                <SvgIcon name="like" :size="13" /> {{ a.like_count }}
               </span>
-              <span class="badge-id">#{{ a.task_id }}</span>
+              <span class="stat">
+                <SvgIcon name="star" :size="13" /> {{ a.favorite_count }}
+              </span>
+              <span v-if="a.allow_download || a.is_demo" class="stat">
+                <SvgIcon name="download" :size="13" />
+              </span>
             </div>
           </div>
         </div>
@@ -464,6 +469,38 @@ onMounted(() => {
   border-color: var(--primary-light);
 }
 
+/* 卡片顶部：左类型 / 右价格 */
+.card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.card-price {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.card-price.is-free {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.card-price.is-paid {
+  background: #fff7ed;
+  color: #ea580c;
+}
+
+.card-price.is-paid svg {
+  stroke: #ea580c;
+}
+
 .card-delete {
   position: absolute;
   top: 12px;
@@ -544,7 +581,7 @@ onMounted(() => {
   border-top: 1px solid var(--border);
 }
 
-.card-meta {
+.card-author {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -552,26 +589,20 @@ onMounted(() => {
   color: var(--text-muted);
 }
 
-.card-badges {
+/* 卡片右下角：点赞 / 收藏 / 下载 */
+.card-stats {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+  color: var(--text-muted);
 }
 
-.badge {
+.stat {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  color: var(--warning);
-  background: var(--bg-card)beb;
-  padding: 2px 8px;
-  border-radius: 8px;
-}
-
-.badge-id {
+  gap: 3px;
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 /* 空状态 */
