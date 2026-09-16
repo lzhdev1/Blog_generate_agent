@@ -128,7 +128,7 @@ const isFullWidthPage = computed(() => {
 }
 
 .logo-icon {
-  height: 56px;
+  height: 44px;
   flex-shrink: 0;
 }
 
