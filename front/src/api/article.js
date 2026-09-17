@@ -5,6 +5,11 @@ export function getArticles(params = {}) {
   return request.get('/articles', { params })
 }
 
+// 搜索公开文章（标题/主题模糊匹配）
+export function searchArticles(q, limit = 8) {
+  return request.get('/articles/search', { params: { q, limit } })
+}
+
 // 公开文章详情
 export function getArticle(taskId) {
   return request.get(`/articles/${taskId}`)

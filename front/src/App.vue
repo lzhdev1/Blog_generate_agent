@@ -7,6 +7,7 @@
             <img src="@/assets/logo.png" alt="BlogAgent" />
           </div>
         </router-link>
+        <SearchBox />
         <div class="header-actions">
           <button
             class="theme-toggle"
@@ -48,6 +49,7 @@ import { useI18n } from 'vue-i18n'
 import SvgIcon from '@/components/SvgIcon.vue'
 import UserMenu from '@/components/UserMenu.vue'
 import NotificationBell from '@/components/NotificationBell.vue'
+import SearchBox from '@/components/SearchBox.vue'
 import { useAuthStore } from '@/stores/auth'
 import { setLocale } from '@/i18n'
 
@@ -110,6 +112,7 @@ const isFullWidthPage = computed(() => {
 }
 
 .header-inner {
+  position: relative;
   width: 100%;
   max-width: none;
   margin: 0;
@@ -118,6 +121,14 @@ const isFullWidthPage = computed(() => {
   align-items: center;
   justify-content: space-between;
   padding: 0 32px;
+}
+
+.header-inner > .search-box {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(460px, 42vw);
+  margin: 0;
 }
 
 .logo {
@@ -255,12 +266,14 @@ const isFullWidthPage = computed(() => {
 
 /* ===== 移动端适配（<640px）===== */
 @media (max-width: 640px) {
-  .header-inner {
+      .header-inner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     height: 56px;
     padding: 0 12px;
     gap: 6px;
   }
-
   .logo-icon {
     height: 28px;
   }

@@ -105,6 +105,35 @@ def list_articles(
     return {"total": total, "items": [_card(db, t, uid) for t in items]}
 
 
+# ========== 搜索 ==========
+
+@router.get("/articles/search", response_model=ArticleListResp, summary="搜索公开文章（标题/主题模糊匹配）")
+def search_articles(
+    q: str = "",
+    limit: int = 8,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_user),
+):
+    """关键字模糊搜索公开文章：匹配最终标题或用户主题，实时输入建议用"""
+    query = (
+        db.query(BlogTask)
+        .filter(or_(BlogTask.is_demo.is_(True), BlogTask.is_public.is_(True)))
+        .filter(BlogTask.status.in_(_DONE_STATUSES))
+    )
+    if q.strip():
+        like = f"%{q.strip()}%"
+        query = query.filter(
+            or_(
+                BlogTask.selected_title.ilike(like),
+                BlogTask.topic.ilike(like),
+            )
+        )
+    total = query.count()
+    items = query.order_by(BlogTask.created_at.desc()).limit(min(limit, 20)).all()
+    uid = current_user.id if current_user else None
+    return {"total": total, "items": [_card(db, t, uid) for t in items]}
+
+
 # ========== 文章详情 ==========
 
 @router.get("/articles/{task_id}", response_model=ArticleDetailResp, summary="公开文章详情")

@@ -5,7 +5,12 @@ export default {
     register: 'Sign Up',
     themeLight: 'Switch to light theme',
     themeDark: 'Switch to dark theme',
-    switchLang: 'Switch language'
+    switchLang: 'Switch language',
+    searchPlaceholder: 'Search articles...',
+    searching: 'Searching...',
+    searchResults: 'Results',
+    enterToOpen: 'Enter to open',
+    noResults: 'No articles found'
   },
   userMenu: {
     profile: 'Profile',

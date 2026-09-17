@@ -156,6 +156,9 @@
       <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
       <path d="M12 6v12M15 9.5c0-1.4-1.3-2.5-3-2.5s-3 1.1-3 2.5c0 3.5 6 2 6 5.5 0 1.4-1.3 2.5-3 2.5s-3-1.1-3-2.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
     </template>
+    <template v-else-if="name === 'close'">
+      <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </template>
     <!-- 默认：圆点 -->
     <template v-else>
       <circle cx="12" cy="12" r="4" fill="currentColor"/>

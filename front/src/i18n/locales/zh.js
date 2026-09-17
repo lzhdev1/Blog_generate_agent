@@ -5,7 +5,12 @@ export default {
     register: '注册',
     themeLight: '切换到亮色主题',
     themeDark: '切换到暗色主题',
-    switchLang: '切换语言'
+    switchLang: '切换语言',
+    searchPlaceholder: '搜索文章...',
+    searching: '搜索中...',
+    searchResults: '搜索结果',
+    enterToOpen: '回车打开',
+    noResults: '未找到相关文章'
   },
   userMenu: {
     profile: '个人信息',
