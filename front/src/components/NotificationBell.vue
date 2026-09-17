@@ -319,4 +319,17 @@ onBeforeUnmount(() => {
   opacity: 0;
   transform: translateY(-6px);
 }
+
+/* ===== 移动端适配（<640px）===== */
+@media (max-width: 640px) {
+  .notify-btn {
+    width: 30px;
+    height: 30px;
+  }
+
+  .notify-panel {
+    width: min(340px, calc(100vw - 24px));
+    right: -40px;
+  }
+}
 </style>

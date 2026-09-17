@@ -122,4 +122,28 @@ function handleCommand(command) {
   align-items: center;
   color: var(--text-secondary);
 }
+
+/* ===== 移动端适配（<640px）===== */
+@media (max-width: 640px) {
+  .user-menu {
+    gap: 2px;
+  }
+
+  .login-link,
+  .register-link {
+    padding: 4px 8px;
+    font-size: 13px;
+    border-radius: 8px;
+  }
+
+  /* 窄屏隐藏用户名，只留菜单图标，防止导航溢出 */
+  .user-trigger {
+    padding: 4px 6px;
+    gap: 0;
+  }
+
+  .user-name {
+    display: none;
+  }
+}
 </style>

@@ -827,4 +827,71 @@ onMounted(() => {
   justify-content: center;
   color: var(--text-muted);
 }
+
+/* ===== 移动端适配（<640px）===== */
+@media (max-width: 640px) {
+  .hero-section {
+    padding: 24px 0 40px;
+  }
+
+  .hero-badge {
+    font-size: 12px;
+    padding: 4px 12px;
+    margin-bottom: 16px;
+  }
+
+  .hero-title {
+    font-size: 28px;
+    line-height: 1.35;
+    margin-bottom: 12px;
+  }
+
+  .hero-desc {
+    font-size: 14px;
+    margin-bottom: 24px;
+  }
+
+  /* 词云为装饰性元素：窄屏下百分比定位会越界裁剪，直接隐藏，保证输入框区域干净 */
+  .word-cloud {
+    display: none;
+  }
+
+  .input-card {
+    padding: 20px 0;
+  }
+
+  .input-wrapper {
+    padding: 10px 12px;
+    gap: 8px;
+    border-radius: 16px;
+  }
+
+  .input-wrapper :deep(.el-textarea__inner) {
+    font-size: 14px;
+    padding: 6px 0;
+  }
+
+  .send-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+  }
+
+  .articles-section {
+    margin-top: 40px;
+  }
+
+  .section-header h2 {
+    font-size: 18px;
+  }
+
+  .article-card {
+    padding: 16px;
+    border-radius: 14px;
+  }
+
+  .card-topic {
+    font-size: 15px;
+  }
+}
 </style>

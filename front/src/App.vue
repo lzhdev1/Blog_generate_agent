@@ -252,4 +252,48 @@ const isFullWidthPage = computed(() => {
   opacity: 0;
   transform: translateY(-10px);
 }
+
+/* ===== 移动端适配（<640px）===== */
+@media (max-width: 640px) {
+  .header-inner {
+    height: 56px;
+    padding: 0 12px;
+    gap: 6px;
+  }
+
+  .logo-icon {
+    height: 28px;
+  }
+
+  .header-actions {
+    gap: 2px;
+    flex-shrink: 1;
+    min-width: 0;
+  }
+
+  /* 窄屏隐藏"全部文章"文字，只留图标 */
+  .nav-link span {
+    display: none;
+  }
+
+  .nav-link {
+    padding: 6px 6px;
+    font-size: 13px;
+  }
+
+  .theme-toggle,
+  .lang-toggle {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+  }
+
+  .app-main {
+    padding: 20px 16px;
+  }
+
+  .app-main--full {
+    padding: 16px 0 32px;
+  }
+}
 </style>
