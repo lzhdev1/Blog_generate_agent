@@ -8,6 +8,7 @@ class ArticleCardResp(BaseModel):
     task_id: int
     title: str
     topic: str
+    article_style: Optional[str] = None      # 文章风格
     nickname: Optional[str] = None        # 作者昵称（demo 数据为"演示"）
     is_demo: bool = False
     allow_download: bool = False
@@ -31,6 +32,7 @@ class ArticleDetailResp(BaseModel):
     task_id: int
     title: str
     topic: str
+    article_style: Optional[str] = None      # 文章风格
     content: str
     nickname: Optional[str] = None
     is_demo: bool = False
@@ -49,6 +51,7 @@ class MyArticleItemResp(BaseModel):
     task_id: int
     title: str
     topic: str
+    article_style: Optional[str] = None      # 文章风格
     status: str = ""
     is_public: bool = False
     allow_download: bool = False

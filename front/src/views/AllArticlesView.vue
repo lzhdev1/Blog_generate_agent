@@ -15,7 +15,7 @@
       <div v-for="a in items" :key="a.task_id" class="article-card" @click="goDetail(a.task_id)">
         <div class="card-top">
           <span class="card-type" :class="a.is_demo ? 'is-demo' : 'is-user'">
-            {{ a.is_demo ? '演示' : '用户' }}
+            {{ styleLabel(a) }}
           </span>
           <span class="card-price" :class="a.download_price > 0 ? 'is-paid' : 'is-free'">
             <SvgIcon name="download" :size="12" />
@@ -23,7 +23,6 @@
           </span>
         </div>
         <h3 class="card-title">{{ a.title }}</h3>
-        <p class="card-topic">{{ a.topic }}</p>
         <div class="card-bottom">
           <span class="card-author">
             <SvgIcon name="user" :size="13" /> {{ a.nickname || '匿名' }}
@@ -51,6 +50,13 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+
+// 文章风格 → 中文类别标签（用于卡片左上角）
+function styleLabel(a) {
+  if (a.is_demo) return '演示'
+  const map = { popular_science: '科普', technical: '技术', essay: '论文', prose: '散文', note: '笔记', custom: '自定义' }
+  return map[a.article_style] || '文章'
+}
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import SvgIcon from '@/components/SvgIcon.vue'

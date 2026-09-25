@@ -52,6 +52,7 @@ def _card(db: Session, task: BlogTask, uid: Optional[int] = None) -> ArticleCard
     return ArticleCardResp(
         task_id=task.id,
         title=task.selected_title or task.topic,
+        article_style=task.article_style,
         topic=task.topic,
         nickname=_nickname(db, task.user_id),
         is_demo=task.is_demo,
@@ -158,6 +159,7 @@ def get_article(task_id: int, db: Session = Depends(get_db),
     return ArticleDetailResp(
         task_id=task.id,
         title=task.selected_title or task.topic,
+        article_style=task.article_style,
         topic=task.topic,
         content=content,
         nickname=_nickname(db, task.user_id),
@@ -250,6 +252,7 @@ def purchase_article(task_id: int, db: Session = Depends(get_db),
         user_id=current_user.id,
         task_id=task_id,
         title=task.selected_title or task.topic,
+        article_style=task.article_style,
         content_snapshot=content,
         price=price,
     ))
@@ -306,6 +309,7 @@ def download_article(task_id: int, db: Session = Depends(get_db),
             user_id=uid,
             task_id=task_id,
             title=task.selected_title or task.topic,
+        article_style=task.article_style,
             content_snapshot=content,
         ))
     db.commit()
@@ -396,6 +400,7 @@ def _my_item(db: Session, task: BlogTask) -> MyArticleItemResp:
     return MyArticleItemResp(
         task_id=task.id,
         title=task.selected_title or task.topic,
+        article_style=task.article_style,
         topic=task.topic,
         status=task.status,
         is_public=task.is_public,

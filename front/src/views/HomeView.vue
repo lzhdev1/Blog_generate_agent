@@ -78,7 +78,7 @@
         >
           <div class="card-top">
             <span class="card-type" :class="a.is_demo ? 'is-demo' : 'is-user'">
-              {{ a.is_demo ? $t('home.demo') : $t('home.user') }}
+              {{ styleLabel(a) }}
             </span>
             <span class="card-price" :class="a.download_price > 0 ? 'is-paid' : 'is-free'">
               <SvgIcon name="download" :size="12" />
@@ -86,7 +86,6 @@
             </span>
           </div>
           <h3 class="card-topic">{{ a.title }}</h3>
-          <p v-if="a.topic" class="card-title">{{ a.topic }}</p>
           <div class="card-footer">
             <div class="card-author">
               <SvgIcon name="user" :size="13" />
@@ -144,6 +143,13 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+
+// 文章风格 → 中文类别标签（用于卡片左上角）
+function styleLabel(a) {
+  if (a.is_demo) return '演示'
+  const map = { popular_science: '科普', technical: '技术', essay: '论文', prose: '散文', note: '笔记', custom: '自定义' }
+  return map[a.article_style] || '文章'
+}
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
