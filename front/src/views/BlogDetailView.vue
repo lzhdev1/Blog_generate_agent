@@ -483,7 +483,34 @@ async function fetchBlog() {
       visForm.download_price = Number(full.download_price || 0)
     }
   } catch (e) {
-    blog.value = null
+    // 3) 公开接口 404（例如作者本人查看自己未公开的文章）：回退作者全量接口
+    try {
+      const full = await getBlogDetail(blogId)
+      const content = full.formatted_content || full.content || ''
+      blog.value = { ...full, is_owner: true, content, formatted_content: content }
+      articleMeta.value = {
+        task_id: full.task_id,
+        title: full.selected_title || full.topic,
+        topic: full.topic,
+        content,
+        nickname: '',
+        is_demo: false,
+        allow_download: !!full.allow_download,
+        download_price: Number(full.download_price || 0),
+        like_count: 0,
+        liked: false,
+        favorited: false,
+        purchased: false,
+        is_owner: true,
+        created_at: full.created_at,
+      }
+      visForm.is_public = !!full.is_public
+      visForm.allow_download = !!full.allow_download
+      visForm.download_price = Number(full.download_price || 0)
+      return
+    } catch (e2) {
+      blog.value = null
+    }
   } finally {
     loading.value = false
   }

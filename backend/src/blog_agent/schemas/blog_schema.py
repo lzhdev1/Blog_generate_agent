@@ -33,6 +33,11 @@ class BlogDetailResp(BaseModel):
     word_count: Optional[int] = None      # 字数
     created_at: Optional[str] = None      # 创建时间
 
+    # 发布配置（作者本人查看时展示/编辑）
+    is_public: Optional[bool] = None          # 是否公开
+    allow_download: Optional[bool] = None     # 是否允许下载
+    download_price: Optional[float] = None    # 下载价格（元）
+
 
 class BlogPublishReq(BaseModel):
     """发布博客 — 请求体（后续扩展，发布到公众号/知乎等）"""
