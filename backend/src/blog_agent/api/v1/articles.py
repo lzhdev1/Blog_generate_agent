@@ -140,8 +140,13 @@ def search_articles(
 def get_article(task_id: int, db: Session = Depends(get_db),
                 current_user: Optional[User] = Depends(get_optional_user)):
     """查看公开文章。登录后可看到自己的点赞/收藏/购买状态；作者本人可看到 is_owner"""
-    task = _get_public_task(db, task_id)
+    task = TaskService.get_task(db, task_id=task_id)
+    if not task or task.status not in _DONE_STATUSES:
+        raise HTTPException(status_code=404, detail="文章不存在")
     uid = current_user.id if current_user else None
+    is_owner = (uid is not None and task.user_id == uid)
+    if not (task.is_demo or task.is_public or is_owner):
+        raise HTTPException(status_code=404, detail="文章不存在")
     content = task.formatted_content or task.content or ""
 
     liked = favorited = purchased = False
@@ -163,7 +168,7 @@ def get_article(task_id: int, db: Session = Depends(get_db),
         liked=liked,
         favorited=favorited,
         purchased=purchased,
-        is_owner=(uid is not None and task.user_id == uid),
+        is_owner=is_owner,
         created_at=task.created_at,
     )
 
