@@ -47,11 +47,17 @@ jobs:
           port: ${{ secrets.SERVER_PORT }}
           # 前后端镜像构建（npm install + vite build）耗时较长，给足超时
           timeout: 1200s
+          # 单条命令超时：构建镜像可能超过默认10分钟，放宽到25分钟防误杀
+          command_timeout: 25m
           # 任何一条命令失败立即停止，方便定位
           script_stop: true
           script: |
             set -e
             cd /root/myspace/Blog_generate_agent
+            echo "=== 0. 预热基础镜像（本地已有则秒过，避免构建时从镜像源拉取卡死）==="
+            docker pull python:3.12-slim || true
+            docker pull node:20-alpine || true
+            docker pull nginx:alpine || true
             echo "=== 1. 重建后端镜像（安装新增 Python 依赖，如 bcrypt）==="
             docker compose build backend
             echo "=== 2. 重建前端生产镜像 ==="
