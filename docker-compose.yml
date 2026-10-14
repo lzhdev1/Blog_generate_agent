@@ -1,79 +1,76 @@
+# ============================================================
+# 生产编排：新版 backend_L + front_L + 独立 PostgreSQL
+#
+# 蓝绿切换说明：
+#   - 旧版线上容器（blog-agent-backend / blog-agent-frontend-prod /
+#     blog-agent-postgres）保留不动，Nginx 反代 127.0.0.1:8080
+#   - 新版起在 127.0.0.1:8090，验证无误后把系统 Nginx 反代改指 8090
+#   - 回滚：把 Nginx 改回 8080 即可，秒级恢复旧版
+#
+# 常用命令：
+#   docker compose up -d --build      # 构建并启动
+#   docker compose down               # 停止
+#   docker compose logs -f backendl   # 看后端日志
+# ============================================================
+name: blog-agent-l-prod
+
 services:
-  # ========== PostgreSQL 数据库 ==========
-  postgres:
+  # ========== PostgreSQL（新版独立库）==========
+  postgresl:
     image: postgres:16-alpine
-    container_name: blog-agent-postgres
+    container_name: blog-agent-l-postgres-prod
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-    # ports:
-    #   - "${POSTGRES_PORT}:5432"            # 生产环境不对外暴露数据库端口
+      POSTGRES_USER: blog
+      POSTGRES_PASSWORD: lisiyao
+      POSTGRES_DB: blog_agent_L
+    # 生产不对外暴露数据库端口，只在 Docker 内网可达
     expose:
-      - "5432"                                # 只在 Docker 内部网络可访问
+      - "5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data_L:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U blog -d blog_agent_L"]
       interval: 5s
       timeout: 5s
       retries: 10
     restart: unless-stopped
 
-  # ========== 后端服务 ==========
-  backend:
+  # ========== 新后端（backend_L）==========
+  backendl:
     build:
-      context: ./backend
+      context: ./backend_L
       dockerfile: Dockerfile
-    container_name: blog-agent-backend
-    # ports:
-    #   - "8000:8000"                       # 生产环境不对外暴露后端端口
+    container_name: blog-agent-l-backend-prod
     expose:
-      - "8000"                              # 只在 Docker 内部网络可访问（Nginx/前端代理访问）
-    volumes:
-      - ./backend:/app                    # 代码挂载，热更新
+      - "8001"
     env_file:
-      - ./backend/.env                    # 读取环境变量
+      - ./backend_L/.env
     environment:
       - PYTHONPATH=/app
-      - db_url=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}  # 生产数据库
+    # 生产去掉 --reload（Dockerfile 默认 CMD 带热更新）
+    command: uvicorn src.blog_agent.main:app --host 0.0.0.0 --port 8001
+    # 持久化配图目录（容器内 /app/data/images）
+    volumes:
+      - backend_images:/app/data/images
     depends_on:
-      postgres:
+      postgresl:
         condition: service_healthy
     restart: unless-stopped
 
-  # ========== 前端服务（开发模式，vite 热更新）==========
-  frontend:
+  # ========== 新前端（front_L，nginx 托管构建产物）==========
+  frontendl:
     build:
-      context: ./front
-      dockerfile: Dockerfile.dev
-    container_name: blog-agent-frontend
-    ports:
-      - "5173:5173"
-    volumes:
-      - ./front:/app                      # 代码挂载，热更新
-      - /app/node_modules                 # 匿名卷，防止 node_modules 被覆盖
-    environment:
-      - VITE_API_URL=http://localhost:8000/api/v1
-    depends_on:
-      - backend
-    restart: unless-stopped
-
-  # ========== 前端服务（生产模式，nginx 托管构建产物）==========
-  # 本地开发默认不启动；服务器部署：docker compose --profile prod up -d --build
-  # 端口默认 80（服务器标准），本地验证可用 FRONTEND_PORT=8080 覆盖
-  frontend-prod:
-    profiles: ["prod"]
-    build:
-      context: ./front
+      context: ./front_L
       dockerfile: Dockerfile
-    container_name: blog-agent-frontend-prod
+    container_name: blog-agent-l-frontend-prod
+    # 只绑本机回环，由系统 Nginx 反代；8090 与旧版 8080 错开
     ports:
-      - "127.0.0.1:8080:80"
+      - "127.0.0.1:8090:80"
     depends_on:
-      - backend
+      - backendl
     restart: unless-stopped
 
 # ========== 持久化卷 ==========
 volumes:
-  postgres_data:
+  postgres_data_L:
+  backend_images:

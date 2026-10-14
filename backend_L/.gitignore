@@ -1,0 +1,29 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# ---- 环境变量（含真实密钥/密码，禁止提交） ----
+.env
+.env.local
+.env.*.local
+
+# ---- 本地数据产物 ----
+backend_L/data/
+backend_L/uploads/
+
+# ---- IDE / 系统 ----
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# ---- 测试与构建缓存 ----
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+dist/
+build/

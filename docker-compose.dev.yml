@@ -1,0 +1,68 @@
+# ============================================================
+# 开发环境编排：新后端 backend_L + 新前端 front_L + 独立 PostgreSQL
+# 用法：docker compose -f docker-compose.dev.yml up -d --build
+# 访问：新前端 http://localhost:5174  新后端 http://localhost:8001
+# 说明：容器名/端口与旧环境（backend/front/frontend-prod）完全隔离，互不干扰
+# 注意：服务名/项目名必须全小写（Docker 镜像名不允许大写）
+# ============================================================
+name: blog-agent-l
+
+services:
+  # ========== PostgreSQL（独立实例，避免与旧环境共用数据表）==========
+  postgresl:
+    image: postgres:16-alpine
+    container_name: blog-agent-l-postgres
+    environment:
+      POSTGRES_USER: blog
+      POSTGRES_PASSWORD: lisiyao
+      POSTGRES_DB: blog_agent_L
+    ports:
+      - "5433:5432"                    # 宿主 5433，避免与旧实例 5432 冲突
+    volumes:
+      - postgres_data_L:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U blog -d blog_agent_L"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # ========== 新后端（backend_L，uvicorn --reload 热更新）==========
+  backendl:
+    build:
+      context: ./backend_L
+      dockerfile: Dockerfile
+    container_name: blog-agent-l-backend
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./backend_L:/app               # 代码挂载，热更新
+    env_file:
+      - ./backend_L/.env               # 读取环境变量（db_url 指向 postgresl）
+    environment:
+      - PYTHONPATH=/app
+    depends_on:
+      postgresl:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ========== 新前端（front_L，vite dev 热更新，/api → backendl:8001）==========
+  frontendl:
+    build:
+      context: ./front_L
+      dockerfile: Dockerfile.dev
+    container_name: blog-agent-l-frontend
+    ports:
+      - "5174:5174"
+    volumes:
+      - ./front_L:/app                 # 代码挂载，热更新
+      - /app/node_modules              # 匿名卷，防止宿主机覆盖容器内依赖
+    environment:
+      - VITE_API_URL=http://localhost:8001/api/v1
+    depends_on:
+      - backendl
+    restart: unless-stopped
+
+# ========== 持久化卷 ==========
+volumes:
+  postgres_data_L:

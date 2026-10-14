@@ -1,0 +1,306 @@
+"""任务业务逻辑层（从旧版移植，新增结构化审稿结果保存）"""
+import json
+from typing import List, Optional
+
+from sqlalchemy.orm import Session
+
+from src.blog_agent.db.models import BlogTask, TaskStatus
+from src.blog_agent.db.repositories.task_repo import TaskRepository
+
+
+class TaskService:
+    """任务业务逻辑层：调用 repo 操作数据库，做业务处理"""
+
+    # ========== 基础查询 ==========
+
+    @staticmethod
+    def create_task(db: Session, topic: str, user_id: Optional[int] = None) -> BlogTask:
+        """创建博客生成任务"""
+        return TaskRepository.create_task(db, topic=topic, user_id=user_id)
+
+    @staticmethod
+    def get_task(db: Session, task_id: int) -> Optional[BlogTask]:
+        """根据ID查询任务"""
+        return TaskRepository.get_task_by_id(db, task_id=task_id)
+
+    @staticmethod
+    def delete_task(db: Session, task_id: int) -> bool:
+        """根据ID删除任务"""
+        return TaskRepository.delete_task(db, task_id=task_id)
+
+    @staticmethod
+    def list_tasks(db: Session, limit: int = 20, offset: int = 0, user_id: Optional[int] = None):
+        """任务列表（分页）。user_id 非空时只返回该用户的私有任务；is_demo 数据不在此列表"""
+        query = db.query(BlogTask)
+        if user_id is not None:
+            query = query.filter(BlogTask.user_id == user_id)
+        total = query.count()
+        items = (
+            query
+            .order_by(BlogTask.created_at.desc())
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
+        return total, items
+
+    # ========== 通用：状态和进度 ==========
+
+    @staticmethod
+    def update_status(db: Session, task_id: int, status: TaskStatus):
+        """更新任务状态"""
+        task = TaskRepository.get_task_by_id(db, task_id)
+        if task:
+            task.status = status
+            db.commit()
+
+    @staticmethod
+    def update_progress(db: Session, task_id: int, progress: str):
+        """更新当前执行进度提示"""
+        task = TaskRepository.get_task_by_id(db, task_id)
+        if task:
+            task.progress = progress
+            db.commit()
+
+    # ========== 调研节点 ==========
+
+    @staticmethod
+    def save_title_research(db: Session, task_id: int, research: str):
+        """保存标题调研结果"""
+        task = TaskRepository.get_task_by_id(db, task_id)
+        if task:
+            task.title_research = research
+            db.commit()
+
+    @staticmethod
+    def save_outline_research(db: Session, task_id: int, research: str):
+        """保存大纲调研结果"""
+        task = TaskRepository.get_task_by_id(db, task_id)
+        if task:
+            task.outline_research = research
+            db.commit()
+
+    @staticmethod
+    def save_content_research(db: Session, task_id: int, research: str):
+        """保存正文调研结果"""
+        task = TaskRepository.get_task_by_id(db, task_id)
+        if task:
+            task.content_research = research
+            db.commit()
+
+    @staticmethod
+    def save_writing_thoughts(db: Session, task_id: int, thoughts: str):
+        """保存写手写作思路"""
+        task = TaskRepository.get_task_by_id(db, task_id)
+        if task:
+            task.writing_thoughts = thoughts
+            db.commit()
+
+    # ========== 节点1：标题 ==========
+
+    @staticmethod
+    def save_titles(db: Session, task_id: int, titles: List[str], scores: Optional[list] = None):
+        """保存生成的3个标题，状态改为 title_generated
+        同时保存评分（如有），避免前端轮询时标题已存在但评分为空的竞态问题
+        """
+        task = TaskRepository.get_task_by_id(db, task_id)
+        if not task:
+            return
+        task.titles = json.dumps(titles, ensure_ascii=False)
+        if scores is not None:
+            task.title_scores = json.dumps(scores, ensure_ascii=False)
+        task.status = TaskStatus.TITLE_GENERATED
+        task.progress = "标题已生成，请选择标题并配置文章风格"
+        db.commit()
+
+    @staticmethod
+    def save_title_scores(db: Session, task_id: int, scores: list):
+        """保存标题评分结果"""
+        task = TaskRepository.get_task_by_id(db, task_id)
+        if not task:
+            return
+        task.title_scores = json.dumps(scores, ensure_ascii=False)
+        db.commit()
+
+    @staticmethod
+    def select_title_and_config(
+        db: Session,
+        task_id: int,
+        selected_title: str,
+        need_image: bool,
+        article_style: Optional[str] = None,
+        article_style_custom: Optional[str] = None,
+        extra_requirements: Optional[str] = None,
+    ):
+        """用户选择标题 + 是否配图 + 文章风格 + 对大纲的额外要求（配图方式在大纲确认页配置）"""
+        task = TaskRepository.get_task_by_id(db, task_id)
+        if not task:
+            return
+        task.selected_title = selected_title
+        task.need_image = need_image
+        task.article_style = article_style
+        task.article_style_custom = article_style_custom
+        task.extra_requirements = extra_requirements
+        db.commit()
+
+    # ========== 节点2：大纲 ==========
+
+    @staticmethod
+    def save_outline(db: Session, task_id: int, outline: str):
+        """保存生成的大纲，状态改为 outline_generated"""
+        task = TaskRepository.get_task_by_id(db, task_id)
+        if not task:
+            return
+        task.outline = outline
+        task.outline_confirmed = False
+        task.status = TaskStatus.OUTLINE_GENERATED
+        task.progress = "大纲已生成，请确认或修改"
+        db.commit()
+
+    @staticmethod
+    def confirm_outline(
+        db: Session,
+        task_id: int,
+        outline: Optional[str] = None,
+        word_count: Optional[int] = None,
+        level: Optional[str] = None,
+        content_extra_requirements: Optional[str] = None,
+        image_source: Optional[str] = None,
+    ):
+        """用户确认大纲，可传入修改后的大纲，同时保存正文写作配置（字数/水平/额外要求）和配图方式"""
+        task = TaskRepository.get_task_by_id(db, task_id)
+        if not task:
+            return
+        if outline is not None:
+            task.outline = outline
+        task.word_count = word_count
+        task.level = level
+        task.content_extra_requirements = content_extra_requirements
+        if image_source:
+            task.image_source = image_source
+        task.outline_confirmed = True
+        task.progress = "大纲已确认，准备生成正文..."
+        db.commit()
+
+    # ========== 节点3：正文 ==========
+
+    @staticmethod
+    def save_content(db: Session, task_id: int, content: str):
+        """保存生成的正文，状态改为 content_generated"""
+        task = TaskRepository.get_task_by_id(db, task_id)
+        if not task:
+            return
+        task.content = content
+        task.status = TaskStatus.CONTENT_GENERATED
+        task.progress = "正文已生成"
+        db.commit()
+
+    @staticmethod
+    def save_content_with_images(db: Session, task_id: int, content: str):
+        """配图后更新正文内容（不改变任务状态，状态由调用方管理）"""
+        task = TaskRepository.get_task_by_id(db, task_id)
+        if not task:
+            return
+        task.content = content
+        db.commit()
+
+    # ========== 审稿节点 ==========
+
+    @staticmethod
+    def save_review_feedback(db: Session, task_id: int, feedback: str, passed: bool):
+        """保存审稿意见"""
+        task = TaskRepository.get_task_by_id(db, task_id)
+        if not task:
+            return
+        task.review_feedback = feedback
+        db.commit()
+
+    @staticmethod
+    def save_review_result(db: Session, task_id: int, review_result: dict | None):
+        """保存结构化审稿结果（评分/维度/意见/流量预测），写入 review_feedback 字段的 JSON 版本"""
+        task = TaskRepository.get_task_by_id(db, task_id)
+        if not task:
+            return
+        if review_result is not None:
+            task.review_feedback = json.dumps(review_result, ensure_ascii=False)
+        db.commit()
+
+    # ========== 配图节点 ==========
+
+    @staticmethod
+    def save_image_urls(db: Session, task_id: int, image_urls: List[str]):
+        """保存配图URL列表"""
+        task = TaskRepository.get_task_by_id(db, task_id)
+        if not task:
+            return
+        task.image_urls = json.dumps(image_urls, ensure_ascii=False)
+        db.commit()
+
+    # ========== 格式化节点 ==========
+
+    @staticmethod
+    def save_formatted_content(db: Session, task_id: int, content: str):
+        """保存格式化后的正文，标记为完成"""
+        task = TaskRepository.get_task_by_id(db, task_id)
+        if not task:
+            return
+        task.formatted_content = content
+        task.status = TaskStatus.COMPLETED
+        task.progress = "全部完成"
+        db.commit()
+
+    # ========== 失败处理 ==========
+
+    @staticmethod
+    def mark_failed(db: Session, task_id: int, error: str):
+        """标记任务失败，写入错误信息"""
+        task = TaskRepository.get_task_by_id(db, task_id)
+        if task:
+            task.error = error
+            task.status = TaskStatus.FAILED
+            task.progress = f"执行失败：{error[:50]}"
+            db.commit()
+
+    # ========== 工具方法 ==========
+
+    @staticmethod
+    def parse_titles(titles_str: Optional[str]) -> List[str]:
+        """把数据库存的标题 JSON 字符串解析成列表"""
+        if not titles_str:
+            return []
+        try:
+            return json.loads(titles_str)
+        except (json.JSONDecodeError, TypeError):
+            return []
+
+    @staticmethod
+    def parse_image_urls(image_urls_str: Optional[str]) -> List[str]:
+        """把数据库存的图片URL JSON 字符串解析成列表"""
+        if not image_urls_str:
+            return []
+        try:
+            return json.loads(image_urls_str)
+        except (json.JSONDecodeError, TypeError):
+            return []
+
+    @staticmethod
+    def parse_image_prompts(image_prompts_str: Optional[str]) -> List[str]:
+        """把数据库存的配图提示词 JSON 字符串解析成列表"""
+        if not image_prompts_str:
+            return []
+        try:
+            return json.loads(image_prompts_str)
+        except (json.JSONDecodeError, TypeError):
+            return []
+
+    @staticmethod
+    def parse_review_result(review_feedback: Optional[str]):
+        """把审稿字段解析成结构化结果（新版为 JSON；旧版为纯文本意见）"""
+        if not review_feedback:
+            return None
+        if review_feedback.strip().startswith("{"):
+            try:
+                return json.loads(review_feedback)
+            except (json.JSONDecodeError, TypeError):
+                return None
+        return {"opinions_text": review_feedback}

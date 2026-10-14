@@ -8,7 +8,7 @@ on:
 
 jobs:
   deploy:
-    name: 部署到服务器
+    name: 部署到服务器（新版 backend_L / front_L）
     runs-on: ubuntu-latest
     steps:
       - name: 检出代码
@@ -16,7 +16,7 @@ jobs:
 
       # 服务器在阿里云，直连 github.com 拉取会超时（国内网络），
       # 所以改由 Actions runner（可访问 GitHub）把代码 rsync 推到服务器，
-      # 服务器只负责构建镜像、起容器和跑数据库迁移。
+      # 服务器只负责构建镜像、起容器。
       - name: 同步代码到服务器（rsync）
         env:
           SERVER_HOST: ${{ secrets.SERVER_HOST }}
@@ -27,15 +27,15 @@ jobs:
           mkdir -p ~/.ssh
           echo "$SERVER_SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          # 排除服务器本地文件：.env 密钥、运行时图片、node_modules 等
+          # 排除服务器本地文件：.env 密钥、运行时图片、node_modules、构建产物等
           rsync -avz --delete \
             -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p ${SERVER_PORT}" \
             --exclude '.git' \
             --exclude '.env' \
-            --exclude 'backend/.env' \
-            --exclude 'backend/data' \
-            --exclude 'front/node_modules' \
-            --exclude 'front/dist' \
+            --exclude 'backend_L/.env' \
+            --exclude 'backend_L/data' \
+            --exclude 'front_L/node_modules' \
+            --exclude 'front_L/dist' \
             ./ ${SERVER_USER}@${SERVER_HOST}:/root/myspace/Blog_generate_agent/
 
       - name: SSH 执行部署
@@ -45,29 +45,24 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT }}
-          # 前后端镜像构建（npm install + vite build）耗时较长，给足超时
           timeout: 1200s
-          # 单条命令超时：构建镜像可能超过默认10分钟，放宽到25分钟防误杀
           command_timeout: 25m
-          # 任何一条命令失败立即停止，方便定位
           script_stop: true
           script: |
             set -e
             cd /root/myspace/Blog_generate_agent
-            echo "=== 0. 预热基础镜像（本地已有则秒过，避免构建时从镜像源拉取卡死）==="
+            echo "=== 0. 预热基础镜像 ==="
             docker pull python:3.12-slim || true
             docker pull node:20-alpine || true
             docker pull nginx:alpine || true
-            echo "=== 1. 重建后端镜像（安装新增 Python 依赖，如 bcrypt）==="
-            docker compose build backend
-            echo "=== 2. 重建前端生产镜像 ==="
-            docker compose --profile prod build frontend-prod
-            echo "=== 3. 启动/更新容器 ==="
-            docker compose --profile prod up -d
-            echo "=== 4. 等待后端启动 ==="
-            sleep 8
-            echo "=== 5. 数据库迁移（幂等：补齐已存在表的新增列）==="
-            docker exec blog-agent-backend python -m scripts.migrate
-            echo "=== 6. 创建新表（幂等）==="
-            docker exec blog-agent-backend python -m scripts.init_db
+            echo "=== 1. 构建新后端镜像 ==="
+            docker compose build backendl
+            echo "=== 2. 构建新前端镜像 ==="
+            docker compose build frontendl
+            echo "=== 3. 启动/更新容器（postgresl 首次启动自动建库）==="
+            docker compose up -d
+            echo "=== 4. 等待后端启动（main.py 启动时自动 init_db 建表）==="
+            sleep 10
+            echo "=== 5. 健康检查 ==="
+            curl -fsS http://127.0.0.1:8090/api/v1/health || echo "WARN: 健康检查未通过，看日志 docker compose logs backendl"
             echo "=== 部署完成: $(date) ==="
