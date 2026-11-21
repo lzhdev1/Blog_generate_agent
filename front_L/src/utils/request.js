@@ -2,11 +2,12 @@ import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import router from '@/router'
 import { useAuthStore } from '@/stores/auth'
+import { apiBase } from './appPaths'
 
 const TOKEN_KEY = 'blog-agent-token'
 
 const request = axios.create({
-  baseURL: '/api/v1',
+  baseURL: apiBase(),
   timeout: 300000  // 5分钟，生成正文可能比较慢
 })
 

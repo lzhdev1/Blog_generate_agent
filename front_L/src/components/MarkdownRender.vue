@@ -6,6 +6,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { renderMarkdown } from '@/utils/renderMarkdown'
+import { protectedMediaPath } from '@/utils/appPaths'
 import { useAuthStore } from '@/stores/auth'
 import 'highlight.js/styles/github-dark.css'
 import 'katex/dist/katex.min.css'
@@ -18,17 +19,11 @@ const props = defineProps({
 const { locale } = useI18n()
 const auth = useAuthStore()
 const root = ref(null)
-function mediaPath(src) {
-  try {
-    const url = new URL(src, document.baseURI)
-    return url.origin === location.origin && /^\/images\/[^/]+$/.test(url.pathname) ? url.pathname + url.search : null
-  } catch { return null }
-}
 const renderedHtml = computed(() => renderMarkdown(props.content, {
   evidence: props.evidence,
   highlightImageMarkers: props.highlightImageMarkers,
   markerLabel: locale.value === 'en' ? 'Illustration' : '配图位置',
-  mediaPath
+  mediaPath: src => protectedMediaPath(src, location.origin)
 }))
 
 const images = new Map()

@@ -4,6 +4,7 @@ import { getTask, pendingGeneration, reconcileGeneration, replayGeneration, rest
 import { useAuthStore } from '@/stores/auth'
 import { useQuotaStore } from '@/stores/quota'
 import { activeTaskStates, taskPath } from './taskWorkflow'
+import { apiBase } from './appPaths'
 
 function errorMessage(error) {
   const detail = error.response?.data?.detail
@@ -83,7 +84,7 @@ export function useTaskWorkspace() {
     resetWatchdog()
     try {
       const token = localStorage.getItem('blog-agent-token')
-      const response = await fetch(`/api/v1/task/${route.params.id}/stream`, {
+      const response = await fetch(`${apiBase()}/task/${encodeURIComponent(route.params.id)}/stream`, {
         headers: { Accept: 'text/event-stream', Authorization: `Bearer ${token}` },
         signal: connection.signal
       })

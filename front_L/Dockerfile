@@ -16,7 +16,8 @@ RUN npm install
 
 # 复制源码并打包
 COPY . .
-RUN npm run build
+ARG APP_BASE_PATH=/
+RUN npm run build -- --base="$APP_BASE_PATH"
 
 # ---------- 阶段2：Nginx 托管 ----------
 FROM nginx:alpine

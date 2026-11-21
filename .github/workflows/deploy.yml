@@ -10,6 +10,8 @@ jobs:
   deploy:
     name: 部署到服务器（新版 backend_L / front_L）
     runs-on: ubuntu-latest
+    env:
+      BLOG_PUBLIC_BASE_PATH: /blog-agent/
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
@@ -48,6 +50,7 @@ jobs:
           port: ${{ secrets.SERVER_PORT }}
           timeout: 1200s
           command_timeout: 25m
+          envs: BLOG_PUBLIC_BASE_PATH
           script_stop: true
           script: |
             set -e
@@ -59,7 +62,7 @@ jobs:
             echo "=== 1. 构建新后端镜像 ==="
             docker compose build backendl
             echo "=== 2. 构建新前端镜像 ==="
-            docker compose build frontendl
+            docker compose build --build-arg "APP_BASE_PATH=$BLOG_PUBLIC_BASE_PATH" frontendl
             echo "=== 3. 更新服务并验证就绪状态 ==="
             docker compose up -d --wait --wait-timeout 120
             for attempt in 1 2 3 4 5; do
@@ -70,3 +73,6 @@ jobs:
               sleep 2
             done
             echo "=== 部署完成: $(date) ==="
+
+      - name: 验证公网首页、静态资源和 API
+        run: python3 scripts/check_public_release.py "https://lzhshow.top${BLOG_PUBLIC_BASE_PATH}"
