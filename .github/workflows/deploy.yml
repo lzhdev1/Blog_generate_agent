@@ -53,14 +53,20 @@ jobs:
             set -e
             cd /root/myspace/Blog_generate_agent
             echo "=== 0. 预热基础镜像 ==="
-            docker pull python:3.12-slim || true
-            docker pull node:20-alpine || true
-            docker pull nginx:alpine || true
+            for image in python:3.12-slim node:20-alpine nginx:alpine; do
+              docker image inspect "$image" >/dev/null 2>&1 || docker pull "$image" || exit 1
+            done
             echo "=== 1. 构建新后端镜像 ==="
             docker compose build backendl
             echo "=== 2. 构建新前端镜像 ==="
             docker compose build frontendl
-            echo "=== 3. 启动/更新容器（postgresl 首次启动自动建库）==="
+            echo "=== 3. 更新服务并验证就绪状态 ==="
             docker compose up -d --wait --wait-timeout 120
-            curl -fsS --retry 4 --retry-delay 2 --retry-all-errors http://127.0.0.1:8090/api/v1/ready
+            for attempt in 1 2 3 4 5; do
+              if curl -fsS --max-time 8 http://127.0.0.1:8090/api/v1/ready; then
+                break
+              fi
+              [ "$attempt" -lt 5 ] || exit 1
+              sleep 2
+            done
             echo "=== 部署完成: $(date) ==="
