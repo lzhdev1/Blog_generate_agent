@@ -1,8 +1,10 @@
 """ORM 模型：任务/用户/点赞/收藏/付费/下载/通知（从旧版移植，结构一致）"""
 import datetime
+import hashlib
+import json
 from sqlalchemy import (
     Column, Integer, String, Text, Enum, DateTime, Boolean,
-    ForeignKey, Numeric, UniqueConstraint,
+    ForeignKey, JSON, Numeric, UniqueConstraint,
 )
 from enum import StrEnum
 
@@ -34,6 +36,16 @@ class BlogTask(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     topic = Column(String(512), nullable=False, comment="博客主题")
+    purpose = Column(String(512), nullable=True, comment="作者希望读者读完后得到什么")
+    editorial_version = Column(Integer, nullable=False, default=0, server_default="0")
+
+    @property
+    def revision(self):
+        """Bind a confirmation to the exact manuscript, including its source record."""
+        payload = [self.id, self.selected_title or self.topic, self.formatted_content or self.content or "",
+                   self.evidence_sources or [], self.purpose, self.outline, self.word_count, self.level,
+                   self.article_style, self.article_style_custom, self.content_extra_requirements]
+        return hashlib.sha256(json.dumps(payload, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
 
     # 作者与可见性（注册登录体系）
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True, comment="作者用户ID（NULL=老数据/系统）")
@@ -49,6 +61,7 @@ class BlogTask(Base):
     title_research = Column(Text, nullable=True, comment="标题调研摘要")
     outline_research = Column(Text, nullable=True, comment="大纲调研摘要")
     content_research = Column(Text, nullable=True, comment="正文调研摘要")
+    evidence_sources = Column(JSON, nullable=True, comment="正文可核验的原始来源")
 
     # 节点1：标题
     titles = Column(Text, nullable=True, comment="生成的3个标题，json字符串")
@@ -94,6 +107,30 @@ class BlogTask(Base):
     error = Column(Text, nullable=True, comment="错误信息")
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+
+class ManuscriptBackup(Base):
+    """One private recovery copy while a replacement is being generated."""
+    __tablename__ = "manuscript_recovery"
+
+    task_id = Column(Integer, ForeignKey("blog_task.id", ondelete="CASCADE"), primary_key=True)
+    manuscript = Column(JSON, nullable=False)
+
+
+class EditorialDraft(Base):
+    """Private working copy. Review and publication never mutate each other's text."""
+    __tablename__ = "editorial_drafts"
+
+    task_id = Column(Integer, ForeignKey("blog_task.id", ondelete="CASCADE"), primary_key=True)
+    base_revision = Column(String(64), nullable=False)
+    version = Column(Integer, nullable=False)
+    content = Column(Text, nullable=False)
+    source_query = Column(String(300))
+    evidence_sources = Column(JSON)
+    status = Column(String(16), nullable=False)
+    review_result = Column(JSON)
+    error = Column(Text)
+    job_id = Column(Integer, nullable=True)
 
 
 class User(Base):

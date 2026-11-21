@@ -19,19 +19,20 @@ import os
 import re
 import uuid
 from concurrent.futures import ThreadPoolExecutor
+from contextvars import copy_context
+from pathlib import Path
 from typing import Dict, List, Optional
 
-import requests
+import httpx
 
+from config.model_limits import limits
 from config.settings import settings
+from src.blog_agent.clients.provider_budget import ProviderLimitError, current_budget, http
 
 logger = logging.getLogger(__name__)
 
-# 全局 HTTP Session：复用 TCP 连接，避免每次搜索/下载都新建连接（显著减少握手开销）
-_http = requests.Session()
-
-# 允许持久化的图片扩展名
-_ALLOWED_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif"}
+_IMAGE_EXTENSIONS = {"image/jpeg": ".jpg", "image/png": ".png", "image/gif": ".gif",
+                     "image/webp": ".webp", "image/avif": ".avif"}
 # 搜索 API 超时（秒）
 _SEARCH_TIMEOUT = 10
 # 生图/下载超时（秒）
@@ -55,24 +56,25 @@ class ImageClient:
             logger.warning("未配置 pexels_api_key，跳过 Pexels 搜索")
             return []
         try:
-            resp = _http.get(
+            resp = http.get(
                 "https://api.pexels.com/v1/search",
-                params={"query": query, "per_page": limit, "orientation": "landscape"},
+                params={"query": query[:512], "per_page": min(5, limit), "orientation": "landscape"},
                 headers={"Authorization": api_key},
                 timeout=_SEARCH_TIMEOUT,
+                extensions={"provider_kind": "image_search"},
             )
             if resp.status_code == 200:
                 candidates = []
-                for p in resp.json().get("photos", [])[:limit]:
-                    candidates.append({
-                        "url": p["src"]["large"],
-                        "title": "",
-                        "alt": p.get("alt") or "",
-                    })
+                for photo in resp.json().get("photos", [])[:limit]:
+                    sizes = photo.get("src") if isinstance(photo, dict) else None
+                    if isinstance(sizes, dict):
+                        url = sizes.get("large") or sizes.get("medium") or sizes.get("original")
+                        if isinstance(url, str) and url:
+                            candidates.append({"url": url, "title": "", "alt": photo.get("alt") or ""})
                 return candidates
             logger.warning("Pexels 搜索失败: HTTP %s", resp.status_code)
-        except requests.RequestException as e:
-            logger.warning("Pexels 搜索异常: %s", e)
+        except (httpx.HTTPError, ValueError, TypeError, AttributeError) as e:
+            logger.warning("Pexels 搜索响应无效: %s", type(e).__name__)
         return []
 
     def search_unsplash(self, query: str, limit: int = 5) -> List[Dict]:
@@ -85,24 +87,26 @@ class ImageClient:
             logger.warning("未配置 unsplash_access_key，跳过 Unsplash 搜索")
             return []
         try:
-            resp = _http.get(
+            resp = http.get(
                 "https://api.unsplash.com/search/photos",
-                params={"query": query, "per_page": limit, "orientation": "landscape"},
+                params={"query": query[:512], "per_page": min(5, limit), "orientation": "landscape"},
                 headers={"Authorization": f"Client-ID {api_key}"},
                 timeout=_SEARCH_TIMEOUT,
+                extensions={"provider_kind": "image_search"},
             )
             if resp.status_code == 200:
                 candidates = []
-                for r in resp.json().get("results", [])[:limit]:
-                    candidates.append({
-                        "url": r["urls"]["regular"],
-                        "title": r.get("description") or "",
-                        "alt": r.get("alt_description") or "",
-                    })
+                for photo in resp.json().get("results", [])[:limit]:
+                    sizes = photo.get("urls") if isinstance(photo, dict) else None
+                    if isinstance(sizes, dict):
+                        url = sizes.get("regular") or sizes.get("small")
+                        if isinstance(url, str) and url:
+                            candidates.append({"url": url, "title": photo.get("description") or "",
+                                               "alt": photo.get("alt_description") or ""})
                 return candidates
             logger.warning("Unsplash 搜索失败: HTTP %s", resp.status_code)
-        except requests.RequestException as e:
-            logger.warning("Unsplash 搜索异常: %s", e)
+        except (httpx.HTTPError, ValueError, TypeError, AttributeError) as e:
+            logger.warning("Unsplash 搜索响应无效: %s", type(e).__name__)
         return []
 
     def search(self, query: str, limit: int = 5) -> List[Dict]:
@@ -120,23 +124,25 @@ class ImageClient:
     def select_best_image(candidates: List[Dict], query: str) -> Optional[str]:
         """
         从候选中选择与搜索关键词最相关的一张。
-        相关性评分 = query 与图片 alt/title 文本的英文词重合率（precision-like）；
-        无候选返回 None；无法评分时回退第一张。
+        以英文关键词和中文连续双字匹配图片的 alt/title；
+        缺少可核对的关键词匹配时跳过配图。
         """
-        if not candidates:
-            return None
-        if len(candidates) == 1:
-            return candidates[0]["url"]
+        def terms(text: str) -> set[str]:
+            words = set(re.findall(r"[a-z0-9]+", text.lower()))
+            words.difference_update({"a", "an", "the", "and", "in", "on", "of", "at", "for", "with", "to"})
+            for word in re.findall(r"[\u3400-\u9fff]{2,}", text):
+                words.update(word[i:i + 2] for i in range(len(word) - 1))
+            return words
 
-        query_words = set(re.findall(r"[a-z0-9]+", query.lower()))
+        query_words = terms(query)
         if not query_words:
-            return candidates[0]["url"]
+            return None
 
-        best_url = candidates[0]["url"]
-        best_score = -1.0
+        best_url = None
+        best_score = 0.0
         for c in candidates:
             text = f"{c.get('alt', '')} {c.get('title', '')}".lower()
-            text_words = set(re.findall(r"[a-z0-9]+", text))
+            text_words = terms(text)
             if not text_words:
                 continue
             overlap = len(query_words & text_words)
@@ -157,6 +163,8 @@ class ImageClient:
         - qwen-image*  -> 多模态对话新接口（同步）
         - 其他（wanx*）-> text2image 旧接口（异步轮询）
         """
+        if not limits.ai_images_enabled or not limits.images or not prompt or len(prompt) > 4096:
+            return None
         api_key = settings.image_api_key or settings.llm_api_key
         model = settings.image_gen_model
         if model.startswith("qwen-image"):
@@ -181,11 +189,12 @@ class ImageClient:
                 },
                 "parameters": {"prompt_extend": True, "size": "1024*1024", "n": 1},
             }
-            resp = _http.post(
+            resp = http.post(
                 url,
                 headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
                 json=data,
                 timeout=_GEN_TIMEOUT,
+                extensions={"provider_kind": "image_generation"},
             )
             if resp.status_code == 200:
                 result = resp.json()
@@ -199,14 +208,14 @@ class ImageClient:
                 logger.error("qwen-image 返回格式异常: %s", result)
             else:
                 logger.error("qwen-image 调用失败: HTTP %s %s", resp.status_code, resp.text[:200])
-        except requests.RequestException as e:
+        except httpx.HTTPError as e:
             logger.error("qwen-image 生成异常: %s", e)
         return None
 
     def _generate_image_wanx(self, model: str, prompt: str, api_key: str) -> Optional[str]:
         """通义万相旧接口：异步提交任务并轮询结果"""
         try:
-            resp = _http.post(
+            resp = http.post(
                 "https://dashscope.aliyuncs.com/api/v1/services/aigc/text2image/image-synthesis",
                 headers={
                     "Authorization": f"Bearer {api_key}",
@@ -219,13 +228,14 @@ class ImageClient:
                     "parameters": {"size": "1024*1024", "n": 1},
                 },
                 timeout=30,
+                extensions={"provider_kind": "image_generation"},
             )
             if resp.status_code == 200:
                 task_id = resp.json().get("output", {}).get("task_id")
                 if task_id:
                     return self._poll_dashscope_task(task_id, api_key)
             logger.warning("wanx 提交失败: HTTP %s", resp.status_code)
-        except requests.RequestException as e:
+        except httpx.HTTPError as e:
             logger.error("wanx 生成异常: %s", e)
         return None
 
@@ -236,9 +246,9 @@ class ImageClient:
 
         url = f"https://dashscope.aliyuncs.com/api/v1/tasks/{task_id}"
         headers = {"Authorization": f"Bearer {api_key}"}
-        for _ in range(max_retries):
+        for _ in range(min(30, max_retries)):
             try:
-                resp = _http.get(url, headers=headers, timeout=10)
+                resp = http.get(url, headers=headers, timeout=10, extensions={"provider_kind": "image_poll"})
                 if resp.status_code == 200:
                     data = resp.json()
                     status = data.get("output", {}).get("task_status")
@@ -249,9 +259,9 @@ class ImageClient:
                     elif status == "FAILED":
                         logger.warning("wanx 任务失败: %s", task_id)
                         return None
-            except requests.RequestException:
+            except httpx.HTTPError:
                 pass
-            time.sleep(2)
+            time.sleep(min(2, current_budget().remaining()))
         logger.warning("wanx 任务轮询超时: %s", task_id)
         return None
 
@@ -263,46 +273,41 @@ class ImageClient:
         """
         把远程图片下载到本地持久化，返回本地 URL（/images/<filename>）。
         - 已是本地 URL（/images/ 开头）直接返回；
-        - 下载失败回退返回原 URL（不阻塞流程，图片至少本轮可用）。
+        - 来源、网络或格式校验失败时略去图片，保留已审核的正文。
         """
-        if not url or url.startswith("/images/"):
-            return url
+        if not url:
+            return ""
+        if url.startswith("/images/"):
+            return url if re.fullmatch(r"/images/[\w-]+\.(?:jpe?g|png|webp|gif|avif)", url, re.I) else ""
+        if not re.fullmatch(r"[\w-]{1,128}", filename):
+            return ""
+        temp_path = None
         try:
             save_dir = settings.image_save_dir
             os.makedirs(save_dir, exist_ok=True)
 
-            # 从 URL 提取扩展名，未知扩展名统一用 .jpg
-            path = url.split("?", 1)[0]
-            ext = os.path.splitext(path)[1].lower()
-            if ext not in _ALLOWED_EXTS:
-                ext = ".jpg"
-
-            save_path = os.path.join(save_dir, f"{filename}{ext}")
-
-            # 已存在则直接返回（幂等）
-            if os.path.exists(save_path):
-                return f"/images/{filename}{ext}"
-
-            resp = _http.get(url, timeout=30, stream=True)
+            resp = http.get(url, timeout=30, extensions={"provider_kind": "image_download"})
             if resp.status_code != 200:
-                logger.warning("图片下载失败 HTTP %s: %s", resp.status_code, url[:80])
-                return url
+                logger.warning("图片下载失败 HTTP %s", resp.status_code)
+                return ""
 
-            with open(save_path, "wb") as f:
-                for chunk in resp.iter_content(chunk_size=8192):
-                    if chunk:
-                        f.write(chunk)
-
-            # 校验非空，空文件删除并回退原 URL
-            if os.path.getsize(save_path) == 0:
-                os.remove(save_path)
-                return url
+            media_type = resp.headers.get("content-type", "").partition(";")[0].lower()
+            ext = _IMAGE_EXTENSIONS.get(media_type)
+            if not resp.content or not ext:
+                return ""
+            save_path = os.path.join(save_dir, f"{filename}{ext}")
+            temp_path = Path(f"{save_path}.{uuid.uuid4().hex}.part")
+            temp_path.write_bytes(resp.content)
+            os.replace(temp_path, save_path)
 
             logger.info("图片已持久化: %s", save_path)
             return f"/images/{filename}{ext}"
-        except requests.RequestException as e:
-            logger.warning("图片持久化异常，回退原 URL: %s", e)
-            return url
+        except (httpx.HTTPError, httpx.InvalidURL, ProviderLimitError, OSError) as error:
+            logger.warning("配图下载已略过：%s", type(error).__name__)
+            return ""
+        finally:
+            if temp_path is not None:
+                temp_path.unlink(missing_ok=True)
 
     # ============================================================
     # 5. 统一入口
@@ -329,8 +334,7 @@ class ImageClient:
         if image_source == "api":
             candidates = self.search(text)
             return self.select_best_image(candidates, text) if candidates else None
-        # 其余视为 ai
-        return self.generate_image(text)
+        return self.generate_image(text) if image_source == "ai" else None
 
     def fetch_all(
         self,
@@ -349,15 +353,20 @@ class ImageClient:
         results: List[Optional[str]] = [None] * len(items)
 
         def _fetch(item: Dict, position: int) -> None:
-            url = self.fetch_image(item.get("query_or_prompt", ""), image_source)
-            if url:
-                results[position] = self.persist_image(
-                    url, f"{prefix}_{run_id}_{item.get('index', position) + 1}"
-                )
+            try:
+                url = self.fetch_image(item.get("query_or_prompt", ""), image_source)
+                if url:
+                    results[position] = self.persist_image(
+                        url, f"{prefix}_{run_id}_{item.get('index', position) + 1}"
+                    )
+            except Exception as error:
+                # Each worker owns one optional illustration. Preserve any successful siblings.
+                logger.warning("已跳过第%d处配图：%s", position + 1, type(error).__name__)
 
-        with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        with ThreadPoolExecutor(max_workers=max(1, min(max_workers, 4))) as pool:
             futures = [
-                pool.submit(_fetch, item, position) for position, item in enumerate(items)
+                pool.submit(copy_context().run, _fetch, item, position)
+                for position, item in enumerate(items[:limits.images])
             ]
             for f in futures:
                 f.result()  # 内部已吞异常，result() 不会抛

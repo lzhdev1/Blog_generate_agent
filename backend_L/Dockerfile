@@ -26,7 +26,9 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # 复制项目代码
-COPY . .
+COPY config ./config
+COPY src ./src
+COPY scripts ./scripts
 
 # 暴露端口
 EXPOSE 8001

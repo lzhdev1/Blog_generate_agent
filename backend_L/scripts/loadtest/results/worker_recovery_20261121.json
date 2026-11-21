@@ -1,0 +1,79 @@
+{
+  "passed": 9,
+  "lease_s": 5,
+  "max_attempts": 2,
+  "cases": [
+    {
+      "case": "queued_survives_replacement",
+      "model_calls": 5,
+      "attempt": 1,
+      "used": 1,
+      "recovery_s": 6.149
+    },
+    {
+      "case": "unstarted_worker_reclaimed",
+      "model_calls": 5,
+      "attempt": 2,
+      "used": 1,
+      "recovery_s": 3.385
+    },
+    {
+      "case": "two_unstarted_workers_exhausted",
+      "model_calls": 0,
+      "attempt": 2,
+      "used": 0,
+      "reclaim_s": 0.132,
+      "recovery_s": 0.159
+    },
+    {
+      "case": "explicit_retry_after_refund",
+      "model_calls": 5,
+      "attempt": 1,
+      "used_history": [
+        1,
+        0,
+        1
+      ]
+    },
+    {
+      "case": "started_model_interrupted_worker",
+      "model_calls": 1,
+      "attempt": 1,
+      "used": 1,
+      "recovery_s": 0.145
+    },
+    {
+      "case": "started_model_interrupted_peer",
+      "model_calls": 1,
+      "attempt": 1,
+      "used": 1,
+      "recovery_s": 3.911,
+      "child_exit_s": 0.017,
+      "after_lease_s": 0.031
+    },
+    {
+      "case": "started_model_interrupted_offline",
+      "model_calls": 1,
+      "attempt": 1,
+      "used": 1,
+      "offline_s": 12.022,
+      "recovery_s": 3.232,
+      "child_exit_s": 0.016,
+      "after_lease_s": 10.599
+    },
+    {
+      "case": "same_account_next_submission",
+      "model_calls": 5,
+      "attempt": 1,
+      "used": 2
+    },
+    {
+      "case": "unstarted_api_replaced",
+      "model_calls": 5,
+      "attempt": 2,
+      "used": 1,
+      "recovery_s": 10.242,
+      "begin_after_lease_s": 5.065
+    }
+  ]
+}

@@ -2,7 +2,8 @@
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel
+from decimal import Decimal
+from pydantic import BaseModel, Field
 
 
 class ArticleCardResp(BaseModel):
@@ -32,10 +33,12 @@ class ArticleListResp(BaseModel):
 class ArticleDetailResp(BaseModel):
     """公开文章详情 —— 响应体"""
     task_id: int
+    revision: str
     title: str
     topic: str
     article_style: Optional[str] = None      # 文章风格
     content: str
+    evidence_sources: list[dict[str, str]] = Field(default_factory=list)
     nickname: Optional[str] = None
     is_demo: bool = False
     allow_download: bool = False
@@ -51,7 +54,11 @@ class ArticleDetailResp(BaseModel):
 class MyArticleItemResp(BaseModel):
     """我的文章条目 —— 响应体（created/liked/favorited/purchased/downloaded）"""
     task_id: int
+    record_id: Optional[int] = None
     title: str
+    selected_title: Optional[str] = None
+    outline_confirmed: bool = False
+    job_status: Optional[str] = None
     topic: str
     article_style: Optional[str] = None      # 文章风格
     status: str = ""
@@ -74,7 +81,18 @@ class PurchaseResp(BaseModel):
     task_id: int
 
 
+class PurchaseQuote(BaseModel):
+    expected_revision: str = Field(min_length=64, max_length=64)
+    expected_price: Decimal = Field(ge=0, le=100000, decimal_places=2)
+
+
 class DownloadResp(BaseModel):
     title: str
     content: str
     message: str = ""
+
+
+class SnapshotResp(BaseModel):
+    title: str
+    content: str
+    created_at: Optional[datetime] = None

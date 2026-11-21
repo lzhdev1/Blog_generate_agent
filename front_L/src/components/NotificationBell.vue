@@ -1,6 +1,6 @@
 <template>
   <div v-if="authStore.isLoggedIn" ref="wrapRef" class="notify-wrap">
-    <button class="notify-btn" :title="$t('notify.title')" @click="togglePanel">
+    <button class="notify-btn" :aria-expanded="showPanel" :title="$t('notify.title')" @click="togglePanel">
       <SvgIcon name="bell" :size="19" />
       <span v-if="unread > 0" class="notify-badge">{{ unread > 99 ? '99+' : unread }}</span>
     </button>
@@ -16,7 +16,7 @@
         <div v-if="loading" class="notify-empty">{{ $t('notify.loading') }}</div>
         <div v-else-if="items.length === 0" class="notify-empty">{{ $t('notify.empty') }}</div>
         <div v-else class="notify-list">
-          <div
+          <button type="button"
             v-for="n in items"
             :key="n.id"
             class="notify-item"
@@ -31,7 +31,7 @@
               <div class="notify-time">{{ n.created_at }}</div>
             </div>
             <span v-if="!n.is_read" class="notify-dot"></span>
-          </div>
+          </button>
         </div>
       </div>
     </transition>
@@ -241,7 +241,7 @@ onBeforeUnmount(() => {
 }
 
 .notify-item.unread {
-  background: rgba(99, 102, 241, 0.06);
+  background: var(--tint);
 }
 
 .notify-icon {
@@ -329,7 +329,9 @@ onBeforeUnmount(() => {
 
   .notify-panel {
     width: min(340px, calc(100vw - 24px));
-    right: -40px;
+    position: fixed;
+    top: 49px;
+    right: 12px;
   }
 }
 </style>

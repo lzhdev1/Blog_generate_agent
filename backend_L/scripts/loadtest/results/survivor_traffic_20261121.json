@@ -1,0 +1,45 @@
+{
+  "passed": true,
+  "worker_cap": 2,
+  "execution_peak": 2,
+  "capacity": 4,
+  "lease_s": 15,
+  "rejected_status": 503,
+  "draft_created_during_outage": "CASE105",
+  "concurrent_submit_ms": [
+    43,
+    48,
+    34
+  ],
+  "normal_model_started_while_old_lease_live_s": 3.602,
+  "recovery_after_lease_s": 0.057,
+  "read_batches": 114,
+  "requests_per_read_batch": 4,
+  "max_read_batch_ms": 141,
+  "admission_and_claim_order": [
+    "CASE104",
+    "CASE102",
+    "CASE103",
+    "CASE105"
+  ],
+  "subscriber_states": [
+    "queued",
+    "running",
+    "succeeded"
+  ],
+  "old_job_calls": 1,
+  "normal_calls": 20,
+  "user_usage": [
+    1,
+    1,
+    1,
+    1,
+    1
+  ],
+  "site_usage": 5,
+  "jobs": {
+    "failed": 1,
+    "succeeded": 4
+  },
+  "outage_observed_s": 25.556
+}

@@ -33,6 +33,7 @@ jobs:
             --exclude '.git' \
             --exclude '.env' \
             --exclude 'backend_L/.env' \
+            --exclude '.env.production' \
             --exclude 'backend_L/data' \
             --exclude 'front_L/node_modules' \
             --exclude 'front_L/dist' \
@@ -60,9 +61,6 @@ jobs:
             echo "=== 2. 构建新前端镜像 ==="
             docker compose build frontendl
             echo "=== 3. 启动/更新容器（postgresl 首次启动自动建库）==="
-            docker compose up -d
-            echo "=== 4. 等待后端启动（main.py 启动时自动 init_db 建表）==="
-            sleep 10
-            echo "=== 5. 健康检查 ==="
-            curl -fsS http://127.0.0.1:8090/api/v1/health || echo "WARN: 健康检查未通过，看日志 docker compose logs backendl"
+            docker compose up -d --wait --wait-timeout 120
+            curl -fsS --retry 4 --retry-delay 2 --retry-all-errors http://127.0.0.1:8090/api/v1/ready
             echo "=== 部署完成: $(date) ==="

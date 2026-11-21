@@ -2,14 +2,17 @@
 import json
 from sqlalchemy.orm import Session
 
-from src.blog_agent.db.models import BlogTask, TaskStatus
+from src.blog_agent.db.models import BlogTask, DownloadRecord, Favorite, Like, Notification, Purchase, TaskStatus
+
+
+from src.blog_agent.service.media_access import preserve_snapshot_media
 
 
 class TaskRepository:
 
     @staticmethod
-    def create_task(db: Session, topic: str, user_id: int | None = None) -> BlogTask:
-        task = BlogTask(topic=topic, user_id=user_id)
+    def create_task(db: Session, topic: str, user_id: int | None = None, **brief) -> BlogTask:
+        task = BlogTask(topic=topic, user_id=user_id, **brief)
         db.add(task)
         db.commit()
         db.refresh(task)
@@ -25,6 +28,11 @@ class TaskRepository:
         task = TaskRepository.get_task_by_id(db, task_id)
         if not task:
             return False
+        for model in (Favorite, Like, Notification):
+            db.query(model).filter_by(task_id=task_id).delete(synchronize_session=False)
+        preserve_snapshot_media(db, [task_id])
+        for model in (Purchase, DownloadRecord):
+            db.query(model).filter_by(task_id=task_id).update({model.task_id: None}, synchronize_session=False)
         db.delete(task)
         db.commit()
         return True

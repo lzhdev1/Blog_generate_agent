@@ -1,903 +1,198 @@
 <template>
-  <div class="home-view">
-    <!-- 英雄区域 -->
-    <div class="hero-section animate-fade-in-up">
-      <div class="hero-badge">
-        <SvgIcon name="spark" :size="16" />
-        <span>{{ $t('home.badge') }}</span>
-      </div>
-      <h1 class="hero-title">
-        {{ $t('home.titlePart1') }}
-        <span class="gradient-text">{{ $t('home.titlePart2') }}</span>
-      </h1>
+  <div class="studio-page">
+    <header class="page-heading">
+      <div><h1>{{ t('studio.desk') }}</h1><p>{{ t('studio.intro') }}</p></div>
+      <time class="desk-date" :datetime="dateKey"><SvgIcon name="calendar" :size="15" />{{ dateLabel }}</time>
+    </header>
 
-      <!-- 问答输入框 -->
-      <div class="input-card">
-        <!-- 背景词云（推荐主题，入场从底部散出 + 持续漂浮） -->
-        <div class="word-cloud">
-          <span
-            v-for="(w, i) in cloudWords"
-            :key="i"
-            class="cloud-word"
-            :class="{ entered: cloudEntered }"
-            :style="{
-              left: cloudEntered ? w.left : '50%',
-              top: cloudEntered ? w.top : '50%',
-              fontSize: w.size + 'px',
-              '--op': w.opacity,
-              '--dur': w.dur + 's',
-              '--burst-delay': '0s',
-              '--float-delay': '0.48s'
-            }"
-          >{{ w.text }}</span>
-        </div>
-        <div class="input-wrapper">
-          <el-input
-            v-model="topic"
-            type="textarea"
-            :rows="2"
-            :placeholder="$t('home.placeholder')"
-            resize="none"
-            :disabled="creating"
-            @keydown.enter.ctrl="handleCreate"
-          />
-          <button class="send-btn" :disabled="!topic.trim() || creating" @click="handleCreate">
-            <SvgIcon v-if="!creating" name="send" :size="20" />
-            <SvgIcon v-else name="loading" :size="20" class="animate-spin" />
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 全部文章 -->
-    <div id="articles-section" class="articles-section">
-      <div class="section-header">
-        <h2>{{ $t('home.allArticles') }}</h2>
-        <div class="section-actions">
-          <button class="shuffle-btn" :disabled="shuffling" @click="fetchArticles">
-            <SvgIcon name="refresh" :size="15" />
-            <span>{{ $t('home.shuffle') }}</span>
-          </button>
-        </div>
-      </div>
-
-      <div v-if="articlesLoading && !articles.length" class="article-grid">
-        <div v-for="i in 4" :key="i" class="article-card skeleton-card">
-          <el-skeleton animated :rows="3" />
-        </div>
-      </div>
-
-      <el-empty v-else-if="!articles.length" description="暂无公开文章" />
-
-      <div v-else class="article-grid">
-        <div
-          v-for="a in articles"
-          :key="a.task_id"
-          class="article-card"
-          @click="goArticle(a.task_id)"
-        >
-          <div class="card-top">
-            <span class="card-type" :class="a.is_demo ? 'is-demo' : 'is-user'">
-              {{ styleLabel(a) }}
-            </span>
-            <span class="card-price" :class="a.download_price > 0 ? 'is-paid' : 'is-free'">
-              <SvgIcon name="download" :size="12" />
-              {{ a.download_price > 0 ? `¥${a.download_price}` : $t('home.free') }}
-            </span>
-          </div>
-          <h3 class="card-topic">{{ a.title }}</h3>
-          <div class="card-footer">
-            <div class="card-author">
-              <SvgIcon name="user" :size="13" />
-              <span>{{ a.nickname || '匿名' }}</span>
+    <section class="composer" aria-labelledby="composer-title">
+      <div class="compose-form">
+        <div class="compose-label"><SvgIcon name="edit" :size="15" />{{ t('studio.newDraft') }}</div>
+        <h2 id="composer-title">{{ t('studio.prompt') }}</h2>
+        <form ref="composerForm" class="input-box" @submit.prevent="start" @invalid.capture="briefOpen = true">
+          <textarea ref="input" v-model="topic" rows="2" maxlength="512" :aria-label="t('studio.topic')" :placeholder="t('studio.placeholder')" :disabled="creating" @keydown.ctrl.enter.prevent="composerForm?.requestSubmit()" @keydown.meta.enter.prevent="composerForm?.requestSubmit()"></textarea>
+          <details class="composer-brief" :open="briefOpen" @toggle="briefOpen = $event.target.open">
+            <summary><strong>{{ w('brief') }}</strong><span>{{ w(brief.level) }} · {{ w('wordUnit', {count: brief.word_count}) }}</span></summary>
+            <div class="brief-fields">
+              <label class="brief-wide">{{ w('purpose') }}<input v-model.trim="brief.purpose" maxlength="512" :placeholder="w('purposeHint')" :disabled="creating" /></label>
+              <label>{{ w('audience') }}<select v-model="brief.level" :disabled="creating"><option v-for="level in levels" :key="level" :value="level">{{ w(level) }}</option></select></label>
+              <label>{{ w('target') }}<input v-model.number="brief.word_count" type="number" min="100" max="10000" required step="1" :disabled="creating" /></label>
+              <label>{{ w('style') }}<select v-model="brief.article_style" :disabled="creating"><option value="">{{ w('auto') }}</option><option v-for="style in styles" :key="style" :value="style">{{ w(style) }}</option></select></label>
+              <label v-if="brief.article_style === 'custom'" class="brief-wide">{{ w('customStyle') }}<input v-model.trim="brief.article_style_custom" required maxlength="200" :disabled="creating" /></label>
             </div>
-            <div class="card-stats">
-              <span
-                class="stat"
-                :class="{ active: a.liked }"
-                title="点赞"
-                @click.stop="handleLike(a)"
-              >
-                <SvgIcon name="like" :size="13" /> {{ a.like_count }}
-              </span>
-              <span
-                class="stat"
-                :class="{ 'active-fav': a.favorited }"
-                title="收藏"
-                @click.stop="handleFavorite(a)"
-              >
-                <SvgIcon name="star" :size="13" /> {{ a.favorite_count }}
-              </span>
-              <span
-                v-if="a.allow_download || a.is_demo"
-                class="stat"
-                title="下载"
-                @click.stop="handleDownload(a)"
-              >
-                <SvgIcon name="download" :size="13" />
-              </span>
-            </div>
+          </details>
+          <div class="input-actions"><span class="count">{{ topic.length }} / 512</span>
+            <button class="primary-action" :disabled="creating || quota.insufficient('title')">
+              {{ t(creating ? 'studio.creating' : 'studio.start') }}<SvgIcon :name="creating ? 'loading' : 'right'" :class="{ 'animate-spin': creating }" :size="16" />
+            </button>
           </div>
-        </div>
+        </form>
+        <GenerationAllowance v-if="auth.isLoggedIn" class="compose-quota" stage="title" />
+        <p v-if="quota.rejection && quota.rejection.taskId === null" class="compose-error" role="alert">{{ quota.rejection.message }}</p>
       </div>
-    </div>
+      <div class="press-art" aria-hidden="true"><img :src="press" alt="" fetchpriority="high" /></div>
+    </section>
 
-    <!-- 空状态 -->
-    <div v-if="!articlesLoading && !articles.length" class="empty-state">
-      <div class="empty-icon">
-        <SvgIcon name="document" :size="48" />
+    <section class="desk-section" aria-labelledby="flow-heading">
+      <div class="section-line"><h2 id="flow-heading">{{ t('studio.pipeline') }}</h2></div>
+      <ol class="stage-strip">
+        <li v-for="(icon, i) in stageIcons" :key="icon">
+          <span class="stage-icon"><SvgIcon :name="icon" :size="20" /></span>
+          <div><strong>{{ t('studio.stages[' + i + '][0]') }}</strong><p>{{ t('studio.stages[' + i + '][1]') }}</p></div>
+          <SvgIcon v-if="i < 3" class="stage-arrow" name="right" :size="14" />
+        </li>
+      </ol>
+    </section>
+
+    <section v-if="auth.isLoggedIn && (recent.length || recentError)" class="desk-section">
+      <div class="section-line"><h2>{{ t('studio.recent') }}</h2><router-link to="/my-articles">{{ t('studio.moreDrafts') }} <SvgIcon name="right" :size="14" /></router-link></div>
+      <div v-if="recentError" class="recent-error">{{ t('studio.listFail') }} <button class="link-action" @click="loadRecent">{{ t('studio.retry') }}</button></div>
+      <div v-else class="recent-list">
+        <router-link v-for="a in recent" :key="a.task_id" :to="taskPath(a)"><SvgIcon name="document" :size="17" /><strong>{{ a.title || a.topic }}</strong><small>{{ t(a.job_status === 'queued' ? 'studio.queued' : 'studio.status.' + a.status) }}</small><SvgIcon name="right" :size="15" /></router-link>
       </div>
-      <p>还没有文章，输入主题开始创作吧</p>
-    </div>
+    </section>
 
-    <!-- 进度弹窗 -->
-    <ProgressModal
-      :visible="showProgressModal"
-      type="titles"
-      :task-status="currentTaskStatus"
-      :progress-text="progressText"
-      @close="showProgressModal = false"
-    />
+    <section class="desk-section" aria-labelledby="ideas-heading">
+      <div class="section-line"><h2 id="ideas-heading">{{ t('studio.ideas') }}</h2><span>{{ t('studio.ideaHint') }}</span></div>
+      <div class="idea-grid">
+        <button v-for="i in [0,1,2]" :key="i" class="idea-card" :aria-label="t('studio.useIdea') + ' · ' + idea(i,1)" @click="useIdea(i)">
+          <span class="idea-image" :style="{ backgroundPosition: (i * 50) + '% center' }"></span>
+          <span class="idea-text"><small>{{ idea(i,0) }}</small><strong>{{ idea(i,1) }}</strong></span>
+          <span class="idea-go"><SvgIcon name="right" :size="16" /></span>
+        </button>
+      </div>
+    </section>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
-
-// 文章风格 → 中文类别标签（用于卡片左上角）
-function styleLabel(a) {
-  if (a.is_demo) return '演示'
-  const map = { popular_science: '科普', technical: '技术', essay: '论文', prose: '散文', note: '笔记', custom: '自定义' }
-  return map[a.article_style] || '文章'
-}
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import SvgIcon from '@/components/SvgIcon.vue'
-import ProgressModal from '@/components/ProgressModal.vue'
-import { createTask, generateTitles, getTask } from '@/api/task'
-import { getArticles, toggleLike, toggleFavorite, downloadArticle } from '@/api/article'
-import { isTimeoutError } from '@/utils/request'
+import GenerationAllowance from '@/components/GenerationAllowance.vue'
+import { useQuotaStore } from '@/stores/quota'
+import { createTask, generateTitles } from '@/api/task'
+import { getMyArticles } from '@/api/article'
 import { useAuthStore } from '@/stores/auth'
+import { useWorkflowText } from '@/i18n/workflow'
+import { taskPath } from '@/utils/taskWorkflow'
+import press from '@/assets/press.webp'
 
 const router = useRouter()
-const { t } = useI18n()
-const authStore = useAuthStore()
-
-// ===== 全部文章（随机展示 + 换一批） =====
-const articles = ref([])
-const articleTotal = ref(0)
-const articlesLoading = ref(false)
-const shuffling = ref(false)
-
-async function fetchArticles() {
-  shuffling.value = true
-  if (!articles.value.length) articlesLoading.value = true
-  try {
-    const res = await getArticles({ limit: 8, offset: 0, random: true })
-    articles.value = res.items || []
-    articleTotal.value = res.total || 0
-  } finally {
-    articlesLoading.value = false
-    shuffling.value = false
-  }
-}
-
-function goArticle(taskId) {
-  router.push(`/blog/${taskId}`)
-}
-
-// ===== 卡片交互：点赞 / 收藏 / 下载 =====
-function handleLike(a) {
-  toggleLike(a.task_id).then(res => {
-    a.like_count = res.like_count
-    a.liked = res.liked
-  })
-}
-
-function handleFavorite(a) {
-  toggleFavorite(a.task_id).then(res => {
-    a.favorited = res.favorited
-    a.favorite_count = Math.max(0, (a.favorite_count || 0) + (res.favorited ? 1 : -1))
-  })
-}
-
-function handleDownload(a) {
-  downloadArticle(a.task_id)
-    .then(res => {
-      const blob = new Blob([res.content || ''], { type: 'text/markdown;charset=utf-8' })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `${res.title || 'article'}.md`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
-      ElMessage.success('下载成功')
-    })
-    .catch(() => {
-      // 未购买/未登录等提示已由请求拦截器统一弹出
-    })
-}
-
+const auth = useAuthStore()
+const quota = useQuotaStore()
+const { t, locale } = useI18n()
+const { t: w } = useWorkflowText()
+const levels = ['general', 'medium', 'advanced', 'professional']
+const styles = ['popular_science', 'technical', 'essay', 'prose', 'note', 'custom']
+const defaultBrief = () => ({purpose:'', level:'medium', word_count:800, article_style:'', article_style_custom:''})
+const brief = ref(defaultBrief())
+const briefOpen = ref(false)
 const topic = ref('')
+const composerForm = ref(null)
+const input = ref(null)
 const creating = ref(false)
-const progressText = ref('')
-const showProgressModal = ref(false)
-const currentTaskStatus = ref('')
-let pollTimer = null
-
-// ===== 环绕 + 背景词云（多领域推荐主题，漂浮动画） =====
-// 背景组：贴近输入框上/下边框浮动，词被输入框半遮半露，营造立体感
-// 环绕组：位于输入框四周，横向铺开、纵向收窄
-const cloudWords = [
-  // —— 背景组 · 贴上边框（骑跨输入框上沿） ——
-  { text: 'Python', left: '6%', top: '30%', size: 22, dur: 7, delay: 0, opacity: 0.46, bg: true },
-  { text: '机器学习', left: '38%', top: '32%', size: 17, dur: 6.8, delay: 2.6, opacity: 0.42, bg: true },
-  { text: '机器人', left: '70%', top: '29%', size: 17, dur: 8.2, delay: 1.4, opacity: 0.42, bg: true },
-  { text: '读书', left: '93%', top: '31%', size: 15, dur: 7.4, delay: 0.8, opacity: 0.38, bg: true },
-  // —— 背景组 · 贴下边框（骑跨输入框下沿） ——
-  { text: 'Docker', left: '12%', top: '76%', size: 19, dur: 8, delay: 0.6, opacity: 0.44, bg: true },
-  { text: '大模型', left: '42%', top: '78%', size: 16, dur: 8.5, delay: 1.8, opacity: 0.4, bg: true },
-  { text: '美食', left: '72%', top: '75%', size: 17, dur: 6.5, delay: 3.0, opacity: 0.42, bg: true },
-  { text: '猫', left: '92%', top: '79%', size: 15, dur: 7.7, delay: 2.2, opacity: 0.38, bg: true },
-  // —— 环绕组 · 上方 ——
-  { text: 'Vue 3', left: '24%', top: '4%', size: 20, dur: 8, delay: 0.4, opacity: 0.55 },
-  { text: 'LangGraph', left: '52%', top: '0%', size: 19, dur: 6.5, delay: 1.2, opacity: 0.5 },
-  { text: 'AI Agent', left: '80%', top: '8%', size: 17, dur: 7.5, delay: 2.1, opacity: 0.46 },
-  { text: '诗歌', left: '68%', top: '14%', size: 16, dur: 9, delay: 3.2, opacity: 0.42 },
-  // —— 环绕组 · 下方 ——
-  { text: 'FastAPI', left: '30%', top: '94%', size: 21, dur: 7.8, delay: 0.5, opacity: 0.55 },
-  { text: '云原生', left: '58%', top: '98%', size: 17, dur: 6, delay: 0.3, opacity: 0.48 },
-  { text: '旅行', left: '82%', top: '92%', size: 17, dur: 8.8, delay: 1.5, opacity: 0.46 },
-  { text: '音乐', left: '8%', top: '96%', size: 16, dur: 7.2, delay: 2.8, opacity: 0.44 },
-  // —— 环绕组 · 两侧（横向铺开） ——
-  { text: '自动化', left: '-4%', top: '36%', size: 16, dur: 6.2, delay: 2.4, opacity: 0.44 },
-  { text: '咖啡', left: '-3%', top: '60%', size: 14, dur: 8.4, delay: 0.7, opacity: 0.38 },
-  { text: 'DevOps', left: '99%', top: '30%', size: 16, dur: 8.8, delay: 1.5, opacity: 0.44 },
-  { text: '摄影', left: '100%', top: '55%', size: 15, dur: 7.6, delay: 3.4, opacity: 0.4 },
-  { text: '小说', left: '101%', top: '74%', size: 15, dur: 6.9, delay: 1.1, opacity: 0.4 },
-  { text: '天文', left: '44%', top: '-4%', size: 15, dur: 8.6, delay: 2.6, opacity: 0.42 }
-]
-
-// 词云入场控制（进入页面后从底部散出）
-const cloudEntered = ref(false)
-
-function formatTime(timeStr) {
-  if (!timeStr) return ''
-  const date = new Date(timeStr)
-  return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' }) + ' ' +
-    date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
-}
-
-function startProgressPolling(taskId) {
-  pollTimer = setInterval(async () => {
-    try {
-      const task = await getTask(taskId)
-      currentTaskStatus.value = task.status
-      if (task.progress) {
-        progressText.value = task.progress
-      }
-      if (task.status === 'title_generated') {
-        stopProgressPolling()
-        showProgressModal.value = false
-        creating.value = false
-        router.push(`/task/${taskId}/titles`)
-      }
-      if (task.status === 'failed') {
-        stopProgressPolling()
-        showProgressModal.value = false
-        creating.value = false
-        ElMessage.error(task.error || '生成标题失败')
-      }
-    } catch (e) {
-      console.error('轮询进度失败:', e)
-    }
-  }, 1500)
-}
-
-function stopProgressPolling() {
-  if (pollTimer) {
-    clearInterval(pollTimer)
-    pollTimer = null
-  }
-}
-
-async function handleCreate() {
-  // 未登录不允许发起生成任务：提示并跳转登录页（登录后跳回首页）
-  if (!authStore.isLoggedIn) {
-    ElMessage.warning('请先登录后再创建文章')
-    router.push({ path: '/login', query: { redirect: '/' } })
-    return
-  }
-
-  if (!topic.value.trim()) {
-    ElMessage.warning('请输入博客主题')
-    return
-  }
-
-  creating.value = true
-  progressText.value = '正在创建任务...'
-  currentTaskStatus.value = 'pending'
-  showProgressModal.value = true
+const stageIcons = ['search','outline','pen','document']
+const today = new Date()
+const dateKey = [today.getFullYear(), String(today.getMonth()+1).padStart(2,'0'), String(today.getDate()).padStart(2,'0')].join('-')
+const dateLabel = computed(() => new Intl.DateTimeFormat(locale.value === 'zh' ? 'zh-CN' : 'en', {month:'long',day:'numeric',weekday:'short'}).format(today))
+const recent = ref([])
+const recentError = ref(false)
+let listVersion = 0
+const draftKey = computed(() => 'blog-agent-brief:' + (auth.user?.id ?? 'guest'))
+watch(draftKey, key => {
+  let saved = {}
   try {
-    const task = await createTask({ topic: topic.value.trim() })
-    currentTaskStatus.value = task.status
-    // 启动轮询展示进度
-    startProgressPolling(task.id)
-    // 异步触发生成标题（不阻塞）
-    generateTitles(task.id).catch(err => {
-      // 网关/连接超时：任务可能仍在后台生成标题，继续轮询等待，不误报失败
-      if (isTimeoutError(err)) {
-        console.warn('请求超时，任务可能仍在后台处理，继续轮询等待:', err)
-        progressText.value = '处理时间较长，任务仍在后台运行中，请耐心等待...'
-        return
-      }
-      console.error('生成标题失败:', err)
-      stopProgressPolling()
-      showProgressModal.value = false
-      creating.value = false
-      ElMessage.error('生成标题失败')
-    })
-  } catch (error) {
-    console.error('创建任务失败:', error)
-    creating.value = false
-    showProgressModal.value = false
-    progressText.value = ''
-  }
+    const guestKey = 'blog-agent-brief:guest'
+    const transferGuest = key !== guestKey && sessionStorage.getItem(guestKey + ':login')
+    saved = JSON.parse(sessionStorage.getItem(transferGuest ? guestKey : key)) || {}
+    if (transferGuest) {
+      sessionStorage.removeItem(guestKey)
+      sessionStorage.removeItem(guestKey + ':login')
+    }
+  } catch { /* A draft can still be composed with storage disabled. */ }
+  topic.value = typeof saved.topic === 'string' ? saved.topic : ''
+  brief.value = { ...defaultBrief(), ...saved.brief }
+}, { immediate: true })
+watch([topic, brief, draftKey], () => {
+  try {
+    if (topic.value || JSON.stringify(brief.value) !== JSON.stringify(defaultBrief())) {
+      sessionStorage.setItem(draftKey.value, JSON.stringify({ topic: topic.value, brief: brief.value }))
+    } else sessionStorage.removeItem(draftKey.value)
+  } catch { /* Storage is optional. */ }
+}, { deep: true })
+watch(() => auth.user?.id, loadRecent, { immediate:true })
+async function loadRecent() {
+  const version = ++listVersion
+  recent.value = []
+  recentError.value = false
+  if (!auth.isLoggedIn) return
+  try {
+    const res = await getMyArticles('created', { limit:3 })
+    if (version === listVersion) recent.value = res.items.slice(0,3)
+  } catch { if (version === listVersion) recentError.value = true }
 }
-
-onUnmounted(() => {
-  stopProgressPolling()
-})
-
-onMounted(() => {
-  fetchArticles()
-  // 词云入场：先渲染"集中在中心"的初始状态，再触发爆炸扩散。
-  // rAF + setTimeout 双保险：页面导航节流时 rAF 可能不触发，setTimeout 兜底
-  let fired = false
-  const fire = () => {
-    if (fired) return
-    fired = true
-    cloudEntered.value = true
+function idea(i, part) { return t('studio.ideasList[' + i + '][' + part + ']') }
+function useIdea(i) { topic.value = idea(i,1); input.value?.focus(); input.value?.scrollIntoView({block:'nearest'}) }
+async function start() {
+  if (creating.value || quota.insufficient('title')) return
+  if (!topic.value.trim()) { input.value?.focus(); ElMessage.info(t('studio.required')); return }
+  if (!auth.isLoggedIn) {
+    try { sessionStorage.setItem(draftKey.value + ':login', '1') } catch { /* Storage is optional. */ }
+    ElMessage.info(t('studio.draftSaved'))
+    await router.push({path:'/login',query:{redirect:'/'}})
+    return
   }
-  requestAnimationFrame(fire)
-  setTimeout(fire, 120)
-})
+  creating.value = true
+  quota.rejection = null
+  try {
+    const task = await createTask({
+      topic: topic.value.trim(), purpose: brief.value.purpose || null,
+      level: brief.value.level, word_count: brief.value.word_count,
+      article_style: brief.value.article_style || null,
+      article_style_custom: brief.value.article_style === 'custom' ? brief.value.article_style_custom : null
+    })
+    topic.value = ''
+    brief.value = defaultBrief()
+    briefOpen.value = false
+    try { await generateTitles(task) } catch { /* The title page can resume the saved task. */ }
+    if (router.currentRoute.value.name === 'Home') await router.push('/task/' + task.id + '/titles')
+  } catch (e) { quota.recordAdmissionError(null, e) }
+  finally { creating.value = false }
+}
 </script>
 
 <style scoped>
-.home-view {
-  max-width: 900px;
-  margin: 0 auto;
-}
-
-/* 英雄区域 */
-.hero-section {
-  text-align: center;
-  padding: 40px 0 60px;
-}
-
-.hero-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 16px;
-  background: var(--panel-gradient);
-  border: 1px solid #c7d2fe;
-  border-radius: 20px;
-  font-size: 13px;
-  color: var(--primary-dark);
-  font-weight: 500;
-  margin-bottom: 24px;
-}
-
-.hero-title {
-  font-size: 42px;
-  font-weight: 800;
-  line-height: 1.3;
-  margin-bottom: 16px;
-  color: var(--text-primary);
-}
-
-.gradient-text {
-  background: var(--primary-gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.hero-desc {
-  font-size: 16px;
-  color: var(--text-secondary);
-  margin-bottom: 40px;
-  max-width: 560px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-/* 输入框 */
-.input-card {
-  position: relative;
-  max-width: 640px;
-  margin: 0 auto;
-  padding: 42px 0;
-}
-
-/* 环绕词云层（输入框上下左右漂浮） */
-.word-cloud {
-  position: absolute;
-  inset: -20px -50px;
-  z-index: 0;
-  overflow: visible;
-  pointer-events: none;
-  transform: translateY(24px);
-}
-
-.cloud-word {
-  position: absolute;
-  font-weight: 700;
-  color: var(--primary);
-  white-space: nowrap;
-  user-select: none;
-  /* 初始：集中在输入框中心，缩小不可见 */
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%) scale(0.1);
-  opacity: 0;
-  transition:
-    left 0.45s cubic-bezier(0.22, 0.61, 0.36, 1) var(--burst-delay, 0s),
-    top 0.45s cubic-bezier(0.22, 0.61, 0.36, 1) var(--burst-delay, 0s),
-    transform 0.45s cubic-bezier(0.22, 0.61, 0.36, 1) var(--burst-delay, 0s),
-    opacity 0.32s ease var(--burst-delay, 0s);
-}
-
-.cloud-word.entered {
-  /* 入场：从中心爆炸扩散到各自位置 */
-  opacity: var(--op, 0.5);
-  transform: translate(-50%, -50%) scale(1);
-  /* 入场完成后持续漂浮 */
-  animation: cloudFloat var(--dur, 8s) ease-in-out var(--float-delay, 1s) infinite;
-}
-
-[data-theme='dark'] .cloud-word {
-  color: #818cf8;
-}
-
-@keyframes cloudFloat {
-  0%, 100% { transform: translate(-50%, -50%) translateY(0) translateX(0); }
-  33% { transform: translate(-50%, -50%) translateY(-9px) translateX(5px); }
-  66% { transform: translate(-50%, -50%) translateY(7px) translateX(-5px); }
-}
-
-.input-wrapper {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px;
-  background: rgba(255, 255, 255, 0.88);
-  border-radius: 20px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
-  border: 2px solid var(--border);
-  transition: all 0.3s ease;
-}
-
-[data-theme='dark'] .input-wrapper {
-  background: rgba(24, 26, 40, 0.82);
-}
-
-/* 输入框本体透明，露出背景词云 */
-.input-wrapper :deep(.el-textarea__inner) {
-  background: transparent;
-  box-shadow: none;
-}
-
-.input-wrapper:focus-within {
-  border-color: var(--primary);
-  box-shadow: 0 4px 24px rgba(99, 102, 241, 0.15);
-}
-
-.input-wrapper :deep(.el-textarea__inner) {
-  border: none;
-  box-shadow: none !important;
-  font-size: 15px;
-  padding: 8px 0;
-  resize: none;
-}
-
-.send-btn {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  background: var(--primary-gradient);
-  border: none;
-  color: white;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s ease;
-  flex-shrink: 0;
-}
-
-.send-btn:hover:not(:disabled) {
-  transform: scale(1.05);
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
-}
-
-.send-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.input-hint {
-  text-align: center;
-  margin-top: 12px;
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-.progress-text {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--primary);
-  font-weight: 500;
-}
-
-/* 示例标签 */
-.examples {
-  margin-top: 32px;
-}
-
-.examples-label {
-  font-size: 13px;
-  color: var(--text-muted);
-  margin-right: 8px;
-}
-
-.example-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: center;
-  margin-top: 12px;
-}
-
-.example-tag {
-  padding: 6px 14px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  font-size: 13px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.example-tag:hover {
-  border-color: var(--primary);
-  color: var(--primary);
-  background: var(--panel-gradient);
-}
-
-/* 文章列表 */
-.articles-section {
-  margin-top: 60px;
-}
-
-.section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20px;
-}
-
-.section-header h2 {
-  font-size: 20px;
-  font-weight: 700;
-  margin: 0;
-}
-
-.article-count {
-  font-size: 14px;
-  color: var(--text-muted);
-}
-
-/* 换一批：文字按钮（无边框无背景） */
-.shuffle-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  border: none;
-  background: transparent;
-  color: var(--text-secondary);
-  font-size: 13px;
-  cursor: pointer;
-  border-radius: 8px;
-  transition: all 0.2s ease;
-}
-
-.shuffle-btn:hover {
-  color: var(--primary);
-  background: var(--bg-soft);
-}
-
-.shuffle-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.article-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
-}
-
-.article-card {
-  position: relative;
-  background: var(--bg-card);
-  border-radius: 16px;
-  padding: 20px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  border: 1px solid var(--border);
-}
-
-.article-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
-  border-color: var(--primary-light);
-}
-
-/* 卡片顶部：左类型 / 右价格 */
-.card-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.card-price {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.card-price.is-free {
-  background: #ecfdf5;
-  color: #059669;
-}
-
-.card-price.is-paid {
-  background: #fff7ed;
-  color: #ea580c;
-}
-
-.card-price.is-paid svg {
-  stroke: #ea580c;
-}
-
-.card-delete {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 30px;
-  height: 30px;
-  border: none;
-  background: transparent;
-  color: var(--text-muted);
-  border-radius: 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: all 0.2s ease;
-  z-index: 2;
-}
-
-.article-card:hover .card-delete {
-  opacity: 1;
-}
-
-.card-delete:hover {
-  background: #fee2e2;
-  color: #dc2626;
-}
-
-.card-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 500;
-  margin-bottom: 12px;
-}
-
-.status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-}
-
-.status-pending { background: var(--bg-soft); color: var(--text-secondary); }
-.status-processing { background: #dbeafe; color: #2563eb; }
-.status-warning { background: #fef3c7; color: #d97706; }
-.status-success { background: #d1fae5; color: #059669; }
-.status-failed { background: #fee2e2; color: #dc2626; }
-
-.card-topic {
-  font-size: 16px;
-  font-weight: 600;
-  margin: 0 0 8px;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.card-title {
-  font-size: 13px;
-  color: var(--text-secondary);
-  margin: 0 0 16px;
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.card-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
-}
-
-.card-author {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-/* 卡片右下角：点赞 / 收藏 / 下载 */
-.card-stats {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: var(--text-muted);
-}
-
-.stat {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  font-size: 12px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  user-select: none;
-  transition: color 0.2s ease;
-}
-
-.stat:hover {
-  color: var(--primary);
-}
-
-/* 已点赞：玫红高亮 */
-.stat.active {
-  color: #f43f5e;
-}
-
-.stat.active svg {
-  stroke: #f43f5e;
-}
-
-/* 已收藏：金色高亮 */
-.stat.active-fav {
-  color: #f59e0b;
-}
-
-.stat.active-fav svg {
-  stroke: #f59e0b;
-}
-
-/* 空状态 */
-.empty-state {
-  text-align: center;
-  padding: 60px 0;
-  color: var(--text-muted);
-}
-
-.empty-icon {
-  width: 80px;
-  height: 80px;
-  margin: 0 auto 16px;
-  border-radius: 50%;
-  background: var(--bg-soft);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-muted);
-}
-
-/* ===== 移动端适配（<640px）===== */
-@media (max-width: 640px) {
-  .hero-section {
-    padding: 24px 0 40px;
-  }
-
-  .hero-badge {
-    font-size: 12px;
-    padding: 4px 12px;
-    margin-bottom: 16px;
-  }
-
-  .hero-title {
-    font-size: 28px;
-    line-height: 1.35;
-    margin-bottom: 12px;
-  }
-
-  .hero-desc {
-    font-size: 14px;
-    margin-bottom: 24px;
-  }
-
-  /* 词云为装饰性元素：窄屏下百分比定位会越界裁剪，直接隐藏，保证输入框区域干净 */
-  .word-cloud {
-    display: none;
-  }
-
-  .input-card {
-    padding: 20px 0;
-  }
-
-  .input-wrapper {
-    padding: 10px 12px;
-    gap: 8px;
-    border-radius: 16px;
-  }
-
-  .input-wrapper :deep(.el-textarea__inner) {
-    font-size: 14px;
-    padding: 6px 0;
-  }
-
-  .send-btn {
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
-  }
-
-  .articles-section {
-    margin-top: 40px;
-  }
-
-  .section-header h2 {
-    font-size: 18px;
-  }
-
-  .article-card {
-    padding: 16px;
-    border-radius: 14px;
-  }
-
-  .card-topic {
-    font-size: 15px;
-  }
-}
+.composer-brief {border-top:1px solid var(--line);margin:7px 0 10px;padding-top:9px;color:var(--ink);font-size:12px}
+.composer-brief summary {cursor:pointer}.composer-brief summary strong{font-weight:650}.composer-brief summary span{margin-left:9px;color:var(--muted)}
+.brief-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0}.brief-wide{grid-column:1/-1}
+.brief-fields label{display:grid;gap:4px;color:var(--muted);font-size:12px}.brief-fields :is(input,select){width:100%;min-width:0;min-height:36px;padding:5px 8px;color:var(--ink);border:1px solid var(--line);border-radius:4px;background:var(--surface)}
+@media(max-width:480px){.brief-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.compose-quota {margin-top:13px}.compose-error{color:var(--danger);font-size:13px;margin:8px 0 0}
+.desk-date {display:flex;align-items:center;gap:7px;color:var(--muted);font-size:12px;white-space:nowrap;margin-bottom:4px}
+.composer {display:grid;grid-template-columns:minmax(0,1.36fr) minmax(0,1fr);position:relative;isolation:isolate;overflow:hidden;border:1px solid #ded8c9;border-radius:10px;background:#f6f1e7}
+.compose-form {position:relative;z-index:1;padding:26px 0 26px 30px}
+.compose-label {display:flex;align-items:center;gap:7px;font-size:12px;font-weight:650;color:#9f402d}.compose-form h2 {font:700 clamp(25px,2.3vw,34px)/1.35 var(--serif);letter-spacing:-.025em;color:#302c26;margin:8px 0 16px}
+.input-box {padding:13px 14px 11px;background:var(--surface);border:1px solid #cec9bd;border-radius:7px;box-shadow:0 2px 3px #46301b08}.input-box:focus-within {border-color:var(--accent);box-shadow:0 0 0 2px var(--tint)}
+.input-box textarea {display:block;width:100%;resize:vertical;min-height:45px;max-height:220px;line-height:1.6;font-size:14px;background:transparent;border:0;outline:0;color:var(--ink)}.input-box textarea::placeholder {color:var(--muted)}
+.input-actions {display:flex;align-items:center;justify-content:space-between;margin-top:4px}.count {font:11px var(--mono);color:var(--muted)}
+.press-art {display:flex;align-items:center;justify-content:center;padding:12px 4% 8px 6%;background-image:radial-gradient(#ab97753d .7px,transparent .9px);background-size:6px 6px;mask-image:linear-gradient(to right,transparent,#000 13%);}
+.press-art img {width:100%;height:clamp(180px,18vw,258px);object-fit:contain;mix-blend-mode:multiply}
+.desk-section {margin-top:26px}.section-line {display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:13px}
+.section-line h2 {font:700 22px/1.4 var(--serif);letter-spacing:-.025em}.section-line>span,.section-line>a {color:var(--muted);font-size:12px}.section-line>a:hover{color:var(--accent)}
+.stage-strip {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));list-style:none;margin:0;padding:0;border:1px solid var(--line);background:var(--surface);border-radius:8px}
+.stage-strip li {position:relative;display:flex;align-items:center;gap:11px;padding:17px 15px;min-width:0}.stage-strip strong{font-size:14px;font-weight:650}.stage-strip p {font-size:12px;color:var(--muted);line-height:1.45;margin-top:3px}
+.stage-icon {color:var(--accent);display:grid;place-items:center;width:35px;height:35px;border-radius:7px;background:var(--tint);flex-shrink:0}.stage-arrow{color:var(--muted);opacity:.62;position:absolute;right:-5px}
+.idea-grid {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px}
+.idea-card {position:relative;display:flex;flex-direction:column;overflow:hidden;padding:0;text-align:left;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);transition:transform .18s,border-color .18s}.idea-card:hover {transform:translateY(-2px);border-color:var(--accent)}
+.idea-image {width:100%;height:clamp(84px,7.7vw,137px);background-image:url('../assets/subjects.webp');background-size:300% auto}
+.idea-text {display:grid;gap:4px;padding:13px 38px 16px 16px}.idea-text small{font-size:11px;color:var(--muted);font-weight:550}.idea-text strong {font:650 clamp(15px,1.17vw,19px)/1.5 var(--serif)}
+.idea-go {position:absolute;bottom:19px;right:15px;color:var(--muted);transform:rotate(-40deg)}
+.recent-list,.recent-error {border:1px solid var(--line);border-radius:8px;background:var(--surface)}.recent-list a,.recent-error{padding:12px 16px}.recent-list a{display:flex;align-items:center;gap:11px}.recent-list a+a{border-top:1px solid var(--line)}.recent-list strong{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.recent-list small{margin-left:auto;color:var(--accent);white-space:nowrap}
+@media(min-width:1550px){.compose-form{padding:34px 0 34px 38px}}
+@media(max-width:1160px){.stage-strip li{gap:7px;padding:14px 10px}.stage-icon{width:28px;height:31px}.stage-strip p{font-size:11px}.stage-strip strong{font-size:13px}}
+@media(max-width:950px){.stage-strip{grid-template-columns:repeat(2,minmax(0,1fr))}.stage-strip li:nth-child(-n+2){border-bottom:1px solid var(--line)}.stage-arrow{display:none}.compose-form{padding:20px 0 20px 20px}}
+@media(max-width:600px){.desk-date{display:none}.composer{grid-template-columns:1fr}.compose-form{padding:20px 16px 16px}.compose-form h2{font-size:clamp(20px,5.6vw,25px);max-width:calc(100% - 68px);margin:8px 0 18px}.press-art{position:absolute;top:2px;right:0;width:min(25%,95px);height:74px;padding:0;z-index:-1}.press-art img{height:78px}.input-box{padding:10px}.desk-section{margin-top:22px}.section-line{gap:8px}.section-line h2{font-size:20px}.section-line>span{font-size:11px}.idea-grid{grid-template-columns:1fr;gap:9px}.idea-card{display:grid;grid-template-columns:85px 1fr;align-items:center}.idea-image{height:81px}.idea-text{padding:8px 35px 8px 13px}.idea-go{bottom:30px}.stage-strip li{padding:11px 8px}.stage-strip p{font-size:10.5px}}
 </style>

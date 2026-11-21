@@ -1,87 +1,84 @@
 <template>
-  <div class="markdown-body" v-html="renderedHtml"></div>
+  <div ref="root" class="markdown-body" v-html="renderedHtml"></div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import MarkdownIt from 'markdown-it'
-import hljs from 'highlight.js'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { renderMarkdown } from '@/utils/renderMarkdown'
+import { useAuthStore } from '@/stores/auth'
 import 'highlight.js/styles/github-dark.css'
-import katex from 'katex'
 import 'katex/dist/katex.min.css'
 
 const props = defineProps({
-  content: {
-    type: String,
-    default: ''
-  },
-  highlightImageMarkers: {
-    type: Boolean,
-    default: false
-  }
+  content: { type: String, default: '' },
+  evidence: Array,
+  highlightImageMarkers: { type: Boolean, default: false }
 })
-
-const md = new MarkdownIt({
-  html: true,
-  linkify: true,
-  typographer: true,
-  breaks: true, // 单换行也渲染为换行，避免 LLM 输出的单换行段落挤成一大段
-  highlight: function (str, lang) {
-    if (lang && hljs.getLanguage(lang)) {
-      try {
-        return '<pre><code class="hljs">' +
-          hljs.highlight(str, { language: lang, ignoreIllegals: true }).value +
-          '</code></pre>'
-      } catch (__) {}
-    }
-    return '<pre><code class="hljs">' + md.utils.escapeHtml(str) + '</code></pre>'
-  }
-})
-
-/**
- * 渲染 LaTeX 数学公式：$$...$$（块级）和 $...$（行内）
- * 先处理块级，再处理行内，避免正则互相干扰
- */
-function renderMath(html) {
-  if (!html) return html
-
-  // 块级公式 $$...$$（可能跨行）
-  html = html.replace(/\$\$([\s\S]+?)\$\$/g, (_, expr) => {
-    try {
-      return katex.renderToString(expr.trim(), { displayMode: true, throwOnError: false })
-    } catch (e) {
-      return `<pre>${expr.trim()}</pre>`
-    }
-  })
-
-  // 行内公式 $...$（不跨行，且排除 $$ 干扰）
-  html = html.replace(/(^|[^$])\$([^$\n]+?)\$(?!\$)/g, (_, pre, expr) => {
-    try {
-      return pre + katex.renderToString(expr.trim(), { displayMode: false, throwOnError: false })
-    } catch (e) {
-      return pre + '$' + expr.trim() + '$'
-    }
-  })
-
-  return html
+const { locale } = useI18n()
+const auth = useAuthStore()
+const root = ref(null)
+function mediaPath(src) {
+  try {
+    const url = new URL(src, document.baseURI)
+    return url.origin === location.origin && /^\/images\/[^/]+$/.test(url.pathname) ? url.pathname + url.search : null
+  } catch { return null }
 }
+const renderedHtml = computed(() => renderMarkdown(props.content, {
+  evidence: props.evidence,
+  highlightImageMarkers: props.highlightImageMarkers,
+  markerLabel: locale.value === 'en' ? 'Illustration' : '配图位置',
+  mediaPath
+}))
 
-const renderedHtml = computed(() => {
-  if (!props.content) return ''
-  let html = md.render(props.content)
-  // 渲染 LaTeX 公式
-  html = renderMath(html)
-  // 高亮配图标记
-  if (props.highlightImageMarkers) {
-    html = html.replace(/<!--\s*配图[：:]\s*(.+?)\s*-->/g,
-      '<div class="image-marker">🖼️ 配图位置：$1</div>')
+const images = new Map()
+let currentToken
+function release(path, item) {
+  item.controller.abort()
+  if (item.url) URL.revokeObjectURL(item.url)
+  images.delete(path)
+}
+function syncImages() {
+  if (!root.value) return
+  if (auth.token !== currentToken) {
+    images.forEach((item, path) => release(path, item))
+    currentToken = auth.token
   }
-  return html
-})
+  const nodes = root.value.querySelectorAll('img[data-blog-media]')
+  const wanted = new Set(Array.from(nodes, element => element.dataset.blogMedia))
+  images.forEach((item, path) => { if (!wanted.has(path)) release(path, item) })
+  for (const img of nodes) {
+    const path = img.dataset.blogMedia
+    const entry = images.get(path)
+    if (entry?.url) { img.src = entry.url; continue }
+    img.removeAttribute('src')
+    if (entry) continue
+    const item = { controller: new AbortController(), url: null }
+    images.set(path, item)
+    void loadImage(path, item, currentToken)
+  }
+}
+async function loadImage(path, item, token) {
+  try {
+    const response = await fetch(path, {
+      mode:'same-origin', redirect:'error', cache:'no-store', signal:item.controller.signal,
+      headers:token ? { Authorization:`Bearer ${token}` } : {}
+    })
+    if (!response.ok || !response.headers.get('content-type')?.startsWith('image/')) return
+    const blob = await response.blob()
+    if (images.get(path) !== item || token !== auth.token) return
+    item.url = URL.createObjectURL(blob)
+    for (const img of root.value?.querySelectorAll('img[data-blog-media]') || []) {
+      if (img.dataset.blogMedia === path) img.src = item.url
+    }
+  } catch { /* The Markdown alt text remains available if the image is unavailable. */ }
+}
+onMounted(syncImages)
+watch([renderedHtml, () => auth.token], syncImages, { flush:'post' })
+onBeforeUnmount(() => images.forEach((item, path) => release(path, item)))
 </script>
 
 <style scoped>
-.markdown-body {
-  line-height: 1.8;
-}
+.markdown-body { line-height: 1.8; overflow-wrap: anywhere; }
+.markdown-body :deep(.image-marker) { display: block; }
 </style>

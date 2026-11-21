@@ -11,12 +11,14 @@ react_tools 是「行动 + 观察」节点：读取最后一条 AIMessage 的 to
 异常处理：单个工具调用失败不中断循环，以 "工具调用失败: ..." 反馈给模型，
 让模型自行决定重试或放弃（标准 ReAct 容错方式）。
 """
-from typing import Any, Dict, List, Literal, Optional
+import json
+from typing import Any, Dict, List, Literal
 
 from langchain_core.messages import ToolMessage
 from langchain_core.tools import BaseTool
 
 from src.blog_agent.agent.state import AgentState
+from src.blog_agent.clients.provider_budget import ProviderLimitError
 from src.blog_agent.agent.nodes.react_model import message_to_dict
 
 
@@ -30,16 +32,26 @@ def make_react_tools_node(tools: List[BaseTool]):
         tool_calls = last.get("tool_calls") or []
 
         tool_messages: List[Dict[str, Any]] = []
-        for tc in tool_calls:
+        remaining = max(0, MAX_TOOL_ROUNDS - sum(m.get("role") == "tool" for m in messages))
+        for index, tc in enumerate(tool_calls):
             tool = tool_map.get(tc.get("name"))
-            if tool is None:
+            search_result = None
+            if index >= remaining:
+                content = "本次检索已达调用上限，请根据已有结果整理资料。"
+            elif tool is None:
                 content = f"未知工具: {tc.get('name')}（可用工具：{', '.join(tool_map.keys())}）"
             else:
                 try:
                     result = tool.invoke(tc.get("args") or {})
-                    content = str(result)
-                except Exception as e:  # noqa: BLE001 - 工具异常必须反馈给模型而非中断
-                    content = f"工具调用失败: {type(e).__name__}: {e}"
+                    if tool.name in {"web_search", "read_web_sources"} and isinstance(result, dict):
+                        search_result = result
+                        content = json.dumps(result, ensure_ascii=False)
+                    else:
+                        content = str(result)
+                except ProviderLimitError:
+                    raise
+                except Exception:
+                    content = "工具暂不可用，可调整关键词后重试。"
             tool_messages.append(
                 message_to_dict(
                     ToolMessage(
@@ -48,8 +60,9 @@ def make_react_tools_node(tools: List[BaseTool]):
                     )
                 )
             )
-        # 注意：state.messages 是 add_list 累积 reducer，这里只返回【增量】工具消息
-        return {"messages": tool_messages}
+            if search_result is not None:
+                tool_messages[-1]["search_result"] = search_result
+        return {"messages": [*messages, *tool_messages]}
 
     return react_tools_node
 

@@ -2,8 +2,8 @@
   <div class="user-menu">
     <!-- 未登录 -->
     <template v-if="!authStore.isLoggedIn">
-      <router-link to="/login" class="login-link">{{ $t('nav.login') }}</router-link>
-      <router-link to="/register" class="register-link">{{ $t('nav.register') }}</router-link>
+      <router-link :to="authLink('/login')" class="login-link">{{ $t('nav.login') }}</router-link>
+      <router-link :to="authLink('/register')" class="register-link">{{ $t('nav.register') }}</router-link>
     </template>
 
     <!-- 已登录 -->
@@ -30,7 +30,7 @@
 </template>
 
 <script setup>
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import SvgIcon from '@/components/SvgIcon.vue'
@@ -38,6 +38,11 @@ import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const route = useRoute()
+function authLink(path) {
+  const redirect = ['Login','Register'].includes(route.name) ? route.query.redirect : route.fullPath
+  return { path, query: redirect && redirect !== '/' ? { redirect } : {} }
+}
 const { t } = useI18n()
 
 function handleCommand(command) {

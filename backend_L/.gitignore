@@ -11,6 +11,7 @@ venv/
 .env.*.local
 
 # ---- 本地数据产物 ----
+/data/eval_runs/
 backend_L/data/
 backend_L/uploads/
 

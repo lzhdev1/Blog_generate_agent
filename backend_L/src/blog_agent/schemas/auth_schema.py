@@ -15,8 +15,8 @@ NICKNAME_PATTERN = re.compile(r"^[\u4e00-\u9fa5A-Za-z0-9_ ]{2,32}$")
 class RegisterReq(BaseModel):
     """注册请求：昵称（默认 Blog_ + 随机5位数）、邮箱+验证码、用户名、密码、确认密码"""
     nickname: str = Field(..., min_length=2, max_length=32)
-    email: EmailStr
-    email_code: str = Field(..., min_length=6, max_length=6, description="邮箱验证码（开发阶段固定 888888）")
+    email: EmailStr = Field(max_length=128)
+    email_code: str = Field(..., pattern=r"^[0-9]{6}$", description="六位邮箱验证码")
     username: str = Field(..., min_length=3, max_length=32)
     password: str = Field(..., min_length=8, max_length=32)
     confirm_password: str = Field(..., min_length=8, max_length=32)
@@ -54,7 +54,7 @@ class LoginReq(BaseModel):
 
 class SendCodeReq(BaseModel):
     """发送邮箱验证码"""
-    email: EmailStr
+    email: EmailStr = Field(max_length=128)
 
 
 class RechargeReq(BaseModel):

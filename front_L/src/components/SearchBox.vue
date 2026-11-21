@@ -1,399 +1,172 @@
 <template>
-  <div class="search-box" ref="wrapRef">
-    <div class="search-input-wrap">
-      <span class="search-icon">
-        <SvgIcon name="search" :size="16" />
-      </span>
-      <input
-        v-model="keyword"
-        class="search-input"
-        type="text"
-        :placeholder="$t('nav.searchPlaceholder')"
-        @focus="onFocus"
-        @input="onInput"
-        @keydown.enter="onEnter"
-        @keydown.esc="close"
-      />
-      <span v-if="loading" class="search-loading">
-        <SvgIcon name="loading" :size="14" class="animate-spin" />
-      </span>
-      <button v-else-if="keyword" class="search-clear" title="清空" @click="clearKeyword">
-        <SvgIcon name="close" :size="12" />
+  <div ref="wrap" class="search-box" @focusout="onBlur">
+    <form class="search-input-wrap" role="search" @submit.prevent="submit">
+      <SvgIcon name="search" :size="16" aria-hidden="true" />
+      <input ref="input" v-model="keyword" class="search-input" type="text" role="combobox"
+        autocomplete="off" enterkeyhint="search" aria-autocomplete="list" :aria-expanded="open"
+        :aria-controls="open ? 'article-suggestions' : undefined"
+        :aria-activedescendant="open && active >= 0 ? 'article-suggestion-' + active : undefined"
+        :aria-label="t('studio.search')" :placeholder="t('nav.searchPlaceholder')"
+        @focus="schedule" @input="changed" @compositionstart="close" @keydown="onKey" />
+      <button v-if="keyword" type="button" class="search-clear" :aria-label="t('studio.clear')" @mousedown.prevent @click="clear">
+        <SvgIcon name="close" :size="13" />
       </button>
-    </div>
-
-    <!-- 下拉结果：Teleport 到 body，避开导航栏 backdrop-filter 的渲染裁剪 -->
+    </form>
     <Teleport to="body">
-      <div
-        v-if="open && keyword.trim()"
-        class="search-dropdown"
-        :style="dropdownStyle"
-      >
-        <div v-if="loading" class="search-empty">
-          <SvgIcon name="loading" :size="18" class="animate-spin" />
-          <span>{{ $t('nav.searching') }}</span>
+      <div v-if="open" ref="dropdown" class="search-dropdown" :style="position" @focusout="onBlur">
+        <div class="search-status" role="status">
+          {{ loading ? t('nav.searching') : failed ? t('studio.listError') : results.length ? t('nav.searchResults') : t('nav.noResults') }}
         </div>
-        <template v-else-if="results.length">
-          <div class="search-result-title">{{ $t('nav.searchResults') }}（{{ results.length }}）</div>
-          <div
-            v-for="(a, i) in results"
-            :key="a.task_id"
-            class="search-result-item"
-            :class="{ active: activeIndex === i }"
-            @mousedown.prevent="goArticle(a)"
-            @mouseenter="activeIndex = i"
-          >
-            <div class="result-main">
-              <span class="result-tag" :class="a.is_demo ? 'is-demo' : 'is-user'">
-                {{ a.is_demo ? $t('home.demo') : $t('home.user') }}
-              </span>
-              <span class="result-title">{{ a.title }}</span>
-            </div>
-            <div class="result-sub">
-              <span class="result-topic">{{ a.topic }}</span>
-              <span class="result-price" :class="a.download_price > 0 ? 'is-paid' : 'is-free'">
-                {{ a.download_price > 0 ? `¥${a.download_price}` : $t('home.free') }}
-              </span>
-            </div>
-          </div>
-          <div class="search-footer">
-            <span>{{ $t('nav.enterToOpen') }}</span>
-          </div>
-        </template>
-        <div v-else class="search-empty">
-          <SvgIcon name="search" :size="18" />
-          <span>{{ $t('nav.noResults') }}</span>
-        </div>
+        <ul id="article-suggestions" role="listbox" :aria-label="t('nav.searchResults')">
+          <li v-for="(article, index) in results" :id="'article-suggestion-' + index" :key="article.task_id"
+            role="option" :aria-selected="active === index" :class="{ active: active === index }"
+            @mousedown.prevent @click="goArticle(article)">
+            <span class="suggestion-type">{{ article.is_demo ? t('studio.demo') : (article.nickname || t('studio.article')) }}</span>
+            <strong>{{ article.title || article.topic }}</strong>
+          </li>
+        </ul>
+        <button class="show-results" type="button" @mousedown.prevent @click="goSearch">
+          <span>{{ fullSearch }}</span><span aria-hidden="true">↵</span>
+        </button>
       </div>
     </Teleport>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useRoute, useRouter } from 'vue-router'
 import { searchArticles } from '@/api/article'
-import SvgIcon from '@/components/SvgIcon.vue'
+import SvgIcon from './SvgIcon.vue'
 
+const route = useRoute()
 const router = useRouter()
-const wrapRef = ref(null)
+const { t, locale } = useI18n()
+const wrap = ref(null)
+const input = ref(null)
+const dropdown = ref(null)
 const keyword = ref('')
 const results = ref([])
 const loading = ref(false)
+const failed = ref(false)
 const open = ref(false)
-const activeIndex = ref(-1)
-const dropdownStyle = ref({ top: '0px', left: '0px', width: '320px' })
-let debounceTimer = null
-let seq = 0
+const active = ref(-1)
+const position = ref({})
+const fullSearch = computed(() => locale.value === 'en' ? 'Search all articles' : '搜索全部文章')
+let timer
+let requestNumber = 0
 
-function updateDropdownPos() {
-  const el = wrapRef.value?.querySelector('.search-input-wrap')
-  if (!el) return
-  const r = el.getBoundingClientRect()
-  dropdownStyle.value = {
-    top: Math.round(r.bottom + 8) + 'px',
-    left: Math.round(r.left) + 'px',
-    width: Math.round(r.width) + 'px'
+function reposition() {
+  if (!open.value || !wrap.value) return
+  const rect = wrap.value.getBoundingClientRect()
+  const width = Math.min(Math.max(rect.width, 320), document.documentElement.clientWidth - 16)
+  const left = Math.min(Math.max(8, rect.left), document.documentElement.clientWidth - width - 8)
+  position.value = {
+    top: (rect.bottom + 6) + 'px', left: left + 'px', width: width + 'px',
+    maxHeight: Math.max(90, Math.min(390, window.innerHeight - rect.bottom - 16)) + 'px'
   }
 }
-
-function onInput() {
-  clearTimeout(debounceTimer)
-  activeIndex.value = -1
-  const q = keyword.value.trim()
-  if (!q) {
-    open.value = false
-    results.value = []
-    return
-  }
+function close() {
+  clearTimeout(timer)
+  requestNumber++
+  open.value = false
+  loading.value = false
+  active.value = -1
+}
+function schedule() {
+  close()
+  const query = keyword.value.trim()
+  if (!query) return
+  const version = requestNumber
+  results.value = []
   open.value = true
-  updateDropdownPos()
-  debounceTimer = setTimeout(() => doSearch(q), 280)
-}
-
-async function doSearch(q) {
-  const my = ++seq
+  failed.value = false
   loading.value = true
-  try {
-    const res = await searchArticles(q)
-    if (my !== seq) return // 过期响应丢弃
-    results.value = res.items || []
-    open.value = true
-    nextTick(updateDropdownPos)
-  } catch (e) {
-    if (my === seq) {
-      results.value = []
-      open.value = true
+  reposition()
+  timer = setTimeout(async () => {
+    try {
+      const response = await searchArticles(query)
+      if (version === requestNumber) results.value = response.items || []
+    } catch {
+      if (version === requestNumber) failed.value = true
+    } finally {
+      if (version === requestNumber) loading.value = false
     }
-    console.error('搜索失败:', e)
-  } finally {
-    if (my === seq) loading.value = false
-  }
+  }, 220)
 }
-
-function onFocus() {
-  if (keyword.value.trim() && results.value.length) {
-    open.value = true
-    updateDropdownPos()
-  }
+function changed(event) {
+  if (!event.isComposing) schedule()
 }
-
-function onEnter() {
+function clear() {
+  keyword.value = ''
+  close()
+  input.value?.focus()
+}
+function goArticle(article) {
+  close()
+  input.value?.blur()
+  router.push('/blog/' + article.task_id)
+}
+function goSearch() {
   const q = keyword.value.trim()
   if (!q) return
-  if (activeIndex.value >= 0 && results.value[activeIndex.value]) {
-    goArticle(results.value[activeIndex.value])
-  } else if (results.value.length) {
-    goArticle(results.value[0])
-  } else {
-    // 无结果直接回车：跳到全部文章页
-    router.push({ path: '/articles', query: { q } })
-    close()
-  }
-}
-
-function goArticle(a) {
   close()
-  router.push(`/blog/${a.task_id}`)
+  input.value?.blur()
+  router.push({path: '/articles', query: { q }})
 }
-
-function clearKeyword() {
-  keyword.value = ''
-  results.value = []
-  open.value = false
+function submit() {
+  if (open.value && results.value[active.value]) goArticle(results.value[active.value])
+  else goSearch()
 }
-
-function close() {
-  open.value = false
-  activeIndex.value = -1
+function onKey(event) {
+  if (event.isComposing || event.keyCode === 229) return
+  if (event.key === 'Escape') { close(); return }
+  if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return
+  event.preventDefault()
+  if (!open.value) { schedule(); return }
+  const count = results.value.length
+  if (!count) return
+  const start = active.value < 0 && event.key === 'ArrowUp' ? 0 : active.value
+  active.value = (start + (event.key === 'ArrowDown' ? 1 : -1) + count) % count
+  nextTick(() => dropdown.value?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest' }))
 }
-
-function onClickOutside(e) {
-  if (wrapRef.value && !wrapRef.value.contains(e.target)) close()
+function onBlur(event) {
+  if (!wrap.value?.contains(event.relatedTarget) && !dropdown.value?.contains(event.relatedTarget)) close()
 }
-
+function outside(event) {
+  if (!wrap.value?.contains(event.target) && !dropdown.value?.contains(event.target)) close()
+}
+watch(() => route.fullPath, () => {
+  close()
+  keyword.value = route.name === 'AllArticles' && typeof route.query.q === 'string' ? route.query.q : ''
+}, { immediate: true })
 onMounted(() => {
-  document.addEventListener('click', onClickOutside)
-  document.addEventListener('keydown', onEsc)
-  window.addEventListener('scroll', onScrollOrResize, true)
-  window.addEventListener('resize', onScrollOrResize)
+  document.addEventListener('pointerdown', outside)
+  window.addEventListener('resize', reposition)
+  window.addEventListener('scroll', reposition, true)
 })
 onBeforeUnmount(() => {
-  clearTimeout(debounceTimer)
-  document.removeEventListener('click', onClickOutside)
-  document.removeEventListener('keydown', onEsc)
-  window.removeEventListener('scroll', onScrollOrResize, true)
-  window.removeEventListener('resize', onScrollOrResize)
+  close()
+  document.removeEventListener('pointerdown', outside)
+  window.removeEventListener('resize', reposition)
+  window.removeEventListener('scroll', reposition, true)
 })
-
-function onScrollOrResize() {
-  if (open.value && keyword.value.trim()) updateDropdownPos()
-}
-
-function onEsc(e) {
-  if (e.key === 'Escape') close()
-}
-
-nextTick(() => {})
 </script>
 
 <style scoped>
-.search-box {
-  position: relative;
-  flex: 1;
-  max-width: 420px;
-  min-width: 0;
-  margin: 0 16px;
-}
-
-.search-input-wrap {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 38px;
-  padding: 0 12px;
-  background: var(--bg-soft);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  transition: all 0.2s ease;
-}
-
-.search-input-wrap:focus-within {
-  border-color: var(--primary);
-  background: var(--bg-card);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
-}
-
-.search-icon {
-  display: flex;
-  align-items: center;
-  color: var(--text-muted);
-  flex-shrink: 0;
-}
-
-.search-input {
-  flex: 1;
-  min-width: 0;
-  border: none;
-  outline: none;
-  background: transparent;
-  font-size: 14px;
-  color: var(--text-primary);
-}
-
-.search-input::placeholder {
-  color: var(--text-muted);
-}
-
-.search-loading {
-  display: flex;
-  align-items: center;
-  color: var(--text-muted);
-  flex-shrink: 0;
-}
-
-.search-clear {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  border: none;
-  border-radius: 50%;
-  background: var(--border);
-  color: var(--text-secondary);
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.search-clear:hover {
-  background: var(--text-muted);
-  color: #fff;
-}
-
-/* 下拉（Teleport 到 body，fixed 定位） */
-.search-dropdown {
-  position: fixed;
-  max-height: 360px;
-  overflow-y: auto;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
-  z-index: 9999;
-  padding: 6px;
-  box-sizing: border-box;
-}
-
-.search-result-title {
-  font-size: 12px;
-  color: var(--text-muted);
-  padding: 6px 10px 4px;
-}
-
-.search-result-item {
-  padding: 10px 12px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-
-.search-result-item:hover,
-.search-result-item.active {
-  background: var(--bg-soft);
-}
-
-.result-main {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-.result-tag {
-  flex-shrink: 0;
-  font-size: 11px;
-  padding: 1px 8px;
-  border-radius: 999px;
-  font-weight: 600;
-}
-
-.result-tag.is-demo {
-  background: var(--bg-soft);
-  color: var(--text-secondary);
-}
-
-.result-tag.is-user {
-  background: rgba(99, 102, 241, 0.1);
-  color: var(--primary);
-}
-
-.result-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.result-sub {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: 4px;
-  min-width: 0;
-}
-
-.result-topic {
-  font-size: 12px;
-  color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.result-price {
-  flex-shrink: 0;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 1px 8px;
-  border-radius: 999px;
-}
-
-.result-price.is-free {
-  background: #ecfdf5;
-  color: #059669;
-}
-
-.result-price.is-paid {
-  background: #fff7ed;
-  color: #ea580c;
-}
-
-.search-empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 24px 12px;
-  color: var(--text-muted);
-  font-size: 13px;
-}
-
-.search-footer {
-  padding: 6px 10px 4px;
-  font-size: 12px;
-  color: var(--text-muted);
-  border-top: 1px solid var(--border);
-  margin-top: 4px;
-}
-
-/* 移动端 */
-@media (max-width: 640px) {
-  .search-box {
-    display: none;
-  }
-}
+.search-box { position: relative; min-width: 0; }
+.search-input-wrap { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; color: var(--muted); }
+.search-input-wrap:focus-within { border-color: var(--accent); }
+.search-input { flex: 1; min-width: 0; border: none; outline: none; background: transparent; font: inherit; font-size: 13px; color: var(--ink); }
+.search-clear { display: grid; place-items: center; width: 21px; height: 21px; padding: 0; border: 0; border-radius: 4px; color: var(--muted); background: transparent; cursor: pointer; }
+.search-clear:hover { background: var(--soft); }
+.search-dropdown { position: fixed; z-index: 110; overflow: auto; overscroll-behavior: contain; box-sizing: border-box; border: 1px solid var(--line); border-radius: 8px; padding: 6px; background: var(--surface); color: var(--ink); box-shadow: var(--shadow-md); }
+.search-status { font-size: 12px; padding: 8px 10px; color: var(--muted); }
+.search-dropdown ul { list-style: none; margin: 0; padding: 0; }
+.search-dropdown li { display: flex; align-items: baseline; gap: 10px; padding: 9px 10px; border-radius: 4px; cursor: pointer; }
+.search-dropdown li:hover, .search-dropdown li.active { background: var(--soft); }
+.search-dropdown li strong { min-width: 0; font-size: 13px; font-weight: 550; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.suggestion-type { flex-shrink: 0; max-width: 6em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: var(--muted); }
+.show-results { display: flex; width: 100%; justify-content: space-between; gap: 8px; margin-top: 3px; padding: 10px; background: transparent; border: 0; border-top: 1px solid var(--line); color: var(--accent); font-size: 13px; cursor: pointer; }
 </style>

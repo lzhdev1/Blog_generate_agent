@@ -1,324 +1,76 @@
 <template>
-  <div class="articles-page">
-    <div class="page-header">
-      <h1>全部文章</h1>
-      <p class="page-sub">演示文章 + 用户公开的文章</p>
+  <div class="studio-page">
+    <header class="page-heading"><div><h1>{{ t('studio.explore') }}</h1><p>{{ t('studio.exploreIntro') }}</p></div></header>
+    <div class="index-head">
+      <h2>{{ query ? t('studio.results') + ' · ' + query : t('studio.all') }}</h2>
+      <router-link v-if="query" class="link-action" to="/articles">{{ t('studio.clear') }}</router-link>
+      <small v-else-if="!busy && !error">{{ total }} {{ t('studio.found') }}</small>
     </div>
-
-    <div v-if="loading && !items.length" class="empty-state">
-      <el-skeleton :rows="4" animated />
+    <div v-if="busy && !items.length" role="status" class="empty-panel">{{ t('studio.loading') }}</div>
+    <div v-else-if="!items.length" class="empty-panel">
+      <SvgIcon :name="query ? 'search' : 'library'" :size="29" /><h2>{{ t(error ? 'studio.listError' : query ? 'studio.emptySearch' : 'studio.emptyPublic') }}</h2>
+      <p v-if="!error">{{ t(query ? 'studio.searchHint' : 'studio.emptyPublicHint') }}</p>
+      <button v-if="error" class="quiet-action" @click="fetchPage(true)">{{ t('studio.retry') }}</button>
     </div>
-
-    <el-empty v-else-if="!items.length" description="暂无公开文章" />
-
-    <div v-else class="article-grid">
-      <div v-for="a in items" :key="a.task_id" class="article-card" @click="goDetail(a.task_id)">
-        <div class="card-top">
-          <span class="card-type" :class="a.is_demo ? 'is-demo' : 'is-user'">
-            {{ styleLabel(a) }}
-          </span>
-          <span class="card-price" :class="a.download_price > 0 ? 'is-paid' : 'is-free'">
-            <SvgIcon name="download" :size="12" />
-            {{ a.download_price > 0 ? `¥${a.download_price}` : '免费' }}
-          </span>
+    <div v-else class="public-grid">
+      <article v-for="a in items" :key="a.task_id" class="public-card">
+        <div class="card-meta"><span>{{ styleLabel(a) }}</span><small>{{ articleDate(a.created_at,locale) }}</small></div>
+        <router-link :to="'/blog/' + a.task_id" class="card-title">{{ a.title }}</router-link>
+        <p v-if="a.topic !== a.title" class="subject">{{ a.topic }}</p>
+        <div class="card-footer"><span class="author">{{ a.nickname || t('studio.by') }}</span>
+          <button :class="{marked:a.liked}" :aria-label="t('studio.like')" :aria-pressed="a.liked" :disabled="pending.has('like'+a.task_id)" @click="interact(a,'like')"><SvgIcon name="like" :size="15" />{{ a.like_count }}</button>
+          <button :class="{marked:a.favorited}" :aria-label="t('studio.favorite')" :aria-pressed="a.favorited" :disabled="pending.has('favorite'+a.task_id)" @click="interact(a,'favorite')"><SvgIcon name="star" :size="15" />{{ a.favorite_count }}</button>
+          <button v-if="a.allow_download || a.is_demo" class="download-btn" @click="download(a)"><SvgIcon name="download" :size="14" />{{ a.download_price > 0 && !a.is_demo ? '¥' + a.download_price : t('studio.download') }}</button>
         </div>
-        <h3 class="card-title">{{ a.title }}</h3>
-        <div class="card-bottom">
-          <span class="card-author">
-            <SvgIcon name="user" :size="13" /> {{ a.nickname || '匿名' }}
-          </span>
-          <span class="card-stats">
-            <span class="stat" :class="{ active: a.liked }" title="点赞" @click.stop="handleLike(a)">
-              <SvgIcon name="like" :size="13" /> {{ a.like_count }}
-            </span>
-            <span class="stat" :class="{ 'active-fav': a.favorited }" title="收藏" @click.stop="handleFavorite(a)">
-              <SvgIcon name="star" :size="13" /> {{ a.favorite_count }}
-            </span>
-            <span v-if="a.allow_download || a.is_demo" class="stat" title="下载" @click.stop="handleDownload(a)">
-              <SvgIcon name="download" :size="13" />
-            </span>
-          </span>
-        </div>
-      </div>
+      </article>
     </div>
-
-    <div v-if="items.length && hasMore" class="load-more">
-      <el-button :loading="loadingMore" @click="loadMore">加载更多</el-button>
-    </div>
+    <button v-if="items.length && items.length < total" class="quiet-action load" :disabled="busy" @click="fetchPage(false)">{{ t(busy ? 'studio.loading' : error ? 'studio.retry' : 'studio.more') }}</button>
   </div>
 </template>
-
 <script setup>
-import { ref, onMounted } from 'vue'
-
-// 文章风格 → 中文类别标签（用于卡片左上角）
-function styleLabel(a) {
-  if (a.is_demo) return '演示'
-  const map = { popular_science: '科普', technical: '技术', essay: '论文', prose: '散文', note: '笔记', custom: '自定义' }
-  return map[a.article_style] || '文章'
-}
-import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import SvgIcon from '@/components/SvgIcon.vue'
-import { getArticles, toggleLike, toggleFavorite, downloadArticle } from '@/api/article'
-
-const router = useRouter()
-const items = ref([])
-const total = ref(0)
-const loading = ref(false)
-const loadingMore = ref(false)
-const offset = ref(0)
-const LIMIT = 8
-
-const hasMore = ref(false)
-
-async function fetchArticles(reset = false) {
-  if (reset) {
-    offset.value = 0
-    loading.value = true
-  } else {
-    loadingMore.value = true
-  }
+import { getArticles, searchArticles, toggleLike, toggleFavorite, downloadArticle } from '@/api/article'
+import { articleDate, exportMarkdown } from '@/utils/articles'
+const route=useRoute(), router=useRouter()
+const { t, locale, te }=useI18n()
+const query=computed(() => String(route.query.q || '').trim())
+const items=ref([]), total=ref(0), busy=ref(false), error=ref(false)
+const pending=reactive(new Set())
+let sequence=0
+watch(query, () => fetchPage(true), {immediate:true})
+function styleLabel(a) { const key = 'studio.style.' + a.article_style; return t(a.is_demo ? 'studio.demo' : te(key) ? key : 'studio.article') }
+async function fetchPage(reset) {
+  if (!reset && busy.value) return
+  const ticket=++sequence
+  if (reset) { items.value=[]; total.value=0 }
+  busy.value=true
+  error.value=false
   try {
-    const res = await getArticles({ limit: LIMIT, offset: offset.value, random: true })
-    if (reset) {
-      items.value = res.items || []
-    } else {
-      items.value = [...items.value, ...(res.items || [])]
-    }
-    total.value = res.total
-    offset.value += LIMIT
-    hasMore.value = items.value.length < total.value
-  } finally {
-    loading.value = false
-    loadingMore.value = false
-  }
+    const offset=items.value.length
+    const page=query.value ? await searchArticles(query.value,12,offset) : await getArticles({limit:12,offset,random:false})
+    if (ticket === sequence) { items.value=[...items.value,...page.items]; total.value=page.total }
+  } catch { if (ticket === sequence) error.value=true }
+  finally { if (ticket === sequence) busy.value=false }
 }
-
-function loadMore() {
-  fetchArticles(false)
+async function interact(a,action) {
+  const key=action+a.task_id
+  if (pending.has(key)) return
+  pending.add(key)
+  try {
+    if (action === 'like') { const res=await toggleLike(a.task_id); a.liked=res.liked; a.like_count=res.like_count }
+    else { const res=await toggleFavorite(a.task_id); a.favorited=res.favorited; a.favorite_count=Math.max(0,a.favorite_count+(res.favorited ? 1 : -1)) }
+  } catch { /* Requests provide feedback. */ }
+  finally { pending.delete(key) }
 }
-
-function goDetail(taskId) {
-  router.push(`/blog/${taskId}`)
+async function download(a) {
+  if (a.download_price > 0 && !a.is_demo) { await router.push('/blog/' + a.task_id); return }
+  try { const data=await downloadArticle(a.task_id); exportMarkdown(data.title,data.content) } catch { /* Requests provide feedback. */ }
 }
-
-// ===== 卡片交互：点赞 / 收藏 / 下载 =====
-function handleLike(a) {
-  toggleLike(a.task_id).then(res => {
-    a.like_count = res.like_count
-    a.liked = res.liked
-  })
-}
-
-function handleFavorite(a) {
-  toggleFavorite(a.task_id).then(res => {
-    a.favorited = res.favorited
-    a.favorite_count = Math.max(0, (a.favorite_count || 0) + (res.favorited ? 1 : -1))
-  })
-}
-
-function handleDownload(a) {
-  downloadArticle(a.task_id)
-    .then(res => {
-      const blob = new Blob([res.content || ''], { type: 'text/markdown;charset=utf-8' })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `${res.title || 'article'}.md`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
-      ElMessage.success('下载成功')
-    })
-    .catch(() => {
-      // 未购买/未登录等提示已由请求拦截器统一弹出
-    })
-}
-
-onMounted(() => fetchArticles(true))
 </script>
-
 <style scoped>
-.articles-page {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 16px 0 40px;
-}
-
-.page-header {
-  margin-bottom: 24px;
-}
-
-.page-header h1 {
-  margin: 0 0 6px;
-  font-size: 26px;
-  color: var(--text-primary);
-}
-
-.page-sub {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 14px;
-}
-
-.article-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 18px;
-}
-
-.article-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 18px;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.article-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-  border-color: var(--primary-light);
-}
-
-.card-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.card-type {
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 6px;
-  font-weight: 600;
-}
-
-.card-type.is-demo {
-  background: var(--bg-soft);
-  color: var(--text-muted);
-}
-
-.card-type.is-user {
-  background: rgba(99, 102, 241, 0.12);
-  color: var(--primary);
-}
-
-.card-price {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.card-price.is-free {
-  background: #ecfdf5;
-  color: #059669;
-}
-
-.card-price.is-paid {
-  background: #fff7ed;
-  color: #ea580c;
-}
-
-.card-price.is-paid svg {
-  stroke: #ea580c;
-}
-
-.card-title {
-  margin: 0;
-  font-size: 16px;
-  line-height: 1.5;
-  color: var(--text-primary);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  min-height: 48px;
-}
-
-.card-topic {
-  margin: 0;
-  font-size: 12px;
-  color: var(--text-muted);
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.card-bottom {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: auto;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
-}
-
-.card-author {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.card-stats {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: var(--text-muted);
-}
-
-.stat {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  font-size: 12px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  user-select: none;
-  transition: color 0.2s ease;
-}
-
-.stat:hover {
-  color: var(--primary);
-}
-
-/* 已点赞：玫红高亮 */
-.stat.active {
-  color: #f43f5e;
-}
-
-.stat.active svg {
-  stroke: #f43f5e;
-}
-
-/* 已收藏：金色高亮 */
-.stat.active-fav {
-  color: #f59e0b;
-}
-
-.stat.active-fav svg {
-  stroke: #f59e0b;
-}
-
-.empty-state {
-  padding: 20px 0;
-}
-
-.load-more {
-  text-align: center;
-  margin-top: 28px;
-}
+.index-head,.card-meta,.card-footer{display:flex;align-items:center;gap:10px}.index-head{padding:14px 0;border-top:1px solid var(--line);justify-content:space-between}.index-head h2{font:650 21px var(--serif);overflow-wrap:anywhere}.index-head small,.card-meta small,.subject,.card-footer{color:var(--muted);font-size:12px}
+.public-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,290px),1fr));gap:14px}.public-card{background:var(--surface);border:1px solid var(--line);border-top:3px solid var(--accent);border-radius:7px;padding:19px;display:flex;flex-direction:column;align-items:stretch;min-width:0}.card-meta{justify-content:space-between}.card-meta>span{font-size:11px;color:var(--accent);font-weight:650}.card-title{display:block;font:650 22px/1.5 var(--serif);margin:14px 0 8px;overflow-wrap:anywhere}.card-title:hover{color:var(--accent)}.subject{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:12px}.card-footer{border-top:1px solid var(--line);padding-top:12px;margin-top:auto;gap:9px}.author{margin-right:auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.card-footer button{display:inline-flex;gap:3px;align-items:center;background:none;border:0;padding:3px 0;color:var(--muted);font-size:12px}.card-footer .marked,.card-footer button:hover{color:var(--accent)}.load{display:flex;margin:22px auto}
 </style>

@@ -1,217 +1,180 @@
 <template>
-  <div class="profile-page">
-    <div class="profile-card">
-      <h2>个人信息</h2>
-
-      <el-form label-position="top" class="info-form">
-        <el-form-item label="昵称">
-          <el-input :model-value="authStore.user?.nickname" disabled />
-        </el-form-item>
-        <el-form-item label="用户名">
-          <el-input :model-value="authStore.user?.username" disabled />
-        </el-form-item>
-        <el-form-item label="绑定邮箱">
-          <el-input :model-value="authStore.user?.email" disabled />
-        </el-form-item>
-        <el-form-item label="账户余额">
-          <div class="balance-row">
-            <span class="balance-num">¥ {{ (authStore.user?.balance || 0).toFixed(2) }}</span>
-            <el-button size="small" @click="rechargeDialog = true">充值</el-button>
+  <section class="profile-space">
+    <header class="page-heading"><div><h1>{{ t('profile') }}</h1><p>{{ t('profileIntro') }}</p></div></header>
+    <div v-if="loadError" class="profile-load-error" role="alert">{{ loadError }} <button class="link-action" @click="load">{{ t('retry') }}</button></div>
+    <p v-if="!auth.user && loading" role="status">{{ t('loading') }}</p>
+    <div v-if="auth.user" class="profile-layout">
+      <div class="profile-column">
+        <section class="profile-panel">
+          <h2>{{ t('details') }}</h2>
+          <div class="profile-name"><span aria-hidden="true">{{ auth.user.nickname?.slice(0, 1) }}</span><strong>{{ auth.user.nickname }}</strong></div>
+          <dl><dt>{{ t('username') }}</dt><dd>{{ auth.user.username }}</dd><dt>{{ t('email') }}</dt><dd>{{ auth.user.email }}</dd></dl>
+        </section>
+        <section class="profile-panel profile-wallet">
+          <h2>{{ t('balance') }}</h2><strong class="profile-amount">{{ money }}</strong>
+          <p>{{ t('topupHelp') }}</p><button v-if="demoRecharge" class="quiet-action" @click="openTopup">{{ t('topup') }}</button>
+        </section>
+        <GenerationAllowance class="profile-panel" />
+      </div>
+      <div class="profile-column">
+        <section class="profile-panel">
+          <h2>{{ t('security') }}</h2>
+          <form class="account-form" @submit.prevent="changePassword">
+            <label for="old-password">{{ t('current') }}
+              <el-input id="old-password" v-model="passwords.old_password" type="password" required maxlength="64" autocomplete="current-password" show-password />
+            </label>
+            <label for="new-password">{{ t('newPassword') }}
+              <el-input id="new-password" v-model="passwords.new_password" type="password" required maxlength="32" autocomplete="new-password" show-password />
+              <span class="account-help">{{ t('passwordHint') }} {{ t('symbols') }} <code>_ ! @ # $ % ^ &amp; * + - =</code></span>
+            </label>
+            <label for="repeat-password">{{ t('repeat') }}
+              <el-input id="repeat-password" v-model="passwords.confirm_new_password" type="password" required maxlength="32" autocomplete="new-password" show-password />
+            </label>
+            <p v-if="passwordError" class="account-errors" role="alert">{{ passwordError }}</p>
+            <div><button class="primary-action" :disabled="busy" type="submit">{{ t('update') }}</button></div>
+          </form>
+        </section>
+        <section class="profile-panel profile-session">
+          <h2>{{ t('session') }}</h2><div class="profile-actions">
+            <button class="quiet-action" :disabled="busy" @click="logout">{{ t('logout') }}</button>
+            <button class="link-action" :disabled="busy" @click="openDelete">{{ t('deactivate') }}</button>
           </div>
-        </el-form-item>
-      </el-form>
-
-      <el-divider />
-
-      <h3>修改密码</h3>
-      <el-form ref="pwdFormRef" :model="pwdForm" :rules="pwdRules" label-position="top" class="pwd-form">
-        <el-form-item label="旧密码" prop="old_password">
-          <el-input v-model="pwdForm.old_password" type="password" show-password placeholder="请输入当前密码" />
-        </el-form-item>
-        <el-form-item label="新密码" prop="new_password">
-          <el-input v-model="pwdForm.new_password" type="password" show-password placeholder="8-32位，含字母和数字" />
-        </el-form-item>
-        <el-form-item label="确认新密码" prop="confirm_new_password">
-          <el-input v-model="pwdForm.confirm_new_password" type="password" show-password placeholder="再次输入新密码" />
-        </el-form-item>
-        <el-button type="primary" :loading="changingPwd" @click="handleChangePwd">修改密码</el-button>
-      </el-form>
-
-      <el-divider />
-
-      <h3 class="danger-title">危险操作</h3>
-      <el-button type="danger" plain @click="logout">退出登录</el-button>
-      <el-button type="danger" @click="deactivateDialog = true">注销账号</el-button>
+        </section>
+      </div>
     </div>
 
-    <!-- 充值弹窗（模拟支付，返回固定验证码 888888） -->
-    <el-dialog v-model="rechargeDialog" title="模拟充值" width="400px">
-      <p class="dialog-tip">开发阶段为模拟支付：点击"确认充值"后自动按 888888 验证码完成充值，将来可无缝接入真实支付。</p>
-      <el-input v-model="rechargeAmount" type="number" placeholder="充值金额（元）" min="1" />
-      <template #footer>
-        <el-button @click="rechargeDialog = false">取消</el-button>
-        <el-button type="primary" :loading="recharging" @click="handleRecharge">确认充值</el-button>
-      </template>
+    <el-dialog v-model="topupOpen" :title="t('topup')" width="420px" :close-on-click-modal="!busy" :close-on-press-escape="!busy" :show-close="!busy" append-to-body>
+      <form class="account-form" @submit.prevent="topup">
+        <p class="account-help">{{ t('demoHelp') }}</p>
+        <label for="amount">{{ t('amount') }}<input id="amount" v-model="amount" required type="number" inputmode="decimal" min="0.01" max="10000" step="0.01" />
+          <span class="account-help">{{ t('amountHint') }}</span>
+        </label>
+        <label for="payment-code">{{ t('paymentCode') }}<input id="payment-code" v-model="paymentCode" maxlength="6" required autocomplete="off" /></label>
+        <p v-if="dialogError" class="account-errors" role="alert">{{ dialogError }}</p>
+        <div class="profile-dialog-actions"><button class="quiet-action" type="button" :disabled="busy" @click="topupOpen = false">{{ t('cancel') }}</button>
+          <button class="primary-action" type="submit" :disabled="busy">{{ t('add') }}</button></div>
+      </form>
     </el-dialog>
-
-    <!-- 注销确认 -->
-    <el-dialog v-model="deactivateDialog" title="注销账号" width="400px">
-      <p class="dialog-tip">注销后账号不可恢复。已付费/已下载的文章仍保留在对方账号中。</p>
-      <template #footer>
-        <el-button @click="deactivateDialog = false">取消</el-button>
-        <el-button type="danger" :loading="deactivating" @click="handleDeactivate">确认注销</el-button>
-      </template>
+    <el-dialog v-model="deleteOpen" :title="t('deactivate')" width="420px" :close-on-click-modal="!busy" :close-on-press-escape="!busy" :show-close="!busy" append-to-body>
+      <p>{{ t('deleteHelp') }}</p><p v-if="dialogError" class="account-errors" role="alert">{{ dialogError }}</p>
+      <template #footer><div class="profile-dialog-actions">
+        <button class="quiet-action" :disabled="busy" @click="deleteOpen = false">{{ t('cancel') }}</button>
+        <button class="primary-action" :disabled="busy" @click="deactivate">{{ t('confirmDelete') }}</button>
+      </div></template>
     </el-dialog>
-  </div>
+  </section>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
+import { accountError, useAccountCopy, validPassword } from '@/i18n/account'
 import { useAuthStore } from '@/stores/auth'
 import request from '@/utils/request'
+import GenerationAllowance from '@/components/GenerationAllowance.vue'
+import '@/assets/styles/account.css'
 
+const { t, locale } = useAccountCopy()
 const router = useRouter()
-const authStore = useAuthStore()
+const auth = useAuthStore()
+const demoRecharge = ref(false)
+onMounted(async () => {
+  try { demoRecharge.value = (await request.get('/auth/config')).demo_recharge_enabled === true }
+  catch { demoRecharge.value = false }
+})
+const money = computed(() => new Intl.NumberFormat(locale.value, { style: 'currency', currency: 'CNY' }).format(Number(auth.user?.balance) || 0))
+const loading = ref(false)
+const loadError = ref('')
+const busy = ref(false)
+const topupOpen = ref(false)
+const deleteOpen = ref(false)
+const amount = ref(100)
+const paymentCode = ref('888888')
+const passwords = reactive({ old_password: '', new_password: '', confirm_new_password: '' })
+const passwordError = ref('')
+const dialogError = ref('')
 
-// ===== 修改密码 =====
-const pwdFormRef = ref(null)
-const changingPwd = ref(false)
-const pwdForm = reactive({ old_password: '', new_password: '', confirm_new_password: '' })
-const pwdRules = {
-  old_password: [{ required: true, message: '请输入当前密码', trigger: 'blur' }],
-  new_password: [
-    { required: true, message: '请输入新密码', trigger: 'blur' },
-    { pattern: /^[A-Za-z0-9_!@#$%^&*+\-=]{8,32}$/, message: '8-32位，含字母和数字', trigger: 'blur' }
-  ],
-  confirm_new_password: [
-    { required: true, message: '请再次输入新密码', trigger: 'blur' },
-    { validator: (r, v, cb) => { if (v !== pwdForm.new_password) cb(new Error('两次密码不一致')); else cb(); }, trigger: 'blur' }
-  ]
+async function load() {
+  if (loading.value) return
+  loading.value = true
+  loadError.value = ''
+  try { await auth.fetchMe() }
+  catch (e) { loadError.value = accountError(e, t) }
+  finally { loading.value = false }
 }
+onMounted(load)
 
-async function handleChangePwd() {
-  await pwdFormRef.value.validate()
-  changingPwd.value = true
-  try {
-    await request.put('/auth/password', {
-      old_password: pwdForm.old_password,
-      new_password: pwdForm.new_password,
-      confirm_new_password: pwdForm.confirm_new_password
-    })
-    ElMessage.success('密码修改成功，请重新登录')
-    authStore.logout()
-    router.push('/login')
-  } catch (e) {
-    // 拦截器已提示
-  } finally {
-    changingPwd.value = false
-  }
+function openTopup() {
+  amount.value = 100
+  dialogError.value = ''
+  topupOpen.value = true
 }
-
-// ===== 充值 =====
-const rechargeDialog = ref(false)
-const recharging = ref(false)
-const rechargeAmount = ref(100)
-
-async function handleRecharge() {
-  const amount = Number(rechargeAmount.value)
-  if (!amount || amount <= 0) {
-    ElMessage.warning('请输入正确的金额')
-    return
-  }
-  recharging.value = true
-  try {
-    // 模拟支付：先调模拟支付接口拿确认码（固定 888888），再确认充值
-    const res = await request.post('/auth/recharge', { amount, verify_code: '888888' })
-    ElMessage.success(res.message || '充值成功')
-    rechargeDialog.value = false
-  } catch (e) {
-    // 拦截器已提示
-  } finally {
-    recharging.value = false
-  }
+function openDelete() {
+  dialogError.value = ''
+  deleteOpen.value = true
 }
-
-// ===== 注销 =====
-const deactivateDialog = ref(false)
-const deactivating = ref(false)
-
-async function handleDeactivate() {
+async function topup() {
+  if (busy.value) return
+  busy.value = true
+  dialogError.value = ''
   try {
-    await ElMessageBox.confirm('注销后账号不可恢复，确定继续？', '警告', { type: 'warning' })
-  } catch (e) {
-    deactivateDialog.value = false
-    return
-  }
-  deactivating.value = true
+    await auth.recharge(Number(amount.value), paymentCode.value)
+    topupOpen.value = false
+    ElMessage.success(t('added'))
+  } catch (e) { dialogError.value = accountError(e, t) }
+  finally { busy.value = false }
+}
+async function changePassword() {
+  if (busy.value) return
+  if (!validPassword.test(passwords.new_password)) { passwordError.value = t('passwordHint'); return }
+  if (passwords.new_password !== passwords.confirm_new_password) { passwordError.value = t('mismatch'); return }
+  busy.value = true
+  passwordError.value = ''
+  try {
+    await request.put('/auth/password', { ...passwords })
+    ElMessage.success(t('changed'))
+    auth.logout()
+    await router.replace({ path: '/login', query: { redirect: '/profile' } })
+  } catch (e) { passwordError.value = accountError(e, t) }
+  finally { busy.value = false }
+}
+async function deactivate() {
+  if (busy.value) return
+  busy.value = true
+  dialogError.value = ''
   try {
     await request.delete('/auth/account')
-    ElMessage.success('账号已注销')
-    authStore.logout()
-    router.push('/')
-  } catch (e) {
-    // 拦截器已提示
-  } finally {
-    deactivating.value = false
-    deactivateDialog.value = false
-  }
+    ElMessage.success(t('deleted'))
+    deleteOpen.value = false
+    logout()
+  } catch (e) { dialogError.value = accountError(e, t) }
+  finally { busy.value = false }
 }
-
 function logout() {
-  authStore.logout()
-  ElMessage.success('已退出登录')
-  router.push('/')
+  auth.logout()
+  router.replace('/')
 }
 </script>
 
 <style scoped>
-.profile-page {
-  max-width: 560px;
-  margin: 0 auto;
-  padding: 24px 0 40px;
-}
-
-.profile-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 32px;
-}
-
-.profile-card h2 {
-  margin: 0 0 20px;
-  font-size: 22px;
-  color: var(--text-primary);
-}
-
-.profile-card h3 {
-  margin: 0 0 16px;
-  font-size: 16px;
-  color: var(--text-primary);
-}
-
-.balance-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.balance-num {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--primary);
-}
-
-.danger-title {
-  color: var(--danger, #f56c6c) !important;
-}
-
-.dialog-tip {
-  color: var(--text-muted);
-  font-size: 13px;
-  line-height: 1.6;
-  margin: 0 0 16px;
-}
+.profile-space {max-width:1060px;margin:0 auto}
+.profile-layout {display:grid;grid-template-columns:minmax(230px,.9fr) minmax(290px,1.1fr);gap:20px;align-items:start}
+.profile-column {display:grid;gap:18px;min-width:0}
+.profile-panel {background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:clamp(19px,2.3vw,30px);min-width:0}
+.profile-panel h2 {font:600 22px/1.3 var(--serif);margin:0 0 20px}
+.profile-name {display:flex;align-items:center;gap:14px;margin-bottom:22px;overflow-wrap:anywhere}
+.profile-name span {width:46px;height:46px;flex:none;border-radius:50%;background:var(--tint);color:var(--accent);display:grid;place-items:center;font:600 24px var(--serif)}
+.profile-name strong {font:600 23px var(--serif)}
+.profile-panel dl {margin:0;display:grid;grid-template-columns:auto 1fr;gap:14px 24px;border-top:1px solid var(--line);padding-top:17px;font-size:14px}
+.profile-panel dt,.profile-wallet p {color:var(--muted)}.profile-panel dd {margin:0;text-align:right;overflow-wrap:anywhere}
+.profile-wallet {background:var(--tint);border-color:color-mix(in srgb,var(--accent) 18%,var(--line))}
+.profile-wallet h2 {margin-bottom:7px}
+.profile-amount {display:block;font:500 clamp(31px,3.4vw,45px) var(--serif);font-variant-numeric:tabular-nums}
+.profile-wallet p {font-size:13px;margin:5px 0 17px}
+.profile-actions,.profile-dialog-actions {display:flex;align-items:center;gap:15px;flex-wrap:wrap}
+.profile-dialog-actions {justify-content:flex-end}.profile-session .link-action {color:var(--danger)}
+.profile-load-error {margin:0 0 18px;color:var(--danger)}
+@media(max-width:790px){.profile-layout{gap:14px}}
+@media(max-width:640px){.profile-layout{grid-template-columns:1fr}.profile-panel{padding:20px}.profile-name{margin-bottom:14px}}
 </style>

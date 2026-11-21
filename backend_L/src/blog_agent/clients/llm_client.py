@@ -19,6 +19,8 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_openai import ChatOpenAI
 
 from config.settings import settings
+from config.model_limits import limits
+from src.blog_agent.clients.provider_budget import http, async_http
 
 # 角色 -> settings 中的模型配置键
 ROLE_MODEL_KEYS: Dict[str, str] = {
@@ -70,8 +72,11 @@ def _get_chat_model_cached(
         "api_key": settings.llm_api_key,
         "base_url": settings.llm_base_url,
         "temperature": temperature,
-        "timeout": timeout,       # LLM 调用超时（秒），防止 API 卡住无限等待
-        "max_retries": 2,         # 网络级失败自动重试 2 次
+        "timeout": min(timeout, limits.request_seconds),
+        "max_retries": limits.sdk_retries,
+        "max_tokens": limits.output_tokens,
+        "http_client": http,
+        "http_async_client": async_http,
     }
     # 千问百炼 OpenAI 兼容模式：extra_body 携带非标准参数
     extra_body: Dict[str, Any] = {"enable_thinking": enable_thinking}

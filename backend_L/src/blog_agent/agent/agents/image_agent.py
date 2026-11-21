@@ -5,7 +5,7 @@
 2. LLM 逐个分析配图位置上下文 → 生成专业搜图关键词 / AI 生图 prompt
 3. 并发获取图片 + 持久化到本地（image_client.fetch_all，文件名带 run_id 不复用旧图）
 4. 把配图标记替换为图片 markdown
-5. 配图失败的位置降级为纯文本过渡句
+5. 配图失败时移除标记，保留已审定的正文
 """
 import logging
 import re
@@ -14,9 +14,10 @@ from typing import Dict, List, Optional, Tuple
 from src.blog_agent.agent.agents.image_prompts import (
     ANALYZE_IMAGE_NEEDS_AI,
     ANALYZE_IMAGE_NEEDS_API,
-    FALLBACK_TRANSITION_TASK,
 )
 from src.blog_agent.clients.image_client import image_client
+from src.blog_agent.agent.agents.prompt_utils import IMAGE_MARKER_RE
+from config.model_limits import limits
 from src.blog_agent.clients.llm_client import chat
 
 logger = logging.getLogger(__name__)
@@ -28,14 +29,10 @@ INVALID_IMAGE_MARKERS = {
     "关键词", "描述", "search keywords", "image description",
 }
 
-# 配图标记正则：<!-- 配图：描述 -->
-_MARKER_PATTERN = r'<!--\s*配图[：:]\s*(.+?)\s*-->'
-
-
 def extract_markers_with_context(content: str, context_chars: int = 200) -> List[Dict]:
     """从正文中提取配图标记，并附带每个标记的上下文（前后各 context_chars 字）"""
     markers = []
-    for i, match in enumerate(re.finditer(_MARKER_PATTERN, content)):
+    for i, match in enumerate(IMAGE_MARKER_RE.finditer(content)):
         description = match.group(1).strip()
         start, end = match.start(), match.end()
         context_before = content[max(0, start - context_chars):start].strip()
@@ -157,27 +154,6 @@ def insert_images_by_markers(
     return result, inserted_urls
 
 
-def replace_image_with_text(content: str, position: str, description: str) -> str:
-    """配图失败时，在对应章节标题后插入 LLM 生成的纯文本过渡句代替图片"""
-    try:
-        transition = chat(
-            FALLBACK_TRANSITION_TASK.format(position=position, description=description),
-            role="image", temperature=0.5,
-        ).strip()
-    except Exception as e:  # noqa: BLE001
-        logger.warning("生成过渡句失败: %s", e)
-        transition = ""
-    if not transition:
-        return content
-
-    escaped_position = re.escape(position)
-    pattern = f'(^#{{1,4}}\\s+{escaped_position}\\s*$)'
-    new_content = re.sub(pattern, f'\\1\n\n{transition}\n', content, count=1, flags=re.MULTILINE)
-    if new_content == content:  # 找不到标题，在末尾追加
-        new_content = content + f'\n\n{transition}\n'
-    return new_content
-
-
 def process_images(content: str, image_source: str, task_id: int = None) -> Tuple[str, List[str]]:
     """配图主入口：提取标记+上下文 → LLM 分析 → 并发获取+持久化 → 替换标记 → 失败降级"""
     markers = extract_markers_with_context(content)
@@ -186,7 +162,8 @@ def process_images(content: str, image_source: str, task_id: int = None) -> Tupl
         return content, []
 
     logger.info("找到 %d 个配图位置，开始分析...", len(markers))
-    analyzed = analyze_image_needs(markers, image_source)
+    allowed = limits.images if limits.enabled and (image_source != "ai" or limits.ai_images_enabled) else 0
+    analyzed = analyze_image_needs(markers[:allowed], image_source)
     analyzed_map = {a["index"]: a for a in analyzed}
 
     # 过滤出有有效关键词/prompt 的位置，交给 image_client 并发获取
@@ -208,16 +185,6 @@ def process_images(content: str, image_source: str, task_id: int = None) -> Tupl
     # 替换标记
     content_with_images, inserted_urls = insert_images_by_markers(content, markers, image_urls)
 
-    # 失败降级：改为纯文本过渡句
-    failed_markers = [markers[i] for i in range(len(markers)) if not image_urls[i]]
-    if failed_markers:
-        logger.info("有%d处配图未找到，正在调整为文字描述...", len(failed_markers))
-        for marker in failed_markers:
-            desc_cn = (analyzed_map.get(marker["index"]) or {}).get("description_cn", marker["description"])
-            content_with_images = replace_image_with_text(
-                content_with_images, marker["position_title"], desc_cn
-            )
-
     success_urls = [u for u in inserted_urls if u]
-    logger.info("配图完成：成功%d张，失败%d处", len(success_urls), len(failed_markers))
+    logger.info("配图完成：成功%d张，失败%d处", len(success_urls), len(markers) - len(success_urls))
     return content_with_images, success_urls

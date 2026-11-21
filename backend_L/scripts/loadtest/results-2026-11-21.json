@@ -1,0 +1,234 @@
+{
+  "users": 12,
+  "api_instances": 2,
+  "worker_cap": 4,
+  "model_delay_ms": 80,
+  "completed": 12,
+  "errors": [],
+  "fixture_errors": [],
+  "queue_peak": 12,
+  "running_peak": 4,
+  "sql_samples": {
+    "count": 655,
+    "queued_peak": 9,
+    "running_peak": 4
+  },
+  "jobs": [
+    {
+      "status": "succeeded",
+      "stage": "content",
+      "count": 12,
+      "attempts": 12
+    },
+    {
+      "status": "succeeded",
+      "stage": "outline",
+      "count": 12,
+      "attempts": 12
+    },
+    {
+      "status": "succeeded",
+      "stage": "title",
+      "count": 12,
+      "attempts": 12
+    }
+  ],
+  "stages": {
+    "title": {
+      "admission_seconds": {
+        "min": 0.127,
+        "p50": 0.176,
+        "p95": 0.216,
+        "max": 0.216
+      },
+      "stage_seconds": {
+        "min": 4.414,
+        "p50": 9.05,
+        "p95": 15.164,
+        "max": 15.164
+      }
+    },
+    "outline": {
+      "admission_seconds": {
+        "min": 0.018,
+        "p50": 0.024,
+        "p95": 0.05,
+        "max": 0.05
+      },
+      "stage_seconds": {
+        "min": 17.618,
+        "p50": 19.551,
+        "p95": 24.984,
+        "max": 24.984
+      }
+    },
+    "content": {
+      "admission_seconds": {
+        "min": 0.02,
+        "p50": 0.047,
+        "p95": 0.068,
+        "max": 0.068
+      },
+      "stage_seconds": {
+        "min": 24.765,
+        "p50": 25.795,
+        "p95": 28.455,
+        "max": 28.455
+      }
+    }
+  },
+  "total_model_calls": 156,
+  "harness_seconds": 66.497,
+  "e2e_seconds": {
+    "min": 47.965,
+    "p50": 55.658,
+    "p95": 66.026,
+    "max": 66.026
+  },
+  "accounts": [
+    {
+      "author": "CASE000",
+      "task": 9,
+      "api_port": 17870,
+      "used": [
+        1,
+        2,
+        5
+      ],
+      "model_calls": 13,
+      "e2e_seconds": 48.094
+    },
+    {
+      "author": "CASE001",
+      "task": 1,
+      "api_port": 17872,
+      "used": [
+        1,
+        2,
+        5
+      ],
+      "model_calls": 13,
+      "e2e_seconds": 50.329
+    },
+    {
+      "author": "CASE002",
+      "task": 12,
+      "api_port": 17870,
+      "used": [
+        1,
+        2,
+        5
+      ],
+      "model_calls": 13,
+      "e2e_seconds": 55.658
+    },
+    {
+      "author": "CASE003",
+      "task": 3,
+      "api_port": 17872,
+      "used": [
+        1,
+        2,
+        5
+      ],
+      "model_calls": 13,
+      "e2e_seconds": 47.965
+    },
+    {
+      "author": "CASE004",
+      "task": 11,
+      "api_port": 17870,
+      "used": [
+        1,
+        2,
+        5
+      ],
+      "model_calls": 13,
+      "e2e_seconds": 63.762
+    },
+    {
+      "author": "CASE005",
+      "task": 5,
+      "api_port": 17872,
+      "used": [
+        1,
+        2,
+        5
+      ],
+      "model_calls": 13,
+      "e2e_seconds": 55.729
+    },
+    {
+      "author": "CASE006",
+      "task": 8,
+      "api_port": 17870,
+      "used": [
+        1,
+        2,
+        5
+      ],
+      "model_calls": 13,
+      "e2e_seconds": 66.026
+    },
+    {
+      "author": "CASE007",
+      "task": 2,
+      "api_port": 17872,
+      "used": [
+        1,
+        2,
+        5
+      ],
+      "model_calls": 13,
+      "e2e_seconds": 63.957
+    },
+    {
+      "author": "CASE008",
+      "task": 7,
+      "api_port": 17870,
+      "used": [
+        1,
+        2,
+        5
+      ],
+      "model_calls": 13,
+      "e2e_seconds": 48.003
+    },
+    {
+      "author": "CASE009",
+      "task": 6,
+      "api_port": 17872,
+      "used": [
+        1,
+        2,
+        5
+      ],
+      "model_calls": 13,
+      "e2e_seconds": 57.753
+    },
+    {
+      "author": "CASE010",
+      "task": 10,
+      "api_port": 17870,
+      "used": [
+        1,
+        2,
+        5
+      ],
+      "model_calls": 13,
+      "e2e_seconds": 55.403
+    },
+    {
+      "author": "CASE011",
+      "task": 4,
+      "api_port": 17872,
+      "used": [
+        1,
+        2,
+        5
+      ],
+      "model_calls": 13,
+      "e2e_seconds": 63.855
+    }
+  ]
+}

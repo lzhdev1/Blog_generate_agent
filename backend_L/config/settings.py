@@ -1,4 +1,8 @@
-from typing import List, Optional
+import os
+import secrets
+from typing import List, Literal, Optional
+
+from pydantic import Field, model_validator
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -7,7 +11,7 @@ class Settings(BaseSettings):
     # 加载 backend_L 下的 .env 文件
     # extra="ignore"：.env 中仅供 docker-compose 使用的键（POSTGRES_* 等）不会导致校验失败
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+        env_file=".env", env_file_encoding="utf-8", extra="ignore", hide_input_in_errors=True
     )
 
     # ========== LLM 基础配置 ==========
@@ -63,15 +67,68 @@ class Settings(BaseSettings):
 
     # ========== Agent ==========
     agent_timeout: int = 120
-    # 后台生成任务并发数（ThreadPoolExecutor worker 数）
+    # 同一数据库内同时运行的生成子进程上限
     # 注意：每个任务含 5-10 次 LLM 调用，受 LLM API 限流约束，勿盲目调大
-    agent_max_workers: int = 8
+    agent_max_workers: int = Field(default=4, ge=1, le=64)
+    agent_max_queued_jobs: int = Field(default=64, ge=1, le=10000)
+    agent_job_lease_seconds: int = Field(default=90, ge=5, le=3600)
+    agent_job_max_runtime_seconds: int = Field(default=1800, ge=30, le=14400)
+    agent_job_max_attempts: int = Field(default=2, ge=1, le=5)
+    agent_queue_poll_seconds: float = Field(default=1, ge=0.1, le=60)
+
+    # A stage reservation and its durable job commit in the same transaction.
+    free_daily_units: int = Field(default=10, ge=0)
+    site_daily_units: int = Field(default=100, ge=0)
+    free_daily_drafts: int = Field(default=20, ge=0)
+    free_max_active_jobs: int = Field(default=1, ge=1, le=64)
+
+    app_env: Literal["development", "test", "production"] = "development"
+    registration_mode: Literal["auto", "test", "smtp", "closed"] = "auto"
+    smtp_host: Optional[str] = None
+    smtp_port: int = Field(default=465, ge=1, le=65535)
+    smtp_transport: Literal["ssl", "starttls"] = "ssl"
+    smtp_sender: Optional[str] = None
+    smtp_username: Optional[str] = None
+    smtp_password: Optional[str] = None
+    auth_login_per_ip: int = Field(default=30, ge=1)
+    auth_register_per_ip: int = Field(default=5, ge=1)
+    auth_send_per_ip: int = Field(default=12, ge=1)
+
+    @property
+    def effective_registration(self) -> str:
+        if self.registration_mode != "auto":
+            return self.registration_mode
+        if self.app_env != "production":
+            return "test"
+        return "smtp" if self.smtp_host and self.smtp_sender else "closed"
+
+    @property
+    def demo_recharge_enabled(self) -> bool:
+        return self.app_env != "production" and self.effective_registration == "test"
+
+    @model_validator(mode="after")
+    def validate_deployment(self):
+        if self.app_env == "production":
+            if len(self.jwt_secret.encode()) < 32 or self.jwt_secret.startswith(("dev-secret", "change-me", "your-")):
+                raise ValueError("生产环境需要独立的随机 JWT_SECRET（至少 32 字节）")
+            if self.registration_mode == "test":
+                raise ValueError("生产环境不能使用固定测试验证码")
+        elif not self.jwt_secret or self.jwt_secret == "dev-secret-change-me-in-production":
+            self.jwt_secret = secrets.token_urlsafe(48)
+        if self.effective_registration == "smtp" and not (self.smtp_host and self.smtp_sender):
+            raise ValueError("SMTP 注册需要配置 SMTP_HOST 和 SMTP_SENDER")
+        if self.effective_registration == "test" and not (len(self.email_code_default) == 6 and self.email_code_default.isascii() and self.email_code_default.isdigit()):
+            raise ValueError("测试验证码必须为六位数字")
+        return self
 
     # ========== 用户认证配置 ==========
-    jwt_secret: str = "dev-secret-change-me-in-production"
+    jwt_secret: str = ""
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 10080  # 7 天
     email_code_default: str = "888888"
 
 
-settings = Settings()
+# Compose sets APP_ENV explicitly. A lowercase app_env inherited from an env file
+# can coexist on Linux. Give the deployment setting deterministic precedence.
+deployment_env = os.environ.get("APP_ENV")
+settings = Settings(app_env=deployment_env) if deployment_env is not None else Settings()

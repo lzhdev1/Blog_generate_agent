@@ -2,6 +2,8 @@ import { createI18n } from 'vue-i18n'
 import zh from './locales/zh'
 import en from './locales/en'
 
+import { zh as studioZh, en as studioEn } from './studio'
+
 const LANG_KEY = 'blog-agent-lang'
 
 function getInitialLocale() {
@@ -18,7 +20,7 @@ const i18n = createI18n({
   globalInjection: true,
   locale: getInitialLocale(),
   fallbackLocale: 'zh',
-  messages: { zh, en }
+  messages: { zh: { ...zh, studio: studioZh }, en: { ...en, studio: studioEn } }
 })
 
 export function setLocale(lang) {

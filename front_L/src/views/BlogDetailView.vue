@@ -1,1306 +1,201 @@
 <template>
-  <div class="blog-detail-view">
-    <!-- 顶部操作栏 -->
-        <div class="blog-toolbar">
-      <button class="toolbar-btn" @click="$router.push('/')">
-        <SvgIcon name="back" :size="18" />
-        <span>返回</span>
-      </button>
-      <div class="toolbar-actions">
-        <!-- 非作者：点赞/收藏/下载/购买 -->
-        <template v-if="blog && !blog.is_owner">
-          <button class="toolbar-btn" :class="{ 'active': liked }" @click="handleLike">
-            <SvgIcon name="like" :size="16" />
-            <span>{{ liked ? '已赞' : '点赞' }} {{ likeCount }}</span>
-          </button>
-          <button class="toolbar-btn" :class="{ 'active': favorited }" @click="handleFavorite">
-            <SvgIcon name="star" :size="16" />
-            <span>{{ favorited ? '已收藏' : '收藏' }}</span>
-          </button>
-          <button v-if="!isDemoArticle" class="toolbar-btn" @click="handleDownload">
-            <SvgIcon name="download" :size="16" />
-            <span>{{ canDownload || purchased ? '下载' : '不可下载' }}</span>
-          </button>
-          <button v-if="needPurchase" class="toolbar-btn primary" @click="handlePurchase">
-            <span>购买全文 ¥{{ downloadPrice }}</span>
-          </button>
-        </template>
-        <!-- 作者：复制/公开配置/重新生成 -->
-        <template v-else-if="blog && blog.is_owner">
-          <button class="toolbar-btn" @click="copyContent">
-            <SvgIcon name="copy" :size="16" />
-            <span>复制全文</span>
-          </button>
-          <button class="toolbar-btn" @click="visibilityDialog = true">
-            <SvgIcon name="format" :size="16" />
-            <span>{{ articleMeta?.is_public ? '已公开' : '公开配置' }}</span>
-          </button>
-          <button class="toolbar-btn primary" @click="regenerate">
-            <SvgIcon name="refresh" :size="16" />
-            <span>重新生成</span>
-          </button>
-        </template>
+  <div class="reader">
+    <router-link class="reader-back" :to="article?.is_owner ? '/my-articles' : '/articles'"><SvgIcon name="back" :size="16" />{{ t(article?.is_owner ? 'studio.library' : 'studio.explore') }}</router-link>
+    <div v-if="loading" class="empty-panel" role="status">{{ t('studio.loading') }}</div>
+    <div v-else-if="!article" class="empty-panel"><h2>{{ missing ? r('unavailable') : t('studio.listError') }}</h2><button class="quiet-action" @click="load">{{ t('studio.retry') }}</button></div>
+    <template v-else>
+      <header class="reader-head">
+        <div class="byline"><span>{{ article.is_demo ? t('studio.demo') : styleName || t('studio.article') }}</span><i>·</i>{{ article.nickname || t('studio.by') }}<i>·</i>{{ articleDate(article.created_at,locale) }}</div>
+        <h1>{{ article.title }}</h1>
+        <div class="reader-actions">
+          <template v-if="article.is_owner">
+            <button class="quiet-action" @click="copy"><SvgIcon name="copy" :size="15" />{{ t('studio.copy') }}</button>
+            <button class="quiet-action" @click="act('download')"><SvgIcon name="download" :size="15" />{{ r('download') }}</button>
+            <router-link v-if="editionMatches" class="quiet-action" :to="'/task/' + id + '/revision'"><SvgIcon name="edit" :size="15" />{{ r('revisionAction') }}</router-link>
+            <button v-if="editionMatches" class="primary-action" :disabled="busy" @click="openPublishing">{{ r('share') }} · {{ t(notes.is_public ? 'studio.public' : 'studio.private') }}</button>
+          </template>
+          <template v-else>
+            <button class="quiet-action" :aria-pressed="article.liked" :disabled="busy" @click="act('like')"><SvgIcon name="like" :size="15" />{{ t(article.liked ? 'studio.liked' : 'studio.like') }} {{ article.like_count }}</button>
+            <button class="quiet-action" :aria-pressed="article.favorited" :disabled="busy" @click="act('favorite')"><SvgIcon name="star" :size="15" />{{ t(article.favorited ? 'studio.saved' : 'studio.favorite') }}</button>
+            <button v-if="article.allow_download || article.is_demo" class="primary-action" :disabled="busy" @click="act(needsPurchase ? 'purchase' : 'download')"><SvgIcon name="download" :size="15" />{{ needsPurchase ? r('buy') + ' · ¥' + article.download_price : r('download') }}</button>
+          </template>
+        </div>
+      </header>
+      <p v-if="conflictMessage || (notes && !editionMatches)" class="reader-conflict" role="alert">{{ conflictMessage || r('notesChanged') }}
+        <router-link v-if="reviewRequired" class="link-action" :to="'/task/' + id + '/revision'">{{ r('submitRevision') }}</router-link>
+        <button v-else class="link-action" :disabled="busy" @click="load">{{ t('studio.retry') }}</button>
+      </p>
+      <nav v-if="article.is_owner" class="reader-tabs" :aria-label="t('studio.reading')">
+        <button v-for="item in ['body','notes']" :key="item" :aria-pressed="tab === item" @click="tab=item">{{ r(item) }}</button>
+      </nav>
+      <template v-if="tab === 'body'"><article class="reader-sheet"><MarkdownRender :content="body" :evidence="article.evidence_sources" /></article><EvidenceSources class="reader-sources" :sources="article.evidence_sources" /></template>
+      <div v-else-if="editionMatches" class="notes">
+        <div v-if="notes.progress" class="generation-note"><SvgIcon name="review" :size="16" /><span>{{ notes.progress }}</span></div>
+        <section v-if="notes.review_result" class="note-panel">
+          <div class="note-head"><h2>{{ r('review') }}</h2><span class="score"><template v-if="review.score != null">{{ review.score }} / 100 · </template>{{ r(review.skipped ? 'skipped' : review.passed ? 'pass' : 'fail') }}</span></div>
+          <div v-if="review.dimension_scores" class="metrics"><div v-for="dim in dimensions.filter(key => review.dimension_scores[key] != null)" :key="dim"><span>{{ r(dim) }}</span><meter min="0" max="100" :value="review.dimension_scores[dim]"></meter><b>{{ review.dimension_scores[dim] }}</b></div></div>
+          <ul v-if="review.pass_reasons?.length"><li v-for="(reason,i) in review.pass_reasons" :key="i">{{ reason }}</li></ul>
+          <div v-for="(op,i) in review.review_opinions || []" :key="i" class="opinion"><strong>{{ op.where }}</strong><p>{{ op.why }}</p><p>{{ op.expected }}</p></div>
+          <MarkdownRender v-if="review.feedback" :content="review.feedback" />
+          <small v-if="review.traffic_forecast || review.heat_level">{{ r('forecast') }} · {{ review.traffic_forecast || review.heat_level }}</small>
+        </section>
+        <details class="note-panel" open><summary>{{ r('brief') }}</summary><dl>
+          <template v-for="[key,value] in brief" :key="key"><dt>{{ r(key) }}</dt><dd>{{ value }}</dd></template>
+        </dl></details>
+        <details v-if="notes.outline" class="note-panel"><summary>{{ r('structure') }}</summary><MarkdownRender :content="notes.outline" :highlight-image-markers="true" /></details>
+        <details v-if="notes.writing_thoughts" class="note-panel"><summary>{{ r('planning') }}</summary><MarkdownRender :content="notes.writing_thoughts" /></details>
+        <EvidenceSources :sources="notes.evidence_sources" />
+        <details v-for="key in researchKeys.filter(key => notes[key])" :key="key" class="note-panel"><summary>{{ r(key) }}</summary><MarkdownRender :content="researchSummary(notes[key])" /></details>
+        <GenerationAllowance class="note-panel" stage="content" />
+        <p v-if="quota.rejection && String(quota.rejection.taskId) === String(id)" class="generation-note" role="alert">{{ quota.rejection.message }}</p>
+        <button class="quiet-action regen" :disabled="busy || (!pending && quota.insufficient('content'))" @click="act('regenerate')"><SvgIcon name="refresh" :size="15" />{{ r(pending ? 'checkRequest' : 'regenerate') }}</button>
       </div>
-    </div>
-
-    <!-- 公开/下载配置弹窗（作者） -->
-    <el-dialog v-model="visibilityDialog" title="公开与下载配置" width="440px">
+      <div v-else class="empty-panel"><p>{{ r('reportIssue') }}</p><button class="quiet-action" @click="load">{{ t('studio.retry') }}</button></div>
+    </template>
+    <el-dialog v-model="publishing" :title="r('share')" width="420px">
       <el-form label-position="top">
-        <el-form-item label="是否公开（展示在全部文章页，他人可阅读）">
-          <el-switch v-model="visForm.is_public" />
-        </el-form-item>
-        <el-form-item label="是否允许下载">
-          <el-switch v-model="visForm.allow_download" />
-        </el-form-item>
-        <el-form-item v-if="visForm.allow_download" label="下载价格（元，0=免费）">
-          <el-input-number v-model="visForm.download_price" :min="0" :max="100000" :step="1" />
-        </el-form-item>
+        <el-form-item :label="r('public')"><el-switch v-model="form.is_public" /></el-form-item>
+        <el-form-item v-if="form.is_public" :label="r('allow')"><el-switch v-model="form.allow_download" /></el-form-item>
+        <el-form-item v-if="form.is_public && form.allow_download" :label="r('price')"><el-input-number v-model="form.download_price" :min="0" :max="100000" :precision="2" /></el-form-item>
       </el-form>
-      <template #footer>
-        <el-button @click="visibilityDialog = false">取消</el-button>
-        <el-button type="primary" :loading="savingVis" @click="saveVisibility">保存</el-button>
-      </template>
+      <template #footer><el-button @click="publishing=false">{{ r('cancel') }}</el-button><el-button type="primary" :loading="busy" @click="savePublishing">{{ r('save') }}</el-button></template>
     </el-dialog>
-
-    <div v-if="blog" class="three-column">
-      <!-- ========== 左栏：标题 / 大纲配置 / 大纲结构 ========== -->
-      <aside v-if="blog.is_owner" class="side-col left-col">
-        <div class="side-card">
-          <div class="side-title">
-            <SvgIcon name="spark" :size="14" />
-            <span>用户选择的标题</span>
-          </div>
-          <p class="selected-title">{{ blog.selected_title || blog.topic || '—' }}</p>
-        </div>
-
-        <div class="side-card">
-          <div class="side-title">
-            <SvgIcon name="document" :size="14" />
-            <span>大纲配置</span>
-          </div>
-          <table class="config-table">
-            <tbody>
-              <tr>
-                <td>目标字数</td>
-                <td>{{ blog.target_word_count ? `约 ${blog.target_word_count} 字` : '未指定' }}</td>
-              </tr>
-              <tr>
-                <td>专业水平</td>
-                <td>{{ levelLabel }}</td>
-              </tr>
-              <tr>
-                <td>配图</td>
-                <td>{{ blog.need_image ? `${imageSourceLabel}` : '不需要' }}</td>
-              </tr>
-              <tr v-if="blog.article_style">
-                <td>文章风格</td>
-                <td>{{ styleLabel }}</td>
-              </tr>
-              <tr>
-                <td>对大纲的要求</td>
-                <td>{{ blog.extra_requirements || '无' }}</td>
-              </tr>
-              <tr>
-                <td>对正文的要求</td>
-                <td>{{ blog.content_extra_requirements || '无' }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="side-card">
-          <div class="side-title collapsible" @click="toggle('outline')">
-            <SvgIcon name="outline" :size="14" />
-            <span>大纲结构</span>
-            <SvgIcon :name="opened.outline ? 'up' : 'down'" :size="14" class="arrow" />
-          </div>
-          <div v-if="opened.outline" class="side-body">
-            <MarkdownRender :content="blog.outline || '暂无大纲'" />
-          </div>
-        </div>
-      </aside>
-
-      <!-- ========== 中间栏：正文（宽度保持原样） ========== -->
-      <main class="content-col" :class="{ 'content-col--standalone': !blog.is_owner }">
-        <div class="blog-card animate-fade-in-up">
-          <article class="blog-article">
-            <div class="blog-content">
-              <MarkdownRender :content="blog.formatted_content || blog.content" />
-            </div>
-          </article>
-        </div>
-      </main>
-
-      <!-- ========== 右栏：审稿记录 / 写手思路 / 调研结果 ========== -->
-      <aside v-if="blog.is_owner" class="side-col right-col">
-        <!-- 审稿记录（最上边，默认展开） -->
-        <div class="side-card">
-          <div class="side-title collapsible" @click="toggle('review')">
-            <SvgIcon name="review" :size="14" />
-            <span>审稿记录</span>
-            <SvgIcon :name="opened.review ? 'up' : 'down'" :size="14" class="arrow" />
-          </div>
-          <div v-if="opened.review" class="side-body">
-            <template v-if="reviewData">
-              <!-- 综合评分 -->
-              <div class="review-score-row">
-                <div class="review-score">
-                  <span class="score-num">{{ reviewData.score || 0 }}</span>
-                  <span class="score-max">/100</span>
-                </div>
-                <div class="review-status" :class="reviewData.passed ? 'passed' : 'failed'">
-                  {{ reviewData.passed ? '✓ 通过' : '✗ 未通过' }}
-                </div>
-              </div>
-
-              <!-- 通过理由 -->
-              <div v-if="reviewData.pass_reasons && reviewData.pass_reasons.length" class="review-pass-reasons">
-                <div class="pass-reasons-title">通过理由</div>
-                <ul class="pass-reasons-list">
-                  <li v-for="(reason, i) in reviewData.pass_reasons" :key="i">{{ reason }}</li>
-                </ul>
-              </div>
-
-              <!-- 维度评分 -->
-              <div v-if="reviewData.dimension_scores" class="review-dims">
-                <div
-                  v-for="dim in REVIEW_DIMENSIONS"
-                  :key="dim.key"
-                  class="review-dim-row"
-                >
-                  <span class="dim-label">{{ dim.label }}</span>
-                  <div class="dim-bar">
-                    <div class="dim-bar-fill" :style="{ width: (reviewData.dimension_scores[dim.key] || 0) + '%' }"></div>
-                  </div>
-                  <span class="dim-score">{{ reviewData.dimension_scores[dim.key] || 0 }}</span>
-                </div>
-              </div>
-
-              <!-- 审稿意见（打回理由） -->
-              <div v-if="reviewData.review_opinions && reviewData.review_opinions.length" class="review-opinions">
-                <div class="opinions-title">审稿意见</div>
-                <div v-for="(op, i) in reviewData.review_opinions" :key="i" class="opinion-item">
-                  <div class="opinion-where">{{ op.where }}</div>
-                  <div class="opinion-why">{{ op.why }}</div>
-                  <div class="opinion-expected">→ {{ op.expected }}</div>
-                </div>
-              </div>
-
-              <!-- 兼容旧数据：没有pass_reasons但有feedback时显示总体评价 -->
-              <div v-else-if="reviewData.feedback" class="review-feedback">
-                <div class="feedback-title">总体评价</div>
-                <MarkdownRender :content="reviewData.feedback" />
-              </div>
-
-              <!-- 流量预测 -->
-              <div v-if="reviewData.traffic_forecast || reviewData.heat_level" class="review-traffic">
-                <div class="traffic-title">流量预测</div>
-                <div class="traffic-value">
-                  <span class="heat-dot" :style="{ background: (HEAT_LEVEL_CONFIG[reviewData.traffic_forecast || reviewData.heat_level] || HEAT_LEVEL_CONFIG['一般']).color }"></span>
-                  <span :style="{ color: (HEAT_LEVEL_CONFIG[reviewData.traffic_forecast || reviewData.heat_level] || HEAT_LEVEL_CONFIG['一般']).color }">{{ reviewData.traffic_forecast || reviewData.heat_level }}</span>
-                </div>
-              </div>
-            </template>
-            <p v-else class="side-empty">无审稿记录</p>
-          </div>
-        </div>
-
-        <!-- 写手思路（默认不展开） -->
-        <div class="side-card">
-          <div class="side-title collapsible" @click="toggle('thoughts')">
-            <SvgIcon name="pen" :size="14" />
-            <span>写手思路</span>
-            <SvgIcon :name="opened.thoughts ? 'up' : 'down'" :size="14" class="arrow" />
-          </div>
-          <div v-if="opened.thoughts" class="side-body">
-            <MarkdownRender v-if="blog.writing_thoughts" :content="blog.writing_thoughts" />
-            <p v-else class="side-empty">暂无（重新生成文章后可见）</p>
-          </div>
-        </div>
-
-        <!-- 标题调研（默认不展开） -->
-        <div class="side-card">
-          <div class="side-title collapsible" @click="toggle('titleRes')">
-            <SvgIcon name="search" :size="14" />
-            <span>标题调研</span>
-            <SvgIcon :name="opened.titleRes ? 'up' : 'down'" :size="14" class="arrow" />
-          </div>
-          <div v-if="opened.titleRes" class="side-body">
-            <MarkdownRender v-if="blog.title_research" :content="cleanResearchText(blog.title_research)" />
-            <p v-else class="side-empty">暂无调研数据</p>
-          </div>
-        </div>
-
-        <!-- 大纲调研（默认不展开） -->
-        <div class="side-card">
-          <div class="side-title collapsible" @click="toggle('outlineRes')">
-            <SvgIcon name="search" :size="14" />
-            <span>大纲调研</span>
-            <SvgIcon :name="opened.outlineRes ? 'up' : 'down'" :size="14" class="arrow" />
-          </div>
-          <div v-if="opened.outlineRes" class="side-body">
-            <MarkdownRender v-if="blog.outline_research" :content="cleanResearchText(blog.outline_research)" />
-            <p v-else class="side-empty">暂无调研数据</p>
-          </div>
-        </div>
-
-        <!-- 正文调研（默认不展开） -->
-        <div class="side-card">
-          <div class="side-title collapsible" @click="toggle('contentRes')">
-            <SvgIcon name="search" :size="14" />
-            <span>正文调研</span>
-            <SvgIcon :name="opened.contentRes ? 'up' : 'down'" :size="14" class="arrow" />
-          </div>
-          <div v-if="opened.contentRes" class="side-body">
-            <template v-if="blog.content_research">
-              <MarkdownRender :content="contentResearchPreview" />
-              <button v-if="contentResearchLong" class="expand-btn" @click="contentResFull = !contentResFull">
-                {{ contentResFull ? '收起' : '显示全部内容' }}
-              </button>
-            </template>
-            <p v-else class="side-empty">暂无调研数据</p>
-          </div>
-        </div>
-      </aside>
-    </div>
-
-    <el-empty v-else-if="!loading" description="文章不存在" />
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, ref, reactive, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import SvgIcon from '@/components/SvgIcon.vue'
 import MarkdownRender from '@/components/MarkdownRender.vue'
-import { getBlogDetail, generateContent } from '@/api/task'
-import { getArticle, toggleLike, toggleFavorite, downloadArticle, purchaseArticle, updateVisibility } from '@/api/article'
-import { isTimeoutError } from '@/utils/request'
+import EvidenceSources from '@/components/EvidenceSources.vue'
+import GenerationAllowance from '@/components/GenerationAllowance.vue'
+import { useQuotaStore } from '@/stores/quota'
+import SvgIcon from '@/components/SvgIcon.vue'
+import readerMessages from '@/i18n/reader'
+import { getArticle, toggleLike, toggleFavorite, purchaseArticle, downloadArticle, updateVisibility } from '@/api/article'
+import { getBlogDetail, generateContent, pendingGeneration } from '@/api/task'
+import { articleDate, exportMarkdown, withoutDuplicateTitle } from '@/utils/articles'
+import { researchSummary } from '@/utils/taskWorkflow'
 import { useAuthStore } from '@/stores/auth'
-
-const authStore = useAuthStore()
-
-const route = useRoute()
-const router = useRouter()
-const blogId = route.params.id
-
-const loading = ref(false)
-const blog = ref(null)
-const contentResFull = ref(false)
-
-// ===== 公开访问模式（非作者交互） =====
-const articleMeta = ref(null)      // getArticle 返回的元信息
-const likeCount = ref(0)
-const liked = ref(false)
-const favorited = ref(false)
-const purchased = ref(false)
-const visibilityDialog = ref(false)
-const savingVis = ref(false)
-const visForm = reactive({ is_public: false, allow_download: false, download_price: 0 })
-
-const isDemoArticle = computed(() => !!articleMeta.value?.is_demo)
-const downloadPrice = computed(() => articleMeta.value?.download_price || 0)
-const canDownload = computed(() => isDemoArticle.value || !!articleMeta.value?.allow_download)
-const needPurchase = computed(() =>
-  !isDemoArticle.value && downloadPrice.value > 0 && !purchased.value
-)
-
-// 侧栏卡片折叠状态（默认只展开审稿记录）
-const opened = reactive({
-  outline: false,
-  thoughts: false,
-  titleRes: false,
-  outlineRes: false,
-  contentRes: false,
-  review: true
+const {t,te,locale}=useI18n({useScope:'global'})
+const {t:r}=useI18n({useScope:'local',messages:readerMessages})
+const route=useRoute(), router=useRouter(), auth=useAuthStore()
+const quota=useQuotaStore()
+const id=route.params.id
+const pending=computed(()=>pendingGeneration(id))
+const article=ref(null),notes=ref(null),tab=ref('body'),loading=ref(true),busy=ref(false),missing=ref(false)
+const publishing=ref(false),form=reactive({is_public:false,allow_download:false,download_price:0})
+const publishingRevision=ref(''),conflictMessage=ref(''),reviewRequired=ref(false)
+const editionMatches=computed(()=>!!article.value?.revision && notes.value?.revision === article.value.revision)
+const review=computed(()=>notes.value?.review_result || {})
+const dimensions=['outline_compliance','research_usage','relevance','logic_flow','style_match']
+const researchKeys=['title_research','outline_research','content_research']
+const body=computed(()=>withoutDuplicateTitle(article.value?.content, article.value?.title))
+const styleName=computed(()=>{
+  const style=article.value?.article_style
+  if(style === 'custom' && notes.value?.article_style_custom) return notes.value.article_style_custom
+  return style && te('studio.style.'+style) ? t('studio.style.'+style) : ''
 })
-
-const CONTENT_RES_PREVIEW_LEN = 1500
-
-// 无效调研结果的特征模式（旧数据中 LLM 误判或陷入循环时产生的占位内容）
-const INVALID_RESEARCH_PATTERNS = [
-  /请回复[您你]的具体/,
-  /请提供[您你]的/,
-  /待主题确认/,
-  /即刻启动/,
-  /收到主题后/,
-  /未提供具体的/,
-  /请补充该主题/,
-  /I will now produce the final output/i,
-  /待主題確認/,
-]
-
-function isInvalidResearch(text) {
-  return INVALID_RESEARCH_PATTERNS.some(p => p.test(text))
-}
-
-/**
- * 清洗调研结果：去掉 ReAct 过程标识（思考/行动/观察），只展示最终结论
- * 策略：优先提取最后一个【总结】之后的内容；没有有效总结则去掉所有 ReAct 标记保留内容
- * 无效结果（旧数据异常）显示提示，引导重新生成
- */
-function cleanResearchText(text) {
-  if (!text) return ''
-  let result = ''
-  // 优先提取最后一个【总结】之后的内容
-  const summaryIndex = text.lastIndexOf('【总结】')
-  if (summaryIndex !== -1) {
-    const summary = text.slice(summaryIndex + 4).trim()
-    // 总结内容至少 50 字才认为有效（避免 LLM 占位式总结）
-    if (summary.length > 50) {
-      result = summary
-    }
-  }
-  // 没有有效总结：去掉所有 ReAct 标记，保留内容
-  if (!result) {
-    result = text
-      .replace(/【思考】\s*/g, '')
-      .replace(/【行动】\s*/g, '')
-      .replace(/【观察】\s*/g, '')
-      .replace(/【总结】\s*/g, '')
-      .trim()
-  }
-  // 无效调研结果检测：旧数据中 LLM 误判或陷入循环时产生的占位内容
-  if (isInvalidResearch(result)) {
-    return '（本次调研为旧数据异常，未产出有效结论。请点击页面右上角"重新生成"，生成后可查看正常调研结果。）'
-  }
-  return result
-}
-
-function toggle(key) {
-  opened[key] = !opened[key]
-}
-
-const levelLabel = computed(() => {
-  const map = {
-    general: '入门（通俗易懂）',
-    medium: '中等（略有专业）',
-    advanced: '高级（专业深入）',
-    professional: '专业（面向同行）'
-  }
-  return blog.value?.level ? (map[blog.value.level] || blog.value.level) : '未指定'
+const needsPurchase=computed(()=>!article.value?.is_demo && article.value?.download_price > 0 && !article.value?.purchased)
+const brief=computed(()=>{
+  const n=notes.value || {}
+  return [['topic',n.topic],['purpose',n.purpose],['length',n.target_word_count],['style',styleName.value],['audience',n.level && r(n.level)],['illustrations',n.need_image ? (n.image_source && r(n.image_source)) : r('noImages')],['outlineBrief',n.extra_requirements],['bodyBrief',n.content_extra_requirements]].filter(([,v])=>v)
 })
-
-const imageSourceLabel = computed(() => {
-  const map = {
-    api: '联网搜图',
-    ai: 'AI 生图'
-  }
-  return blog.value?.image_source ? (map[blog.value.image_source] || blog.value.image_source) : '未指定方式'
-})
-
-const styleLabel = computed(() => {
-  const style = blog.value?.article_style
-  const map = {
-    popular_science: '科普类',
-    technical: '技术类',
-    essay: '论文类',
-    prose: '散文类',
-    note: '笔记类',
-    custom: blog.value?.article_style_custom || '自定义',
-  }
-  return map[style] || style || ''
-})
-
-const wordCount = computed(() => {
-  if (!blog.value?.content) return 0
-  return blog.value.content.replace(/\s/g, '').length
-})
-
-const contentResearchPreview = computed(() => {
-  // 先清洗 ReAct 过程，再截断
-  const cleaned = cleanResearchText(blog.value?.content_research || '')
-  if (!contentResFull.value && cleaned.length > CONTENT_RES_PREVIEW_LEN) {
-    return cleaned.slice(0, CONTENT_RES_PREVIEW_LEN) + '\n\n……（内容较长，已截断）'
-  }
-  return cleaned
-})
-
-const contentResearchLong = computed(() => {
-  return cleanResearchText(blog.value?.content_research || '').length > CONTENT_RES_PREVIEW_LEN
-})
-
-const reviewData = computed(() => {
-  if (!blog.value?.review_result) return null
-  return blog.value.review_result
-})
-
-// 7个审稿维度的中文名
-const REVIEW_DIMENSIONS = [
-  { key: 'outline_compliance', label: '大纲遵从' },
-  { key: 'research_usage', label: '素材运用' },
-  { key: 'relevance', label: '主旨紧扣' },
-  { key: 'logic_flow', label: '逻辑流畅' },
-  { key: 'style_match', label: '风格匹配' },
-]
-
-// 热度预期的色温配置
-const HEAT_LEVEL_CONFIG = {
-  '一般': { color: '#94a3b8', bg: 'var(--bg-soft)' },
-  '中等': { color: '#3b82f6', bg: '#eff6ff' },
-  '高': { color: '#22c55e', bg: '#f0fdf4' },
-  '热': { color: '#f97316', bg: '#fff7ed' },
-  '火爆': { color: '#ef4444', bg: '#fef2f2' },
-}
-
-function renderStars(count) {
-  const n = Math.max(0, Math.min(5, count || 0))
-  return '★'.repeat(n) + '☆'.repeat(5 - n)
-}
-
-async function fetchBlog() {
-  loading.value = true
+let loadVersion = 0
+async function load() {
+  const version = ++loadVersion
+  loading.value=true
+  conflictMessage.value=''
+  reviewRequired.value=false
+  publishing.value=false
+  notes.value=null
+  missing.value=false
   try {
-    // 1) 先取公开详情（匿名/他人/作者都能看，登录后带交互状态）
-    const a = await getArticle(blogId)
-    articleMeta.value = a
-    likeCount.value = a.like_count
-    liked.value = a.liked
-    favorited.value = a.favorited
-    purchased.value = a.purchased
-    blog.value = {
-      selected_title: a.title,
-      topic: a.topic,
-      content: a.content,
-      formatted_content: a.content,
-      created_at: a.created_at,
-      is_owner: a.is_owner
+    const edition = await getArticle(id)
+    if (version !== loadVersion) return
+    article.value = edition
+    if (edition.is_owner) {
+      try {
+        const detail = await getBlogDetail(id)
+        if (version === loadVersion) notes.value = detail
+      } catch { /* Keep the article readable if its editorial notes are unavailable. */ }
     }
-    // 2) 作者本人：再拉全量过程数据（调研/思路/审稿/大纲配置）
-    if (a.is_owner) {
-      const full = await getBlogDetail(blogId)
-      blog.value = { ...blog.value, ...full, is_owner: true }
-      visForm.is_public = full.is_public
-      visForm.allow_download = full.allow_download
-      visForm.download_price = Number(full.download_price || 0)
+  } catch(e) {
+    if (version === loadVersion) { article.value=null; missing.value=e.response?.status === 404 }
+  } finally { if (version === loadVersion) loading.value=false }
+}
+onMounted(load)
+watch(()=>auth.user?.id,()=>{tab.value='body';load()})
+function openPublishing() {
+  if (!editionMatches.value) return
+  publishingRevision.value=article.value.revision
+  Object.assign(form,{is_public:!!notes.value.is_public,allow_download:!!notes.value.allow_download,download_price:Number(notes.value.download_price) || 0})
+  publishing.value=true
+}
+async function handleConflict(error) {
+  if (error.response?.status !== 409) return
+  if (error.response.data?.detail?.code === 'review_required') {
+    publishing.value=false
+    reviewRequired.value=true
+    conflictMessage.value=r('reviewRequired')
+    return
+  }
+  await load()
+  conflictMessage.value=r('versionConflict')
+}
+async function savePublishing() {
+  if(busy.value)return
+  busy.value=true
+  try {
+    const allow=form.is_public && form.allow_download
+    const data=await updateVisibility(id,{expected_revision:publishingRevision.value,is_public:form.is_public,allow_download:allow,download_price:allow ? form.download_price || 0 : 0})
+    const visibility = { revision:data.revision, is_public:data.is_public, allow_download:data.allow_download, download_price:data.download_price }
+    Object.assign(notes.value,visibility)
+    Object.assign(article.value,visibility)
+    publishing.value=false
+    ElMessage.success(r('saved'))
+  } catch (error) { await handleConflict(error) }
+  finally {busy.value=false}
+}
+async function copy() {
+  try {await navigator.clipboard.writeText(article.value.content);ElMessage.success(r('copied'))}
+  catch { ElMessage.warning(r('copyFail')) }
+}
+async function act(action) {
+  if(busy.value)return
+  if(!auth.isLoggedIn) {await router.push({path:'/login',query:{redirect:route.fullPath}});return}
+  busy.value=true
+  try {
+    if(action === 'like') Object.assign(article.value,await toggleLike(id))
+    if(action === 'favorite') Object.assign(article.value,await toggleFavorite(id))
+    if(action === 'download') {const data=await downloadArticle(id);exportMarkdown(data.title,data.content)}
+    if(action === 'purchase') {
+      const offer={expected_revision:article.value.revision,expected_price:article.value.download_price}
+      await ElMessageBox.confirm(r('buyConfirm',{price:offer.expected_price}),r('buy'),{confirmButtonText:r('confirm'),cancelButtonText:r('cancel')})
+      await purchaseArticle(id,offer)
+      article.value.purchased=true
+      ElMessage.success(r('bought'))
+      await auth.fetchMe()
     }
-  } catch (e) {
-    // 3) 公开接口 404（例如作者本人查看自己未公开的文章）：回退作者全量接口
-    try {
-      const full = await getBlogDetail(blogId)
-      const content = full.formatted_content || full.content || ''
-      blog.value = { ...full, is_owner: true, content, formatted_content: content }
-      articleMeta.value = {
-        task_id: full.task_id,
-        title: full.selected_title || full.topic,
-        topic: full.topic,
-        content,
-        nickname: '',
-        is_demo: false,
-        allow_download: !!full.allow_download,
-        download_price: Number(full.download_price || 0),
-        like_count: 0,
-        liked: false,
-        favorited: false,
-        purchased: false,
-        is_owner: true,
-        created_at: full.created_at,
+    if(action === 'regenerate') {
+      if (!pending.value) {
+        await ElMessageBox.confirm(r('replace'),r('regenerate'),{type:'warning',confirmButtonText:r('regenerate'),cancelButtonText:r('cancel')})
+        try {await generateContent({id, status:'completed'})}
+        catch(e) {if(!pendingGeneration(id) && e.response?.status !== 409) throw e}
       }
-      visForm.is_public = !!full.is_public
-      visForm.allow_download = !!full.allow_download
-      visForm.download_price = Number(full.download_price || 0)
-      return
-    } catch (e2) {
-      blog.value = null
+      await router.push('/task/'+id+'/generating')
     }
-  } finally {
-    loading.value = false
-  }
+  } catch (error) { if (action === 'purchase') await handleConflict(error) }
+  finally {busy.value=false}
 }
-
-// ===== 公开访问交互 =====
-async function handleLike() {
-  try {
-    const res = await toggleLike(blogId)
-    liked.value = res.liked
-    likeCount.value = res.like_count
-  } catch (e) { /* 401 已由拦截器处理 */ }
-}
-
-async function handleFavorite() {
-  try {
-    const res = await toggleFavorite(blogId)
-    favorited.value = res.favorited
-    ElMessage.success(res.favorited ? '已收藏' : '已取消收藏')
-  } catch (e) { /* 401 已由拦截器处理 */ }
-}
-
-async function handleDownload() {
-  try {
-    const res = await downloadArticle(blogId)
-    const blob = new Blob([res.content], { type: 'text/markdown;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${res.title || 'article'}.md`
-    a.click()
-    URL.revokeObjectURL(url)
-    ElMessage.success(res.message || '下载成功')
-    purchased.value = true
-  } catch (e) { /* 未购买/不可下载已由拦截器提示 */ }
-}
-
-async function handlePurchase() {
-  try {
-    const res = await purchaseArticle(blogId)
-    purchased.value = true
-    ElMessage.success(`购买成功，剩余余额 ¥${res.balance}`)
-    if (authStore.user) authStore.user.balance = res.balance
-  } catch (e) { /* 余额不足等已由拦截器提示 */ }
-}
-
-// ===== 作者：公开/下载配置 =====
-async function saveVisibility() {
-  savingVis.value = true
-  try {
-    const res = await updateVisibility(blogId, {
-      is_public: visForm.is_public,
-      allow_download: visForm.allow_download,
-      download_price: visForm.download_price
-    })
-    articleMeta.value = { ...articleMeta.value, is_public: res.is_public, allow_download: res.allow_download, download_price: res.download_price }
-    ElMessage.success('配置已保存')
-    visibilityDialog.value = false
-  } catch (e) { /* 拦截器已提示 */ } finally {
-    savingVis.value = false
-  }
-}
-
-function formatTime(timeStr) {
-  if (!timeStr) return ''
-  return new Date(timeStr).toLocaleString('zh-CN')
-}
-
-function copyContent() {
-  const content = blog.value?.formatted_content || blog.value?.content || ''
-  navigator.clipboard.writeText(content).then(() => {
-    ElMessage.success('已复制到剪贴板')
-  }).catch(() => {
-    ElMessage.error('复制失败')
-  })
-}
-
-async function regenerate() {
-  try {
-    await ElMessageBox.confirm('确定要重新生成文章吗？当前内容将被覆盖。', '提示', {
-      type: 'warning',
-      confirmButtonText: '确定',
-      cancelButtonText: '取消'
-    })
-    await generateContent(blogId)
-    ElMessage.success('重新生成任务已提交')
-    router.push(`/task/${blogId}/generating`)
-  } catch (e) {
-    if (e === 'cancel') return
-    // 网关/连接超时：任务可能仍在后台生成，跳转到生成页由轮询确认最终状态
-    if (isTimeoutError(e)) {
-      console.warn('请求超时，任务可能仍在后台处理，跳转到生成页等待:', e)
-      router.push(`/task/${blogId}/generating`)
-      return
-    }
-    console.error(e)
-  }
-}
-
-onMounted(() => {
-  fetchBlog()
-})
 </script>
 
 <style scoped>
-.blog-detail-view {
-  max-width: none;
-  width: 100%;
-  margin: 0 auto;
-  padding: 0 40px 40px;
-}
-
-.blog-toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 14px 0;
-  margin-bottom: 8px;
-}
-
-.toolbar-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  border: 1px solid var(--border);
-  background: var(--bg-card);
-  border-radius: 10px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  color: var(--text-secondary);
-}
-
-.toolbar-btn:hover {
-  border-color: var(--primary);
-  color: var(--primary);
-}
-
-.toolbar-btn.primary {
-  background: var(--primary-gradient);
-  border: none;
-  color: white;
-}
-
-.toolbar-btn.active {
-  border-color: var(--primary);
-  color: var(--primary);
-  background: rgba(99, 102, 241, 0.08);
-}
-
-.toolbar-btn.primary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-}
-
-.toolbar-actions {
-  display: flex;
-  gap: 8px;
-}
-
-/* ===== 三栏布局 =====
-   以整个浏览器窗口为容器：左栏贴左、中间正文 820px 居中、右栏贴右 */
-.three-column {
-  display: grid;
-  grid-template-columns: 360px 820px 360px;
-  justify-content: space-between;
-  align-items: start;
-  gap: 0;
-}
-
-.left-col,
-.right-col {
-  width: 100%;
-}
-
-/* 中间正文列：内部保持原 820px 宽度 */
-.content-col {
-  min-width: 0;
-}
-
-/* 非作者阅读模式：中间栏居中，左右留白 */
-.content-col--standalone {
-  grid-column: 1 / -1;
-  justify-self: center;
-  width: 100%;
-  max-width: 820px;
-}
-
-.content-col .blog-card {
-  max-width: 820px;
-  margin: 0 auto;
-  background: var(--bg-card);
-  border-radius: 20px;
-  box-shadow: var(--shadow-md);
-  overflow: hidden;
-  /* 宽屏三栏模式下：正文卡片固定高度，标题固定、内容区滚动 */
-  max-height: calc(100vh + 480px);
-  display: flex;
-  flex-direction: column;
-}
-
-/* ===== 侧栏卡片 ===== */
-.side-col {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  min-width: 0;
-}
-
-.left-col,
-.right-col {
-  /* 不使用 sticky：侧栏内容可能很长，随页面自然滚动才能查看全部 */
-}
-
-.side-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-  overflow: hidden;
-}
-
-.side-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-  background: linear-gradient(135deg, var(--bg-soft) 0%, var(--bg-soft) 100%);
-}
-
-.side-title.collapsible {
-  cursor: pointer;
-  transition: background 0.2s ease;
-}
-
-.side-title.collapsible:hover {
-  background: linear-gradient(135deg, var(--bg-soft) 0%, var(--border) 100%);
-}
-
-.side-title .arrow {
-  margin-left: auto;
-  color: var(--text-muted);
-  transition: transform 0.2s ease;
-}
-
-.side-body {
-  padding: 14px 16px;
-  border-top: 1px solid var(--border);
-  /* 展开内容超过约 20 行时，内部上下滚动查看 */
-  max-height: 480px;
-  overflow-y: auto;
-  padding-right: 10px;
-}
-
-/* 细滚动条样式 */
-.side-body::-webkit-scrollbar {
-  width: 6px;
-}
-
-.side-body::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.side-body::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 3px;
-}
-
-.side-body::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted);
-}
-
-.selected-title {
-  margin: 0;
-  padding: 12px 16px;
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.6;
-  color: var(--primary);
-  background: var(--panel-gradient);
-}
-
-.config-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-
-.config-table td {
-  padding: 8px 16px;
-  vertical-align: top;
-  line-height: 1.6;
-}
-
-.config-table td:first-child {
-  width: 76px;
-  color: var(--text-muted);
-  white-space: nowrap;
-  font-weight: 500;
-}
-
-/* 侧栏内的 markdown 渲染：窄栏用小字号 */
-.side-body :deep(.markdown-body) {
-  font-size: 13px;
-  line-height: 1.7;
-  color: var(--text-secondary);
-}
-
-.side-body :deep(.markdown-body h1),
-.side-body :deep(.markdown-body h2),
-.side-body :deep(.markdown-body h3) {
-  font-size: 15px;
-  margin: 12px 0 8px;
-  line-height: 1.4;
-}
-
-.side-body :deep(.markdown-body p) {
-  margin: 8px 0;
-}
-
-.side-body :deep(.markdown-body ul),
-.side-body :deep(.markdown-body ol) {
-  padding-left: 20px;
-  margin: 8px 0;
-}
-
-.side-empty {
-  margin: 0;
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
-.expand-btn {
-  margin-top: 10px;
-  padding: 6px 12px;
-  border: 1px solid var(--border);
-  background: var(--bg-soft);
-  border-radius: 8px;
-  font-size: 12px;
-  color: var(--primary);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.expand-btn:hover {
-  border-color: var(--primary);
-  background: var(--panel-gradient);
-}
-
-/* ===== 审稿记录卡片 ===== */
-.review-score-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
-}
-
-.review-score {
-  display: flex;
-  align-items: baseline;
-  gap: 2px;
-}
-
-.review-score .score-num {
-  font-size: 36px;
-  font-weight: 800;
-  background: var(--primary-gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.review-score .score-max {
-  font-size: 14px;
-  color: var(--text-muted);
-}
-
-.review-status {
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.review-status.passed {
-  background: #dcfce7;
-  color: #16a34a;
-}
-
-.review-status.failed {
-  background: #fee2e2;
-  color: #dc2626;
-}
-
-.review-dimensions {
-  margin-bottom: 16px;
-  padding: 12px;
-  background: var(--bg-soft);
-  border-radius: 8px;
-}
-
-.dim-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-
-.dim-row:last-child {
-  margin-bottom: 0;
-}
-
-.dim-label {
-  width: 56px;
-  font-size: 11px;
-  color: var(--text-muted);
-  flex-shrink: 0;
-}
-
-.dim-bar-wrap {
-  flex: 1;
-  height: 6px;
-  background: var(--border);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.dim-bar {
-  height: 100%;
-  background: var(--primary-gradient);
-  border-radius: 3px;
-  transition: width 0.3s ease;
-}
-
-.dim-score {
-  width: 24px;
-  font-size: 11px;
-  color: var(--text-secondary);
-  text-align: right;
-  flex-shrink: 0;
-}
-
-.review-meta {
-  margin-bottom: 16px;
-  padding: 12px;
-  background: var(--bg-soft);
-  border-radius: 8px;
-}
-
-.meta-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.meta-row:last-child {
-  margin-bottom: 0;
-}
-
-.meta-key {
-  width: 56px;
-  font-size: 11px;
-  color: var(--text-muted);
-  flex-shrink: 0;
-}
-
-.meta-val {
-  font-size: 12px;
-  color: var(--text-primary);
-  font-weight: 500;
-}
-
-.meta-val.stars {
-  color: #f59e0b;
-  letter-spacing: 2px;
-}
-
-.heat-dot {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  margin-right: 4px;
-}
-
-.review-feedback {
-  margin-bottom: 16px;
-}
-
-.feedback-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  margin-bottom: 6px;
-}
-
-.review-suggestions {
-  margin-top: 12px;
-}
-
-.suggestion-block {
-  margin-bottom: 12px;
-}
-
-.suggestion-block:last-child {
-  margin-bottom: 0;
-}
-
-.suggestion-title {
-  font-size: 12px;
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-
-.suggestion-title.issues {
-  color: #dc2626;
-}
-
-.suggestion-title.suggestions {
-  color: #2563eb;
-}
-
-.suggestion-block ul {
-  margin: 0;
-  padding-left: 18px;
-}
-
-.suggestion-block li {
-  font-size: 12px;
-  color: var(--text-secondary);
-  line-height: 1.6;
-  margin-bottom: 2px;
-}
-
-/* 维度评分 */
-.review-dims {
-  margin-top: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.review-dim-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-}
-.dim-label {
-  width: 64px;
-  color: #64748b;
-  flex-shrink: 0;
-}
-.dim-bar {
-  flex: 1;
-  height: 6px;
-  background: #f1f5f9;
-  border-radius: 3px;
-  overflow: hidden;
-}
-.dim-bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #8b5cf6, #6366f1);
-  border-radius: 3px;
-}
-.dim-score {
-  width: 24px;
-  text-align: right;
-  font-weight: 600;
-  color: #334155;
-}
-
-/* 审稿意见 */
-.review-opinions {
-  margin-top: 12px;
-  padding-top: 10px;
-  border-top: 1px solid #f1f5f9;
-}
-.opinions-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: #64748b;
-  margin-bottom: 8px;
-}
-.opinion-item {
-  margin-bottom: 10px;
-  padding: 8px;
-  background: #fef2f2;
-  border-radius: 6px;
-  font-size: 12px;
-  line-height: 1.6;
-}
-.opinion-where {
-  font-weight: 600;
-  color: #dc2626;
-  margin-bottom: 2px;
-}
-.opinion-why {
-  color: #475569;
-}
-.opinion-expected {
-  margin-top: 4px;
-  color: #059669;
-}
-
-/* 通过理由 */
-.review-pass-reasons {
-  margin-top: 12px;
-  padding-top: 10px;
-  border-top: 1px solid var(--border-light);
-}
-
-.pass-reasons-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: #16a34a;
-  margin-bottom: 6px;
-}
-
-.pass-reasons-list {
-  margin: 0;
-  padding-left: 18px;
-}
-
-.pass-reasons-list li {
-  font-size: 12px;
-  color: var(--text-secondary);
-  line-height: 1.6;
-  margin-bottom: 3px;
-}
-
-/* 流量预测 */
-.review-traffic {
-  margin-top: 12px;
-  padding-top: 10px;
-  border-top: 1px solid var(--border-light);
-}
-
-.traffic-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  margin-bottom: 6px;
-}
-
-.traffic-value {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.traffic-value .heat-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  display: inline-block;
-}
-
-/* ===== 正文区（原样式保留） ===== */
-.blog-article {
-  padding: 40px 48px;
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  overflow: hidden;
-}
-
-.blog-header {
-  text-align: center;
-  margin-bottom: 32px;
-}
-
-.blog-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
-  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-  color: #92400e;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-  margin-bottom: 20px;
-}
-
-.blog-title {
-  font-size: 32px;
-  font-weight: 800;
-  line-height: 1.4;
-  margin: 0 0 20px;
-  background: var(--primary-gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.blog-meta {
-  display: flex;
-  justify-content: center;
-  gap: 24px;
-  flex-wrap: wrap;
-}
-
-.meta-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
-.blog-divider {
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--border), transparent);
-  margin: 32px 0;
-}
-
-.blog-content {
-  min-height: 300px;
-  flex: 1;
-  overflow-y: auto;
-  padding-right: 10px;
-}
-
-/* 正文内容区细滚动条 */
-.blog-content::-webkit-scrollbar {
-  width: 6px;
-}
-
-.blog-content::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.blog-content::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 3px;
-}
-
-.blog-content::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted);
-}
-
-/* ===== 响应式 ===== */
-/* 三栏最小需要 360+820+360 + 两侧 padding，低于 1600px 改为堆叠 */
-@media (max-width: 1600px) {
-  .three-column {
-    grid-template-columns: 1fr;
-    justify-content: center;
-    gap: 24px;
-  }
-  .left-col,
-  .right-col {
-    max-width: 820px;
-    margin: 0 auto;
-    position: static;
-    max-height: none;
-    overflow: visible;
-  }
-  .right-col {
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
-  .right-col .side-card {
-    flex: 1 1 calc(50% - 8px);
-    min-width: 280px;
-  }
-  /* 堆叠模式下正文不限制高度，自然页面滚动 */
-  .content-col .blog-card {
-    max-height: none;
-    display: block;
-  }
-  .blog-article {
-    display: block;
-    overflow: visible;
-  }
-  .blog-content {
-    overflow: visible;
-    padding-right: 0;
-  }
-}
-
-@media (max-width: 900px) {
-  .blog-detail-view {
-    padding: 0 12px 32px;
-  }
-  .blog-article {
-    padding: 24px 20px;
-  }
-  .blog-title {
-    font-size: 24px;
-  }
-}
+.reader-sources{max-width:860px;margin:12px auto}.reader-conflict{background:var(--tint);color:var(--ink);padding:12px 16px;border-radius:6px;margin:0 0 12px;font-size:14px}
+.reader{max-width:940px;margin:auto}.reader-back{display:inline-flex;align-items:center;gap:7px;font-size:13px;color:var(--muted);margin-bottom:20px}.reader-head{border-top:2px solid var(--ink);padding:22px 0 21px}.byline,.reader-actions,.reader-tabs,.note-head,.generation-note{display:flex;align-items:center;gap:9px;flex-wrap:wrap}.byline{font-size:12px;color:var(--muted)}.byline span{font-weight:650;color:var(--accent)}.byline i{font-style:normal}.reader-head h1{font:700 clamp(28px,3.3vw,46px)/1.35 var(--serif);margin:10px 0 18px;overflow-wrap:anywhere}.reader-actions .quiet-action,.reader-actions .primary-action{min-height:33px;font-size:12px;padding:6px 11px}.reader-actions [aria-pressed=true]{color:var(--accent);background:var(--tint)}
+.reader-tabs{border-bottom:1px solid var(--line);margin-bottom:16px;gap:16px}.reader-tabs button{padding:8px 3px;border:0;border-bottom:2px solid transparent;background:none;color:var(--muted);font-size:14px}.reader-tabs [aria-pressed=true]{border-bottom-color:var(--accent);color:var(--accent);font-weight:650}
+.reader-sheet,.note-panel{background:var(--surface);border:1px solid var(--line);border-radius:8px}.reader-sheet{padding:clamp(20px,4vw,48px);max-width:860px;margin:auto}.reader-sheet :deep(.markdown-body>:first-child){margin-top:0}.reader-sheet :deep(.markdown-body){line-height:1.95}.notes{display:grid;gap:12px}.note-panel{padding:18px 22px}.note-head{justify-content:space-between}.note-panel h2,.note-panel summary{font:650 19px/1.5 var(--serif)}summary{cursor:pointer}.score,.note-panel small,.generation-note{font-size:13px;color:var(--muted)}.generation-note{color:var(--success)}.metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 25px;margin:15px 0}.metrics>div{display:flex;gap:7px;align-items:center;font-size:12px}.metrics meter{flex:1;min-width:20px;accent-color:var(--success)}.metrics b{min-width:2ch}.note-panel dl{display:grid;grid-template-columns:max-content 1fr;gap:9px 18px;font-size:14px}.note-panel dt{color:var(--muted)}.note-panel dd{margin:0;overflow-wrap:anywhere}.opinion{margin:12px 0;color:var(--muted)}.regen{justify-self:start}
+@media(max-width:600px){.metrics{grid-template-columns:1fr}.note-panel{padding:14px}.reader-back{margin-bottom:12px}.reader-sheet{padding:17px}.reader-head{padding:15px 0}.reader-actions{gap:6px}}
 </style>

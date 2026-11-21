@@ -4,23 +4,9 @@
 所有子图（标题/大纲/正文）与主图（supervisor）共用这一个 State，
 节点函数从 state 读输入、把结果写回 state，实现跨阶段数据贯通。
 
-LangGraph 状态语义：
-- 普通字段：节点返回时【覆盖】旧值（默认行为）
-- Annotated 字段 + reducer：节点返回时【累积追加】新值（如对话消息、工具轨迹）
+节点返回的字段覆盖旧值；顺序执行的调研节点传递本轮对话的完整快照。
 """
-from operator import add
-from typing import Annotated, Any, Dict, List, Optional, TypedDict
-
-
-def add_list(left: List, right: List) -> List:
-    """累积型 reducer：把新列表追加到旧列表后面（用于 messages / tool_traces）。
-
-    约定：返回【空列表】表示清空信号（子图入口重置当前 ReAct 循环时使用），
-    其余情况为追加累积。
-    """
-    if not right:
-        return []
-    return left + right
+from typing import Any, Dict, List, Optional, TypedDict
 
 
 class AgentState(TypedDict, total=False):
@@ -40,6 +26,7 @@ class AgentState(TypedDict, total=False):
 
     # ==================== 用户输入与配置 ====================
     topic: str
+    purpose: str
     """用户最初输入的主题"""
     article_style: str
     """文章风格：popular_science / technical / essay / prose / note / custom（标题选择页）"""
@@ -79,6 +66,14 @@ class AgentState(TypedDict, total=False):
     # ==================== 正文阶段 ====================
     content_research: str
     """正文调研结果（素材 + 来源 + 发布时间，正文子图输出）"""
+    evidence_sources: List[Dict[str, str]]
+    """正文实际检索记录，补充调研时保留既有编号。"""
+    evidence_source_ids: Dict[str, str]
+    """当前稿件的 URL 到编号映射；重新调研不把旧编号分给新的来源。"""
+    evidence_questions: List[Dict[str, str]]
+    """短事实稿逐问查证的原页、检索词和实际读取状态。"""
+    evidence_extraction_version: int
+    """保存的按问题摘录所用提取器版本。"""
     content: str
     """正文 markdown（含配图标记）"""
     writing_thoughts: str
@@ -91,6 +86,10 @@ class AgentState(TypedDict, total=False):
     """格式化后的正文（排版工具产出，最终展示用）"""
 
     # ==================== 审稿与质量门（主 Agent） ====================
+    force_review: bool
+    """作者修订版提交复审时，显式执行语义审稿。"""
+    editor_revision: bool
+    """正文已排版，配图位置已替换为图片或显示降级说明。"""
     review_result: Dict[str, Any]
     """最近一次评审结果：passed / score / 各维度评分 / 意见 / 是否需重新调研"""
     review_count: int
@@ -103,10 +102,10 @@ class AgentState(TypedDict, total=False):
     """审稿给出的调研建议（打回后重新调研/补充调研的方向清单）"""
 
     # ==================== ReAct 循环与工具轨迹 ====================
-    messages: Annotated[List[Dict[str, Any]], add_list]
+    messages: List[Dict[str, Any]]
     """当前子图 ReAct 循环的对话历史：{role, content} 字典列表。
     子图入口重置为空列表，循环中累积「模型消息 + 工具结果」，支持条件边判断与断点恢复。"""
-    tool_traces: Annotated[List[Dict[str, Any]], add_list]
+    tool_traces: List[Dict[str, Any]]
     """全流程工具调用轨迹：[{tool, args, result_summary, timestamp}]。
     全流程累积不清空，写库后前端可展示「调研/工具调用过程」。"""
 

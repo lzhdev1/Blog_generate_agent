@@ -28,6 +28,7 @@ from langchain_core.messages import (
 from langchain_core.tools import BaseTool
 
 from src.blog_agent.agent.state import AgentState
+from src.blog_agent.agent.agents.prompt_utils import editorial_brief
 from src.blog_agent.clients.llm_client import get_chat_model
 
 # ============================================================
@@ -119,12 +120,9 @@ def make_react_model_node(
             # 第一轮：注入 system + 任务指令
             messages = [
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": task_builder(state)},
+                {"role": "user", "content": task_builder(state) + editorial_brief(state)},
             ]
-            state["messages"] = messages
         resp = model.invoke([dict_to_message(m) for m in messages])
-        # 注意：state.messages 是 add_list 累积 reducer，这里只返回【增量】，
-        # 由 LangGraph 自动追加到历史；绝不能返回完整历史（会造成消息重复膨胀）
-        return {"messages": [message_to_dict(resp)]}
+        return {"messages": [*messages, message_to_dict(resp)]}
 
     return react_model_node

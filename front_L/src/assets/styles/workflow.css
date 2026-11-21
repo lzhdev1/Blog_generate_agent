@@ -1,0 +1,149 @@
+.wf-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  color: var(--ink);
+  --wf-tint: color-mix(in srgb, var(--accent) 7%, var(--surface));
+}
+.wf-header, .wf-panel-head, .wf-actions, .wf-notice, .wf-editor-tools {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.wf-header, .wf-panel-head, .wf-notice { justify-content: space-between; }
+.wf-header { align-items: flex-start; margin-bottom: 26px; }
+.wf-header h1 {
+  margin: 0;
+  font: 600 clamp(30px, 3.15vw, 46px)/1.25 "STIX Two Text", "Noto Serif SC", "Songti SC", SimSun, Georgia, serif;
+  letter-spacing: -.045em;
+}
+.wf-header p { margin: 10px 0 0; font-size: 14px; line-height: 1.7; color: var(--muted); }
+.wf-library, .wf-text-btn, .wf-primary, .wf-secondary {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  font: inherit; font-size: 13px; line-height: 1.5; cursor: pointer; text-decoration: none;
+}
+.wf-library { color: var(--muted); padding: 7px 0; white-space: nowrap; }
+.wf-text-btn { padding: 5px 0; color: var(--muted); background: transparent; border: none; }
+.wf-text-btn:hover, .wf-library:hover { color: var(--accent); }
+.wf-primary, .wf-secondary { border-radius: 7px; padding: 10px 17px; font-weight: 600; }
+.wf-primary { background: var(--accent); color: var(--on-accent, white); border: 1px solid var(--accent); }
+.wf-primary:hover { filter: brightness(.94); }
+.wf-secondary { background: var(--surface); border: 1px solid var(--line); color: var(--ink); }
+.wf-page button:disabled, .wf-page input:disabled, .wf-page textarea:disabled, .wf-page select:disabled { opacity: .6; cursor: wait; }
+.wf-page :is(a, button, input, select, textarea, summary):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.wf-stages { display: flex; align-items: stretch; padding: 0; margin: 0 0 25px; list-style: none; }
+.wf-stages li {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px;
+  border-block-end: 2px solid var(--line); color: var(--muted); padding: 12px 6px 12px 0; font-size: 13px;
+}
+.wf-stage-mark { display: grid; place-items: center; flex: 0 0 23px; width: 23px; height: 23px; border: 1px solid var(--line); border-radius: 50%; font-variant-numeric: tabular-nums; font-size: 12px; }
+.wf-stages .wf-past { color: var(--ink); }
+.wf-past .wf-stage-mark { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.wf-stages .wf-current { color: var(--accent); border-color: currentColor; font-weight: 650; }
+.wf-current .wf-stage-mark { border-color: currentColor; background: var(--wf-tint); }
+.wf-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(230px, .42fr); align-items: start; gap: 20px; }
+.wf-stack { display: grid; align-content: start; min-width: 0; gap: 18px; }
+.wf-panel { min-width: 0; padding: clamp(18px, 2vw, 28px); border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.wf-panel h2 { margin: 0; font-size: 18px; line-height: 1.4; font-weight: 650; color: var(--ink); }
+.wf-panel-head { margin-bottom: 18px; }
+.wf-panel-head > svg, .wf-id { color: var(--muted); }
+.wf-count, .wf-id { font-family: "IBM Plex Mono", Consolas, monospace; font-size: 12px; font-weight: 450; }
+.wf-count { margin-inline-start: 4px; color: var(--muted); }
+.wf-brief dl { margin: 0; }
+.wf-brief dt, .wf-field small, .wf-score-note { font-size: 12px; color: var(--muted); line-height: 1.6; }
+.wf-brief dt:not(:first-child) { margin-top: 14px; }
+.wf-brief dd { margin: 4px 0 0; font-size: 14px; line-height: 1.7; overflow-wrap: anywhere; white-space: pre-line; }
+.wf-notice { margin: 0 0 18px; padding: 15px 18px; border: 1px solid var(--accent); border-radius: 8px; background: var(--wf-tint); }
+.wf-notice strong { font-size: 14px; }
+.wf-notice p, .wf-failure p, .wf-ready p { margin: 5px 0; font-size: 14px; line-height: 1.65; overflow-wrap: anywhere; }
+.wf-notice button { flex-shrink: 0; }
+.wf-failure .wf-primary, .wf-ready .wf-primary { margin-top: 15px; }
+.wf-loading, .wf-ready p { color: var(--muted); }
+.wf-handoff { display: flex; align-items: center; gap: 10px; margin: 0; padding: 12px 15px; border-inline-start: 3px solid var(--accent); background: var(--wf-tint); color: var(--ink); font-size: 13px; line-height: 1.65; }
+.wf-choices { display: grid; gap: 9px; }
+.wf-choice {
+  position: relative; display: flex; align-items: center; gap: 13px; padding: 16px 14px;
+  border: 1px solid var(--line); border-radius: 8px; cursor: pointer;
+}
+.wf-choice.is-selected { border-color: var(--accent); background: var(--wf-tint); }
+.wf-choice:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.wf-choice input { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; opacity: 0; }
+.wf-choice-number { color: var(--muted); font: 12px/1.5 "IBM Plex Mono", Consolas, monospace; }
+.wf-choice-text { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: 15px; line-height: 1.6; }
+.wf-radio { display: block; flex: 0 0 15px; height: 15px; border: 1px solid var(--line); border-radius: 50%; }
+.wf-choice.is-selected .wf-radio { border: 4px solid var(--accent); }
+.wf-choice.is-selected .wf-choice-number { color: var(--accent); }
+.wf-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.wf-full { grid-column: 1 / -1; }
+.wf-field { display: grid; align-content: start; gap: 7px; min-width: 0; }
+.wf-field span, .wf-checkbox { color: var(--ink); font-size: 13px; font-weight: 550; }
+.wf-title-field { margin-top: 19px; }
+.wf-field em { margin-inline-start: 4px; font-size: 11px; font-style: normal; color: var(--muted); font-weight: 400; }
+.wf-field :is(input, textarea, select) {
+  padding: 10px 11px; width: 100%; min-width: 0; box-sizing: border-box; background: var(--surface);
+  border: 1px solid var(--line); border-radius: 6px; color: var(--ink); font: inherit; font-size: 14px; line-height: 1.5;
+}
+.wf-field textarea { resize: vertical; }
+.wf-field textarea::placeholder { color: var(--muted); }
+.wf-checkbox { display: flex; align-items: center; gap: 9px; align-self: center; cursor: pointer; }
+.wf-checkbox input { width: 16px; height: 16px; accent-color: var(--accent); }
+.wf-actions { justify-content: flex-end; margin-top: 20px; border-top: 1px solid var(--line); padding-top: 16px; }
+.wf-validation { color: var(--accent); font-size: 13px; margin: 12px 0 0; }
+.wf-total { font: 500 38px/1 Georgia, "Noto Serif SC", serif; color: var(--accent); }
+.wf-total small { color: var(--muted); font-size: 16px; }
+.wf-score-note { margin: 8px 0 13px; }
+.wf-metric { display: flex; align-items: center; gap: 9px; font-size: 12px; }
+.wf-metric:not(:empty) { margin-top: 6px; }
+.wf-metric span { flex: 0 0 auto; min-width: 6em; }
+.wf-metric meter { flex: 1; min-width: 25px; width: 100%; height: 9px; }
+.wf-metric meter::-webkit-meter-bar { background: var(--line); border: 0; }
+.wf-metric meter::-webkit-meter-optimum-value { background: var(--accent); }
+.wf-metric b { min-width: 1.4em; text-align: end; font-variant-numeric: tabular-nums; }
+.wf-assessment h3 { font-size: 13px; margin: 16px 0 4px; }
+.wf-assessment ul { margin: 0; padding-inline-start: 17px; font-size: 13px; line-height: 1.65; color: var(--muted); }
+.wf-details summary { font-weight: 600; cursor: pointer; font-size: 15px; }
+.wf-details[open] summary { padding-bottom: 14px; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
+.wf-details .markdown-body { font-size: 13px; overflow-wrap: anywhere; }
+.wf-editor-tools { gap: 2px; width: fit-content; border: 1px solid var(--line); border-radius: 7px; padding: 2px; margin-bottom: 16px; }
+.wf-editor-tools button { display: inline-flex; gap: 6px; align-items: center; background: transparent; border: none; color: var(--muted); border-radius: 4px; padding: 5px 12px; cursor: pointer; font-size: 12px; }
+.wf-editor-tools button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+.wf-manuscript-body { border-top: 1px solid var(--line); padding-top: 15px; overflow-wrap: anywhere; }
+.wf-manuscript-body .markdown-body { font-size: 15px; }
+.wf-page .wf-editor { font-family: "IBM Plex Mono", Consolas, monospace; line-height: 1.7; }
+.wf-timeline { list-style: none; margin: 0; padding: 0; }
+.wf-timeline li { position: relative; display: flex; align-items: center; gap: 14px; padding-bottom: 22px; }
+.wf-timeline li:last-child { padding-bottom: 0; }
+.wf-timeline li:not(:last-child)::after { content: ""; position: absolute; top: 35px; left: 17px; bottom: 0; width: 1px; background: var(--line); }
+.wf-node { display: grid; flex: 0 0 35px; height: 35px; place-items: center; border: 1px solid var(--line); border-radius: 50%; color: var(--muted); }
+.wf-phase { flex: 1; display: flex; gap: 8px; align-items: center; justify-content: space-between; }
+.wf-phase strong { font-size: 14px; font-weight: 550; }
+.wf-phase small { font-size: 12px; color: var(--muted); }
+.wf-timeline .is-active :is(.wf-node, small) { color: var(--accent); }
+.wf-timeline .is-active .wf-node { border-color: var(--accent); background: var(--wf-tint); }
+.wf-timeline .is-done .wf-node { background: var(--ink); border-color: var(--ink); color: var(--surface); }
+.wf-live { display: flex; align-items: baseline; gap: 9px; color: var(--ink); background: var(--wf-tint); padding: 12px 14px; margin: 20px 0 0; border-radius: 6px; font-size: 13px; line-height: 1.65; overflow-wrap: anywhere; }
+.wf-live > span { flex: 0 0 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+@media (max-width: 1050px) {
+  .wf-layout { grid-template-columns: minmax(0, 1fr) minmax(200px, .45fr); gap: 14px; }
+}
+@media (max-width: 800px) {
+  .wf-layout { grid-template-columns: 1fr; }
+  .wf-layout > aside { display: contents; }
+  .wf-layout > aside > .generation-allowance { grid-row: 1; }
+  .wf-header { margin-bottom: 12px; }
+}
+@media (max-width: 540px) {
+  .wf-header { align-items: flex-start; gap: 8px; }
+  .wf-header h1 { font-size: 27px; }
+  .wf-library { font-size: 12px; }
+  .wf-stages { margin-bottom: 16px; }
+  .wf-stages li { flex-direction: column; align-items: flex-start; gap: 5px; font-size: 11px; }
+  .wf-form-grid { grid-template-columns: 1fr; }
+  .wf-actions button { width: 100%; }
+  .wf-notice { align-items: flex-start; flex-direction: column; }
+  .wf-choice { padding: 12px 10px; gap: 8px; }
+}
+.wf-recovery-actions {display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.wf-recovery-actions {margin:14px 0 8px}
+.wf-recovery-actions .wf-primary {margin-top:0}
+.wf-refresh {justify-self:start}
+.wf-details li {margin:8px 0;overflow-wrap:anywhere}

@@ -5,6 +5,8 @@
 工具内部自动把远程图下载持久化到本地 /images/，返回本地 URL，
 避免 AI 生图的 OSS 临时链接过期失效。
 """
+from uuid import uuid4
+
 from langchain_core.tools import tool
 
 from src.blog_agent.clients.image_client import image_client
@@ -24,7 +26,7 @@ def search_image(keywords: str) -> str:
     url = image_client.fetch_image(keywords, image_source="api")
     if not url:
         return "图片搜索失败：未找到合适图片"
-    return image_client.persist_image(url, "search")
+    return image_client.persist_image(url, f"search_{uuid4().hex}")
 
 
 @tool
@@ -41,4 +43,4 @@ def generate_image(prompt: str) -> str:
     url = image_client.fetch_image(prompt, image_source="ai")
     if not url:
         return "图片生成失败：AI 生图未返回结果"
-    return image_client.persist_image(url, "generated")
+    return image_client.persist_image(url, f"generated_{uuid4().hex}")

@@ -13,25 +13,18 @@
 """
 from typing import Any, Callable, Dict, List, Optional, Type
 
-from pydantic import BaseModel
+from langchain_core.exceptions import OutputParserException
+from pydantic import BaseModel, ValidationError
 
+from src.blog_agent.agent.evidence import render_sources, source_records
 from src.blog_agent.agent.state import AgentState
+from src.blog_agent.agent.agents.prompt_utils import editorial_brief
 from src.blog_agent.clients.llm_client import bind_structured_output, get_chat_model
 
 
-def collect_search_results(state: AgentState, max_chars: int = 6000) -> str:
-    """把 ReAct 循环中所有工具（web_search 等）的返回内容拼接为文本。
-
-    供调研总结任务使用：模型基于真实搜索结果输出结论，而不是凭记忆。
-    """
-    messages: List[Dict[str, Any]] = state.get("messages") or []
-    parts = [
-        str(m.get("content", "")).strip()
-        for m in messages
-        if m.get("role") == "tool" and str(m.get("content", "")).strip()
-    ]
-    joined = "\n\n---\n\n".join(parts)
-    return joined[:max_chars]
+def collect_search_results(state: AgentState) -> str:
+    """Present bounded records. Tool status messages and model answers cannot become evidence."""
+    return render_sources(source_records(state.get("messages") or []))
 
 
 def collect_full_conversation(state: AgentState, max_chars: int = 12000) -> str:
@@ -70,7 +63,7 @@ def make_output_node(
     """
     if structured_schema is not None:
         model = bind_structured_output(
-            structured_schema, role=model_role, enable_thinking=enable_thinking
+            structured_schema, role=model_role, temperature=temperature, enable_thinking=enable_thinking
         )
         use_text = False
     else:
@@ -80,12 +73,20 @@ def make_output_node(
         use_text = True
 
     def output_node(state: AgentState) -> Dict[str, Any]:
-        task = task_builder(state)
+        task = task_builder(state) + editorial_brief(state)
+        messages = [("system", system_prompt), ("human", task)]
         if use_text:
-            resp = model.invoke(task)
+            resp = model.invoke(messages)
             value: Any = str(resp.content)
         else:
-            obj = model.invoke(task)
+            try:
+                obj = model.invoke(messages)
+            except (OutputParserException, ValidationError):
+                if output_key != "titles":
+                    raise
+                # Correct the candidate shape without repeating paid research.
+                correction = "请重新返回三个不同的简短标题。每项最多30个字符，英文字母、标点和空格各计一个；可以用简明的中文替代长接口名。"
+                obj = model.invoke([*messages, ("human", correction)])
             value = extractor(obj) if extractor is not None else obj.model_dump()
         return {output_key: value}
 

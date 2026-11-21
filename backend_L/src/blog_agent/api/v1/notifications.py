@@ -1,8 +1,8 @@
 """消息通知 API + 站内通知创建函数（从旧版移植）"""
 from typing import Optional
 
-from fastapi import APIRouter, Depends
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from src.blog_agent.api.deps import get_current_user, get_db
@@ -36,7 +36,7 @@ def _fmt(dt) -> str:
 
 @router.get("", response_model=NotificationListResp, summary="通知列表")
 def list_notifications(
-    limit: int = 30,
+    limit: int = Query(30, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -77,14 +77,14 @@ def unread_count(db: Session = Depends(get_db), current_user: User = Depends(get
 
 
 class ReadBody(BaseModel):
-    ids: Optional[list[int]] = None  # 不传则全部已读
+    ids: Optional[list[int]] = Field(default=None, max_length=100)  # 不传则全部已读
 
 
 @router.post("/read", summary="标记已读（指定 id 或全部）")
 def mark_read(body: ReadBody, db: Session = Depends(get_db),
               current_user: User = Depends(get_current_user)):
     q = db.query(Notification).filter(Notification.user_id == current_user.id, Notification.is_read.is_(False))
-    if body.ids:
+    if body.ids is not None:
         q = q.filter(Notification.id.in_(body.ids))
     updated = q.update({Notification.is_read: True}, synchronize_session=False)
     db.commit()

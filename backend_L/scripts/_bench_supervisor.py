@@ -18,18 +18,21 @@ state = {
 
 node_times = {}
 last = time.time()
-for chunk in graph.stream(state, stream_mode="updates"):
-    for node_name, _ in chunk.items():
-        now = time.time()
-        node_times[node_name] = now - last
-        print(f"[+{now-t0:6.2f}s] {node_name} ({now-last:.2f}s)")
-        last = now
-        if node_name == "to_outline":
-            # 标题阶段到此结束，停止
-            break
-    else:
-        continue
-    break
+from src.blog_agent.clients.provider_budget import provider_run
+
+with provider_run():
+    for chunk in graph.stream(state, stream_mode="updates"):
+        for node_name, _ in chunk.items():
+            now = time.time()
+            node_times[node_name] = now - last
+            print(f"[+{now-t0:6.2f}s] {node_name} ({now-last:.2f}s)")
+            last = now
+            if node_name == "to_outline":
+                # 标题阶段到此结束，停止
+                break
+        else:
+            continue
+        break
 
 print(f"\n=== 标题阶段 total: {time.time()-t0:.2f}s ===")
 for k, v in node_times.items():

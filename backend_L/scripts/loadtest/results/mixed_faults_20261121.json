@@ -1,0 +1,3244 @@
+{
+  "timeline": {
+    "started_utc": "2026-11-20T18:06:38.278+00:00",
+    "all_outlines_confirmed_utc": "2026-11-20T18:07:10.921+00:00",
+    "victim_writer_inflight_utc": "2026-11-20T18:07:13.961+00:00",
+    "content_batch_admitted_utc": "2026-11-20T18:07:14.061+00:00",
+    "kill_sent_utc": "2026-11-20T18:07:17.256+00:00",
+    "a_exited_utc": "2026-11-20T18:07:17.264+00:00",
+    "victim_worker_exited_utc": "2026-11-20T18:07:17.270+00:00",
+    "replacement_start_utc": "2026-11-20T18:07:24.812+00:00",
+    "replacement_ready_utc": "2026-11-20T18:07:27.745+00:00",
+    "all_completed_utc": "2026-11-20T18:07:36.243+00:00"
+  },
+  "users": 10,
+  "caps": {
+    "replica_a": 1,
+    "replica_b": 3,
+    "shared_running_ceiling": 3,
+    "lease_s": 6,
+    "sdk_retries": 0,
+    "request_s_a": 60,
+    "request_s_b": 4
+  },
+  "a_pid": 8,
+  "replacement_pid": 258,
+  "b_pid": 11,
+  "crash_victim": "CASE002",
+  "supplier_fault_times": {
+    "review_429_request_utc": "2026-11-20T18:07:17.253+00:00",
+    "review_429_response_utc": "2026-11-20T18:07:17.264+00:00",
+    "writer_timeout_request_utc": "2026-11-20T18:07:20.779+00:00"
+  },
+  "at_kill": [
+    {
+      "job": 21,
+      "marker": "CASE002",
+      "status": "running",
+      "begun": true,
+      "replica": "A",
+      "worker_pid": 208
+    },
+    {
+      "job": 22,
+      "marker": "CASE001",
+      "status": "running",
+      "begun": true,
+      "replica": "B",
+      "worker_pid": 221
+    },
+    {
+      "job": 23,
+      "marker": "CASE007",
+      "status": "running",
+      "begun": true,
+      "replica": "B",
+      "worker_pid": 222
+    },
+    {
+      "job": 24,
+      "marker": "CASE000",
+      "status": "queued",
+      "begun": false
+    },
+    {
+      "job": 25,
+      "marker": "CASE003",
+      "status": "queued",
+      "begun": false
+    },
+    {
+      "job": 26,
+      "marker": "CASE004",
+      "status": "queued",
+      "begun": false
+    },
+    {
+      "job": 27,
+      "marker": "CASE005",
+      "status": "queued",
+      "begun": false
+    },
+    {
+      "job": 28,
+      "marker": "CASE009",
+      "status": "queued",
+      "begun": false
+    },
+    {
+      "job": 29,
+      "marker": "CASE008",
+      "status": "queued",
+      "begun": false
+    },
+    {
+      "job": 30,
+      "marker": "CASE006",
+      "status": "queued",
+      "begun": false
+    }
+  ],
+  "survivor_completed_before_restart": [
+    [
+      "CASE007",
+      "2026-11-20T18:07:17.316+00:00"
+    ],
+    [
+      "CASE003",
+      "2026-11-20T18:07:21.553+00:00"
+    ]
+  ],
+  "probes_b": {
+    "samples": 283,
+    "failures": 0,
+    "while_a_unavailable": 52,
+    "first_while_down": "2026-11-20T18:07:17.285+00:00",
+    "last_while_down": "2026-11-20T18:07:27.690+00:00"
+  },
+  "queue_commit_peaks": {
+    "queued": 10,
+    "running": 3
+  },
+  "database_events": [
+    {
+      "utc": "2026-11-20T18:06:38.763618+00:00",
+      "job": 1,
+      "marker": "CASE009",
+      "stage": "title",
+      "status": "queued",
+      "attempt": 0,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:06:38.772740+00:00",
+      "job": 2,
+      "marker": "CASE004",
+      "stage": "title",
+      "status": "queued",
+      "attempt": 0,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:06:38.780430+00:00",
+      "job": 3,
+      "marker": "CASE003",
+      "stage": "title",
+      "status": "queued",
+      "attempt": 0,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:06:38.790585+00:00",
+      "job": 4,
+      "marker": "CASE006",
+      "stage": "title",
+      "status": "queued",
+      "attempt": 0,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:06:38.799490+00:00",
+      "job": 5,
+      "marker": "CASE000",
+      "stage": "title",
+      "status": "queued",
+      "attempt": 0,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:06:38.808369+00:00",
+      "job": 6,
+      "marker": "CASE002",
+      "stage": "title",
+      "status": "queued",
+      "attempt": 0,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:06:38.817571+00:00",
+      "job": 7,
+      "marker": "CASE008",
+      "stage": "title",
+      "status": "queued",
+      "attempt": 0,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:06:38.825044+00:00",
+      "job": 8,
+      "marker": "CASE005",
+      "stage": "title",
+      "status": "queued",
+      "attempt": 0,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:06:38.834247+00:00",
+      "job": 9,
+      "marker": "CASE007",
+      "stage": "title",
+      "status": "queued",
+      "attempt": 0,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:06:38.842669+00:00",
+      "job": 10,
+      "marker": "CASE001",
+      "stage": "title",
+      "status": "queued",
+      "attempt": 0,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:06:38.856002+00:00",
+      "job": 1,
+      "marker": "CASE009",
+      "stage": "title",
+      "status": "running",
+      "attempt": 1,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:06:38.916427+00:00",
+      "job": 2,
+      "marker": "CASE004",
+      "stage": "title",
+      "status": "running",
+      "attempt": 1,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:06:38.924101+00:00",
+      "job": 3,
+      "marker": "CASE003",
+      "stage": "title",
+      "status": "running",
+      "attempt": 1,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:06:42.827982+00:00",
+      "job": 1,
+      "marker": "CASE009",
+      "stage": "title",
+      "status": "running",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:06:42.829181+00:00",
+      "job": 3,
+      "marker": "CASE003",
+      "stage": "title",
+      "status": "running",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:06:42.964783+00:00",
+      "job": 2,
+      "marker": "CASE004",
+      "stage": "title",
+      "status": "running",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:06:43.129108+00:00",
+      "job": 3,
+      "marker": "CASE003",
+      "stage": "title",
+      "status": "succeeded",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:06:43.129133+00:00",
+      "job": 1,
+      "marker": "CASE009",
+      "stage": "title",
+      "status": "succeeded",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:06:43.262490+00:00",
+      "job": 11,
+      "marker": "CASE009",
+      "stage": "outline",
+      "status": "queued",
+      "attempt": 0,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:06:43.270520+00:00",
+      "job": 2,
+      "marker": "CASE004",
+      "stage": "title",
+      "status": "succeeded",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:06:43.291851+00:00",
+      "job": 12,
+      "marker": "CASE003",
+      "stage": "outline",
+      "status": "queued",
+      "attempt": 0,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:06:43.449566+00:00",
+      "job": 13,
+      "marker": "CASE004",
+      "stage": "outline",
+      "status": "queued",
+      "attempt": 0,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:06:43.554293+00:00",
+      "job": 4,
+      "marker": "CASE006",
+      "stage": "title",
+      "status": "running",
+      "attempt": 1,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:06:44.214510+00:00",
+      "job": 5,
+      "marker": "CASE000",
+      "stage": "title",
+      "status": "running",
+      "attempt": 1,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:06:44.220298+00:00",
+      "job": 6,
+      "marker": "CASE002",
+      "stage": "title",
+      "status": "running",
+      "attempt": 1,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:06:47.178205+00:00",
+      "job": 4,
+      "marker": "CASE006",
+      "stage": "title",
+      "status": "running",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:06:47.461406+00:00",
+      "job": 5,
+      "marker": "CASE000",
+      "stage": "title",
+      "status": "running",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:06:47.461434+00:00",
+      "job": 6,
+      "marker": "CASE002",
+      "stage": "title",
+      "status": "running",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:06:47.480261+00:00",
+      "job": 4,
+      "marker": "CASE006",
+      "stage": "title",
+      "status": "succeeded",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:06:47.609039+00:00",
+      "job": 14,
+      "marker": "CASE006",
+      "stage": "outline",
+      "status": "queued",
+      "attempt": 0,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:06:47.759310+00:00",
+      "job": 5,
+      "marker": "CASE000",
+      "stage": "title",
+      "status": "succeeded",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:06:47.759851+00:00",
+      "job": 6,
+      "marker": "CASE002",
+      "stage": "title",
+      "status": "succeeded",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:06:47.792310+00:00",
+      "job": 7,
+      "marker": "CASE008",
+      "stage": "title",
+      "status": "running",
+      "attempt": 1,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:06:47.822936+00:00",
+      "job": 15,
+      "marker": "CASE002",
+      "stage": "outline",
+      "status": "queued",
+      "attempt": 0,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:06:47.943026+00:00",
+      "job": 16,
+      "marker": "CASE000",
+      "stage": "outline",
+      "status": "queued",
+      "attempt": 0,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:06:48.146469+00:00",
+      "job": 8,
+      "marker": "CASE005",
+      "stage": "title",
+      "status": "running",
+      "attempt": 1,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:06:48.807035+00:00",
+      "job": 9,
+      "marker": "CASE007",
+      "stage": "title",
+      "status": "running",
+      "attempt": 1,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:06:51.622034+00:00",
+      "job": 7,
+      "marker": "CASE008",
+      "stage": "title",
+      "status": "running",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:06:51.950579+00:00",
+      "job": 7,
+      "marker": "CASE008",
+      "stage": "title",
+      "status": "succeeded",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:06:52.016264+00:00",
+      "job": 17,
+      "marker": "CASE008",
+      "stage": "outline",
+      "status": "queued",
+      "attempt": 0,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:06:52.101175+00:00",
+      "job": 10,
+      "marker": "CASE001",
+      "stage": "title",
+      "status": "running",
+      "attempt": 1,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:06:52.337565+00:00",
+      "job": 8,
+      "marker": "CASE005",
+      "stage": "title",
+      "status": "running",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:06:52.667177+00:00",
+      "job": 8,
+      "marker": "CASE005",
+      "stage": "title",
+      "status": "succeeded",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:06:52.751715+00:00",
+      "job": 18,
+      "marker": "CASE005",
+      "stage": "outline",
+      "status": "queued",
+      "attempt": 0,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:06:52.829685+00:00",
+      "job": 9,
+      "marker": "CASE007",
+      "stage": "title",
+      "status": "running",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:06:53.162512+00:00",
+      "job": 9,
+      "marker": "CASE007",
+      "stage": "title",
+      "status": "succeeded",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:06:53.296840+00:00",
+      "job": 19,
+      "marker": "CASE007",
+      "stage": "outline",
+      "status": "queued",
+      "attempt": 0,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:06:53.433600+00:00",
+      "job": 11,
+      "marker": "CASE009",
+      "stage": "outline",
+      "status": "running",
+      "attempt": 1,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:06:54.095635+00:00",
+      "job": 12,
+      "marker": "CASE003",
+      "stage": "outline",
+      "status": "running",
+      "attempt": 1,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:06:56.356754+00:00",
+      "job": 10,
+      "marker": "CASE001",
+      "stage": "title",
+      "status": "running",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:06:56.652440+00:00",
+      "job": 10,
+      "marker": "CASE001",
+      "stage": "title",
+      "status": "succeeded",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:06:56.815077+00:00",
+      "job": 20,
+      "marker": "CASE001",
+      "stage": "outline",
+      "status": "queued",
+      "attempt": 0,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:06:57.217793+00:00",
+      "job": 11,
+      "marker": "CASE009",
+      "stage": "outline",
+      "status": "running",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:06:57.368062+00:00",
+      "job": 13,
+      "marker": "CASE004",
+      "stage": "outline",
+      "status": "running",
+      "attempt": 1,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:06:57.461128+00:00",
+      "job": 11,
+      "marker": "CASE009",
+      "stage": "outline",
+      "status": "succeeded",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:06:57.782526+00:00",
+      "job": 12,
+      "marker": "CASE003",
+      "stage": "outline",
+      "status": "running",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:06:58.025627+00:00",
+      "job": 12,
+      "marker": "CASE003",
+      "stage": "outline",
+      "status": "succeeded",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:06:58.025676+00:00",
+      "job": 14,
+      "marker": "CASE006",
+      "stage": "outline",
+      "status": "running",
+      "attempt": 1,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:06:58.686305+00:00",
+      "job": 15,
+      "marker": "CASE002",
+      "stage": "outline",
+      "status": "running",
+      "attempt": 1,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:07:00.781969+00:00",
+      "job": 13,
+      "marker": "CASE004",
+      "stage": "outline",
+      "status": "running",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:07:01.044221+00:00",
+      "job": 13,
+      "marker": "CASE004",
+      "stage": "outline",
+      "status": "succeeded",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:07:01.619756+00:00",
+      "job": 14,
+      "marker": "CASE006",
+      "stage": "outline",
+      "status": "running",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:07:01.865331+00:00",
+      "job": 14,
+      "marker": "CASE006",
+      "stage": "outline",
+      "status": "succeeded",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:07:01.963702+00:00",
+      "job": 16,
+      "marker": "CASE000",
+      "stage": "outline",
+      "status": "running",
+      "attempt": 1,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:07:02.340769+00:00",
+      "job": 15,
+      "marker": "CASE002",
+      "stage": "outline",
+      "status": "running",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:07:02.577378+00:00",
+      "job": 15,
+      "marker": "CASE002",
+      "stage": "outline",
+      "status": "succeeded",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:07:02.621282+00:00",
+      "job": 17,
+      "marker": "CASE008",
+      "stage": "outline",
+      "status": "running",
+      "attempt": 1,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:07:03.278730+00:00",
+      "job": 18,
+      "marker": "CASE005",
+      "stage": "outline",
+      "status": "running",
+      "attempt": 1,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:07:05.317809+00:00",
+      "job": 16,
+      "marker": "CASE000",
+      "stage": "outline",
+      "status": "running",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:07:05.562215+00:00",
+      "job": 16,
+      "marker": "CASE000",
+      "stage": "outline",
+      "status": "succeeded",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:07:05.964804+00:00",
+      "job": 17,
+      "marker": "CASE008",
+      "stage": "outline",
+      "status": "running",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:07:06.207143+00:00",
+      "job": 17,
+      "marker": "CASE008",
+      "stage": "outline",
+      "status": "succeeded",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:07:06.548733+00:00",
+      "job": 19,
+      "marker": "CASE007",
+      "stage": "outline",
+      "status": "running",
+      "attempt": 1,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:07:06.741982+00:00",
+      "job": 18,
+      "marker": "CASE005",
+      "stage": "outline",
+      "status": "running",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:07:06.980881+00:00",
+      "job": 18,
+      "marker": "CASE005",
+      "stage": "outline",
+      "status": "succeeded",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:07:07.208928+00:00",
+      "job": 20,
+      "marker": "CASE001",
+      "stage": "outline",
+      "status": "running",
+      "attempt": 1,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:07:09.887178+00:00",
+      "job": 19,
+      "marker": "CASE007",
+      "stage": "outline",
+      "status": "running",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:07:10.131759+00:00",
+      "job": 19,
+      "marker": "CASE007",
+      "stage": "outline",
+      "status": "succeeded",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:07:10.550351+00:00",
+      "job": 20,
+      "marker": "CASE001",
+      "stage": "outline",
+      "status": "running",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:07:10.783393+00:00",
+      "job": 20,
+      "marker": "CASE001",
+      "stage": "outline",
+      "status": "succeeded",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:07:10.935974+00:00",
+      "job": 21,
+      "marker": "CASE002",
+      "stage": "content",
+      "status": "queued",
+      "attempt": 0,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:07:10.974566+00:00",
+      "job": 21,
+      "marker": "CASE002",
+      "stage": "content",
+      "status": "running",
+      "attempt": 1,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:07:13.842897+00:00",
+      "job": 21,
+      "marker": "CASE002",
+      "stage": "content",
+      "status": "running",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:07:13.990299+00:00",
+      "job": 22,
+      "marker": "CASE001",
+      "stage": "content",
+      "status": "queued",
+      "attempt": 0,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:07:14.013349+00:00",
+      "job": 23,
+      "marker": "CASE007",
+      "stage": "content",
+      "status": "queued",
+      "attempt": 0,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:07:14.019251+00:00",
+      "job": 24,
+      "marker": "CASE000",
+      "stage": "content",
+      "status": "queued",
+      "attempt": 0,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:07:14.025027+00:00",
+      "job": 25,
+      "marker": "CASE003",
+      "stage": "content",
+      "status": "queued",
+      "attempt": 0,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:07:14.031156+00:00",
+      "job": 26,
+      "marker": "CASE004",
+      "stage": "content",
+      "status": "queued",
+      "attempt": 0,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:07:14.038051+00:00",
+      "job": 27,
+      "marker": "CASE005",
+      "stage": "content",
+      "status": "queued",
+      "attempt": 0,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:07:14.047052+00:00",
+      "job": 28,
+      "marker": "CASE009",
+      "stage": "content",
+      "status": "queued",
+      "attempt": 0,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:07:14.052756+00:00",
+      "job": 29,
+      "marker": "CASE008",
+      "stage": "content",
+      "status": "queued",
+      "attempt": 0,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:07:14.060018+00:00",
+      "job": 30,
+      "marker": "CASE006",
+      "stage": "content",
+      "status": "queued",
+      "attempt": 0,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:07:14.428725+00:00",
+      "job": 22,
+      "marker": "CASE001",
+      "stage": "content",
+      "status": "running",
+      "attempt": 1,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:07:14.432865+00:00",
+      "job": 23,
+      "marker": "CASE007",
+      "stage": "content",
+      "status": "running",
+      "attempt": 1,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:07:17.072999+00:00",
+      "job": 23,
+      "marker": "CASE007",
+      "stage": "content",
+      "status": "running",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:07:17.073051+00:00",
+      "job": 22,
+      "marker": "CASE001",
+      "stage": "content",
+      "status": "running",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:07:17.271335+00:00",
+      "job": 22,
+      "marker": "CASE001",
+      "stage": "content",
+      "status": "failed",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:07:17.319559+00:00",
+      "job": 23,
+      "marker": "CASE007",
+      "stage": "content",
+      "status": "succeeded",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:07:17.713088+00:00",
+      "job": 24,
+      "marker": "CASE000",
+      "stage": "content",
+      "status": "running",
+      "attempt": 1,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:07:18.372000+00:00",
+      "job": 25,
+      "marker": "CASE003",
+      "stage": "content",
+      "status": "running",
+      "attempt": 1,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:07:20.661286+00:00",
+      "job": 24,
+      "marker": "CASE000",
+      "stage": "content",
+      "status": "running",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:07:21.312194+00:00",
+      "job": 25,
+      "marker": "CASE003",
+      "stage": "content",
+      "status": "running",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:07:21.556294+00:00",
+      "job": 25,
+      "marker": "CASE003",
+      "stage": "content",
+      "status": "succeeded",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:07:21.651342+00:00",
+      "job": 26,
+      "marker": "CASE004",
+      "stage": "content",
+      "status": "running",
+      "attempt": 1,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:07:23.629557+00:00",
+      "job": 21,
+      "marker": "CASE002",
+      "stage": "content",
+      "status": "failed",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:07:23.629557+00:00",
+      "job": 27,
+      "marker": "CASE005",
+      "stage": "content",
+      "status": "running",
+      "attempt": 1,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:07:24.790806+00:00",
+      "job": 24,
+      "marker": "CASE000",
+      "stage": "content",
+      "status": "failed",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:07:25.171085+00:00",
+      "job": 26,
+      "marker": "CASE004",
+      "stage": "content",
+      "status": "running",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:07:25.424606+00:00",
+      "job": 26,
+      "marker": "CASE004",
+      "stage": "content",
+      "status": "succeeded",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:07:25.591455+00:00",
+      "job": 28,
+      "marker": "CASE009",
+      "stage": "content",
+      "status": "running",
+      "attempt": 1,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:07:26.252008+00:00",
+      "job": 29,
+      "marker": "CASE008",
+      "stage": "content",
+      "status": "running",
+      "attempt": 1,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:07:27.124499+00:00",
+      "job": 27,
+      "marker": "CASE005",
+      "stage": "content",
+      "status": "running",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:07:27.376846+00:00",
+      "job": 27,
+      "marker": "CASE005",
+      "stage": "content",
+      "status": "succeeded",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:07:27.874427+00:00",
+      "job": 31,
+      "marker": "CASE000",
+      "stage": "content",
+      "status": "queued",
+      "attempt": 0,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:07:27.882651+00:00",
+      "job": 32,
+      "marker": "CASE002",
+      "stage": "content",
+      "status": "queued",
+      "attempt": 0,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:07:27.893204+00:00",
+      "job": 33,
+      "marker": "CASE001",
+      "stage": "content",
+      "status": "queued",
+      "attempt": 0,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:07:28.217159+00:00",
+      "job": 30,
+      "marker": "CASE006",
+      "stage": "content",
+      "status": "running",
+      "attempt": 1,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:07:28.864653+00:00",
+      "job": 28,
+      "marker": "CASE009",
+      "stage": "content",
+      "status": "running",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:07:29.111966+00:00",
+      "job": 28,
+      "marker": "CASE009",
+      "stage": "content",
+      "status": "succeeded",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:07:29.419613+00:00",
+      "job": 29,
+      "marker": "CASE008",
+      "stage": "content",
+      "status": "running",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:07:29.681164+00:00",
+      "job": 29,
+      "marker": "CASE008",
+      "stage": "content",
+      "status": "succeeded",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:07:30.181325+00:00",
+      "job": 31,
+      "marker": "CASE000",
+      "stage": "content",
+      "status": "running",
+      "attempt": 1,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:07:30.187424+00:00",
+      "job": 32,
+      "marker": "CASE002",
+      "stage": "content",
+      "status": "running",
+      "attempt": 1,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:07:31.476499+00:00",
+      "job": 30,
+      "marker": "CASE006",
+      "stage": "content",
+      "status": "running",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:07:31.733397+00:00",
+      "job": 30,
+      "marker": "CASE006",
+      "stage": "content",
+      "status": "succeeded",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:07:32.806556+00:00",
+      "job": 33,
+      "marker": "CASE001",
+      "stage": "content",
+      "status": "running",
+      "attempt": 1,
+      "began": false
+    },
+    {
+      "utc": "2026-11-20T18:07:33.209474+00:00",
+      "job": 32,
+      "marker": "CASE002",
+      "stage": "content",
+      "status": "running",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:07:33.210504+00:00",
+      "job": 31,
+      "marker": "CASE000",
+      "stage": "content",
+      "status": "running",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:07:33.465814+00:00",
+      "job": 32,
+      "marker": "CASE002",
+      "stage": "content",
+      "status": "succeeded",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:07:33.466732+00:00",
+      "job": 31,
+      "marker": "CASE000",
+      "stage": "content",
+      "status": "succeeded",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:07:35.881226+00:00",
+      "job": 33,
+      "marker": "CASE001",
+      "stage": "content",
+      "status": "running",
+      "attempt": 1,
+      "began": true
+    },
+    {
+      "utc": "2026-11-20T18:07:36.121873+00:00",
+      "job": 33,
+      "marker": "CASE001",
+      "stage": "content",
+      "status": "succeeded",
+      "attempt": 1,
+      "began": true
+    }
+  ],
+  "provider_requests": [
+    {
+      "utc": "2026-11-20T18:06:42.844+00:00",
+      "marker": "CASE009",
+      "kind": "research_plan",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:42.845+00:00",
+      "marker": "CASE003",
+      "kind": "research_plan",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:42.899+00:00",
+      "marker": "CASE009",
+      "kind": "research_summary",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:42.899+00:00",
+      "marker": "CASE003",
+      "kind": "research_summary",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:42.956+00:00",
+      "marker": "CASE009",
+      "kind": "TitleList",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:42.958+00:00",
+      "marker": "CASE003",
+      "kind": "TitleList",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:42.979+00:00",
+      "marker": "CASE004",
+      "kind": "research_plan",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:43.019+00:00",
+      "marker": "CASE009",
+      "kind": "TitleScoreList",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:43.019+00:00",
+      "marker": "CASE003",
+      "kind": "TitleScoreList",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:43.034+00:00",
+      "marker": "CASE004",
+      "kind": "research_summary",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:43.075+00:00",
+      "marker": "CASE003",
+      "kind": "TitleReviewResult",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:43.076+00:00",
+      "marker": "CASE009",
+      "kind": "TitleReviewResult",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:43.092+00:00",
+      "marker": "CASE004",
+      "kind": "TitleList",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:43.156+00:00",
+      "marker": "CASE004",
+      "kind": "TitleScoreList",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:43.213+00:00",
+      "marker": "CASE004",
+      "kind": "TitleReviewResult",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:47.195+00:00",
+      "marker": "CASE006",
+      "kind": "research_plan",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:47.252+00:00",
+      "marker": "CASE006",
+      "kind": "research_summary",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:47.310+00:00",
+      "marker": "CASE006",
+      "kind": "TitleList",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:47.371+00:00",
+      "marker": "CASE006",
+      "kind": "TitleScoreList",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:47.426+00:00",
+      "marker": "CASE006",
+      "kind": "TitleReviewResult",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:47.477+00:00",
+      "marker": "CASE000",
+      "kind": "research_plan",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:47.477+00:00",
+      "marker": "CASE002",
+      "kind": "research_plan",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:47.531+00:00",
+      "marker": "CASE002",
+      "kind": "research_summary",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:47.531+00:00",
+      "marker": "CASE000",
+      "kind": "research_summary",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:47.588+00:00",
+      "marker": "CASE002",
+      "kind": "TitleList",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:47.589+00:00",
+      "marker": "CASE000",
+      "kind": "TitleList",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:47.648+00:00",
+      "marker": "CASE000",
+      "kind": "TitleScoreList",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:47.649+00:00",
+      "marker": "CASE002",
+      "kind": "TitleScoreList",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:47.703+00:00",
+      "marker": "CASE000",
+      "kind": "TitleReviewResult",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:47.704+00:00",
+      "marker": "CASE002",
+      "kind": "TitleReviewResult",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:51.640+00:00",
+      "marker": "CASE008",
+      "kind": "research_plan",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:51.702+00:00",
+      "marker": "CASE008",
+      "kind": "research_summary",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:51.765+00:00",
+      "marker": "CASE008",
+      "kind": "TitleList",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:51.835+00:00",
+      "marker": "CASE008",
+      "kind": "TitleScoreList",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:51.892+00:00",
+      "marker": "CASE008",
+      "kind": "TitleReviewResult",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:52.363+00:00",
+      "marker": "CASE005",
+      "kind": "research_plan",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:52.423+00:00",
+      "marker": "CASE005",
+      "kind": "research_summary",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:52.485+00:00",
+      "marker": "CASE005",
+      "kind": "TitleList",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:52.550+00:00",
+      "marker": "CASE005",
+      "kind": "TitleScoreList",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:52.608+00:00",
+      "marker": "CASE005",
+      "kind": "TitleReviewResult",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:52.853+00:00",
+      "marker": "CASE007",
+      "kind": "research_plan",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:52.911+00:00",
+      "marker": "CASE007",
+      "kind": "research_summary",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:52.979+00:00",
+      "marker": "CASE007",
+      "kind": "TitleList",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:53.047+00:00",
+      "marker": "CASE007",
+      "kind": "TitleScoreList",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:53.106+00:00",
+      "marker": "CASE007",
+      "kind": "TitleReviewResult",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:56.370+00:00",
+      "marker": "CASE001",
+      "kind": "research_plan",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:56.424+00:00",
+      "marker": "CASE001",
+      "kind": "research_summary",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:56.483+00:00",
+      "marker": "CASE001",
+      "kind": "TitleList",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:56.544+00:00",
+      "marker": "CASE001",
+      "kind": "TitleScoreList",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:56.599+00:00",
+      "marker": "CASE001",
+      "kind": "TitleReviewResult",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:57.234+00:00",
+      "marker": "CASE009",
+      "kind": "research_plan",
+      "invocation": 2
+    },
+    {
+      "utc": "2026-11-20T18:06:57.289+00:00",
+      "marker": "CASE009",
+      "kind": "research_summary",
+      "invocation": 2
+    },
+    {
+      "utc": "2026-11-20T18:06:57.343+00:00",
+      "marker": "CASE009",
+      "kind": "outliner",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:57.401+00:00",
+      "marker": "CASE009",
+      "kind": "OutlineReviewResult",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:57.801+00:00",
+      "marker": "CASE003",
+      "kind": "research_plan",
+      "invocation": 2
+    },
+    {
+      "utc": "2026-11-20T18:06:57.856+00:00",
+      "marker": "CASE003",
+      "kind": "research_summary",
+      "invocation": 2
+    },
+    {
+      "utc": "2026-11-20T18:06:57.909+00:00",
+      "marker": "CASE003",
+      "kind": "outliner",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:06:57.966+00:00",
+      "marker": "CASE003",
+      "kind": "OutlineReviewResult",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:07:00.799+00:00",
+      "marker": "CASE004",
+      "kind": "research_plan",
+      "invocation": 2
+    },
+    {
+      "utc": "2026-11-20T18:07:00.854+00:00",
+      "marker": "CASE004",
+      "kind": "research_summary",
+      "invocation": 2
+    },
+    {
+      "utc": "2026-11-20T18:07:00.910+00:00",
+      "marker": "CASE004",
+      "kind": "outliner",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:07:00.970+00:00",
+      "marker": "CASE004",
+      "kind": "OutlineReviewResult",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:07:01.635+00:00",
+      "marker": "CASE006",
+      "kind": "research_plan",
+      "invocation": 2
+    },
+    {
+      "utc": "2026-11-20T18:07:01.691+00:00",
+      "marker": "CASE006",
+      "kind": "research_summary",
+      "invocation": 2
+    },
+    {
+      "utc": "2026-11-20T18:07:01.745+00:00",
+      "marker": "CASE006",
+      "kind": "outliner",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:07:01.805+00:00",
+      "marker": "CASE006",
+      "kind": "OutlineReviewResult",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:07:02.356+00:00",
+      "marker": "CASE002",
+      "kind": "research_plan",
+      "invocation": 2
+    },
+    {
+      "utc": "2026-11-20T18:07:02.410+00:00",
+      "marker": "CASE002",
+      "kind": "research_summary",
+      "invocation": 2
+    },
+    {
+      "utc": "2026-11-20T18:07:02.463+00:00",
+      "marker": "CASE002",
+      "kind": "outliner",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:07:02.519+00:00",
+      "marker": "CASE002",
+      "kind": "OutlineReviewResult",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:07:05.334+00:00",
+      "marker": "CASE000",
+      "kind": "research_plan",
+      "invocation": 2
+    },
+    {
+      "utc": "2026-11-20T18:07:05.390+00:00",
+      "marker": "CASE000",
+      "kind": "research_summary",
+      "invocation": 2
+    },
+    {
+      "utc": "2026-11-20T18:07:05.443+00:00",
+      "marker": "CASE000",
+      "kind": "outliner",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:07:05.502+00:00",
+      "marker": "CASE000",
+      "kind": "OutlineReviewResult",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:07:05.982+00:00",
+      "marker": "CASE008",
+      "kind": "research_plan",
+      "invocation": 2
+    },
+    {
+      "utc": "2026-11-20T18:07:06.037+00:00",
+      "marker": "CASE008",
+      "kind": "research_summary",
+      "invocation": 2
+    },
+    {
+      "utc": "2026-11-20T18:07:06.091+00:00",
+      "marker": "CASE008",
+      "kind": "outliner",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:07:06.149+00:00",
+      "marker": "CASE008",
+      "kind": "OutlineReviewResult",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:07:06.756+00:00",
+      "marker": "CASE005",
+      "kind": "research_plan",
+      "invocation": 2
+    },
+    {
+      "utc": "2026-11-20T18:07:06.810+00:00",
+      "marker": "CASE005",
+      "kind": "research_summary",
+      "invocation": 2
+    },
+    {
+      "utc": "2026-11-20T18:07:06.864+00:00",
+      "marker": "CASE005",
+      "kind": "outliner",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:07:06.922+00:00",
+      "marker": "CASE005",
+      "kind": "OutlineReviewResult",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:07:09.910+00:00",
+      "marker": "CASE007",
+      "kind": "research_plan",
+      "invocation": 2
+    },
+    {
+      "utc": "2026-11-20T18:07:09.965+00:00",
+      "marker": "CASE007",
+      "kind": "research_summary",
+      "invocation": 2
+    },
+    {
+      "utc": "2026-11-20T18:07:10.018+00:00",
+      "marker": "CASE007",
+      "kind": "outliner",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:07:10.074+00:00",
+      "marker": "CASE007",
+      "kind": "OutlineReviewResult",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:07:10.565+00:00",
+      "marker": "CASE001",
+      "kind": "research_plan",
+      "invocation": 2
+    },
+    {
+      "utc": "2026-11-20T18:07:10.618+00:00",
+      "marker": "CASE001",
+      "kind": "research_summary",
+      "invocation": 2
+    },
+    {
+      "utc": "2026-11-20T18:07:10.670+00:00",
+      "marker": "CASE001",
+      "kind": "outliner",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:07:10.726+00:00",
+      "marker": "CASE001",
+      "kind": "OutlineReviewResult",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:07:13.855+00:00",
+      "marker": "CASE002",
+      "kind": "research_plan",
+      "invocation": 3
+    },
+    {
+      "utc": "2026-11-20T18:07:13.908+00:00",
+      "marker": "CASE002",
+      "kind": "research_summary",
+      "invocation": 3
+    },
+    {
+      "utc": "2026-11-20T18:07:13.961+00:00",
+      "marker": "CASE002",
+      "kind": "writer",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:07:17.087+00:00",
+      "marker": "CASE007",
+      "kind": "research_plan",
+      "invocation": 3
+    },
+    {
+      "utc": "2026-11-20T18:07:17.087+00:00",
+      "marker": "CASE001",
+      "kind": "research_plan",
+      "invocation": 3
+    },
+    {
+      "utc": "2026-11-20T18:07:17.140+00:00",
+      "marker": "CASE007",
+      "kind": "research_summary",
+      "invocation": 3
+    },
+    {
+      "utc": "2026-11-20T18:07:17.141+00:00",
+      "marker": "CASE001",
+      "kind": "research_summary",
+      "invocation": 3
+    },
+    {
+      "utc": "2026-11-20T18:07:17.193+00:00",
+      "marker": "CASE001",
+      "kind": "writer",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:07:17.193+00:00",
+      "marker": "CASE007",
+      "kind": "writer",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:07:17.253+00:00",
+      "marker": "CASE001",
+      "kind": "ReviewResult",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:07:17.254+00:00",
+      "marker": "CASE007",
+      "kind": "ReviewResult",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:07:20.673+00:00",
+      "marker": "CASE000",
+      "kind": "research_plan",
+      "invocation": 3
+    },
+    {
+      "utc": "2026-11-20T18:07:20.726+00:00",
+      "marker": "CASE000",
+      "kind": "research_summary",
+      "invocation": 3
+    },
+    {
+      "utc": "2026-11-20T18:07:20.779+00:00",
+      "marker": "CASE000",
+      "kind": "writer",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:07:21.326+00:00",
+      "marker": "CASE003",
+      "kind": "research_plan",
+      "invocation": 3
+    },
+    {
+      "utc": "2026-11-20T18:07:21.380+00:00",
+      "marker": "CASE003",
+      "kind": "research_summary",
+      "invocation": 3
+    },
+    {
+      "utc": "2026-11-20T18:07:21.432+00:00",
+      "marker": "CASE003",
+      "kind": "writer",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:07:21.491+00:00",
+      "marker": "CASE003",
+      "kind": "ReviewResult",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:07:25.189+00:00",
+      "marker": "CASE004",
+      "kind": "research_plan",
+      "invocation": 3
+    },
+    {
+      "utc": "2026-11-20T18:07:25.244+00:00",
+      "marker": "CASE004",
+      "kind": "research_summary",
+      "invocation": 3
+    },
+    {
+      "utc": "2026-11-20T18:07:25.298+00:00",
+      "marker": "CASE004",
+      "kind": "writer",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:07:25.360+00:00",
+      "marker": "CASE004",
+      "kind": "ReviewResult",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:07:27.141+00:00",
+      "marker": "CASE005",
+      "kind": "research_plan",
+      "invocation": 3
+    },
+    {
+      "utc": "2026-11-20T18:07:27.195+00:00",
+      "marker": "CASE005",
+      "kind": "research_summary",
+      "invocation": 3
+    },
+    {
+      "utc": "2026-11-20T18:07:27.249+00:00",
+      "marker": "CASE005",
+      "kind": "writer",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:07:27.311+00:00",
+      "marker": "CASE005",
+      "kind": "ReviewResult",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:07:28.879+00:00",
+      "marker": "CASE009",
+      "kind": "research_plan",
+      "invocation": 3
+    },
+    {
+      "utc": "2026-11-20T18:07:28.934+00:00",
+      "marker": "CASE009",
+      "kind": "research_summary",
+      "invocation": 3
+    },
+    {
+      "utc": "2026-11-20T18:07:28.986+00:00",
+      "marker": "CASE009",
+      "kind": "writer",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:07:29.047+00:00",
+      "marker": "CASE009",
+      "kind": "ReviewResult",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:07:29.435+00:00",
+      "marker": "CASE008",
+      "kind": "research_plan",
+      "invocation": 3
+    },
+    {
+      "utc": "2026-11-20T18:07:29.489+00:00",
+      "marker": "CASE008",
+      "kind": "research_summary",
+      "invocation": 3
+    },
+    {
+      "utc": "2026-11-20T18:07:29.544+00:00",
+      "marker": "CASE008",
+      "kind": "writer",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:07:29.613+00:00",
+      "marker": "CASE008",
+      "kind": "ReviewResult",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:07:31.493+00:00",
+      "marker": "CASE006",
+      "kind": "research_plan",
+      "invocation": 3
+    },
+    {
+      "utc": "2026-11-20T18:07:31.548+00:00",
+      "marker": "CASE006",
+      "kind": "research_summary",
+      "invocation": 3
+    },
+    {
+      "utc": "2026-11-20T18:07:31.602+00:00",
+      "marker": "CASE006",
+      "kind": "writer",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:07:31.666+00:00",
+      "marker": "CASE006",
+      "kind": "ReviewResult",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:07:33.225+00:00",
+      "marker": "CASE002",
+      "kind": "research_plan",
+      "invocation": 4
+    },
+    {
+      "utc": "2026-11-20T18:07:33.225+00:00",
+      "marker": "CASE000",
+      "kind": "research_plan",
+      "invocation": 4
+    },
+    {
+      "utc": "2026-11-20T18:07:33.280+00:00",
+      "marker": "CASE002",
+      "kind": "research_summary",
+      "invocation": 4
+    },
+    {
+      "utc": "2026-11-20T18:07:33.282+00:00",
+      "marker": "CASE000",
+      "kind": "research_summary",
+      "invocation": 4
+    },
+    {
+      "utc": "2026-11-20T18:07:33.334+00:00",
+      "marker": "CASE002",
+      "kind": "writer",
+      "invocation": 2
+    },
+    {
+      "utc": "2026-11-20T18:07:33.336+00:00",
+      "marker": "CASE000",
+      "kind": "writer",
+      "invocation": 2
+    },
+    {
+      "utc": "2026-11-20T18:07:33.398+00:00",
+      "marker": "CASE002",
+      "kind": "ReviewResult",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:07:33.399+00:00",
+      "marker": "CASE000",
+      "kind": "ReviewResult",
+      "invocation": 1
+    },
+    {
+      "utc": "2026-11-20T18:07:35.893+00:00",
+      "marker": "CASE001",
+      "kind": "research_plan",
+      "invocation": 4
+    },
+    {
+      "utc": "2026-11-20T18:07:35.946+00:00",
+      "marker": "CASE001",
+      "kind": "research_summary",
+      "invocation": 4
+    },
+    {
+      "utc": "2026-11-20T18:07:35.999+00:00",
+      "marker": "CASE001",
+      "kind": "writer",
+      "invocation": 2
+    },
+    {
+      "utc": "2026-11-20T18:07:36.059+00:00",
+      "marker": "CASE001",
+      "kind": "ReviewResult",
+      "invocation": 2
+    }
+  ],
+  "author_observations": {
+    "CASE000": [
+      {
+        "action": "generate-titles",
+        "admitted_utc": "2026-11-20T18:06:38.803+00:00",
+        "latency_s": 0.153
+      },
+      {
+        "status": "title_generated",
+        "observed_utc": "2026-11-20T18:06:47.913+00:00"
+      },
+      {
+        "action": "submit-title-config",
+        "admitted_utc": "2026-11-20T18:06:47.945+00:00",
+        "latency_s": 0.024
+      },
+      {
+        "status": "outline_generated",
+        "observed_utc": "2026-11-20T18:07:05.595+00:00"
+      },
+      {
+        "action": "generate-content",
+        "admitted_utc": "2026-11-20T18:07:14.021+00:00",
+        "latency_s": 0.056
+      },
+      {
+        "status": "failed",
+        "observed_utc": "2026-11-20T18:07:27.778+00:00"
+      },
+      {
+        "replayed_utc": "2026-11-20T18:07:27.847+00:00",
+        "provider_requests": 12,
+        "failure": "模型服务响应超时，请稍后重试。",
+        "draft_saved": false
+      },
+      {
+        "action": "generate-content",
+        "admitted_utc": "2026-11-20T18:07:27.877+00:00",
+        "latency_s": 0.031
+      },
+      {
+        "status": "completed",
+        "observed_utc": "2026-11-20T18:07:33.544+00:00"
+      }
+    ],
+    "CASE001": [
+      {
+        "action": "generate-titles",
+        "admitted_utc": "2026-11-20T18:06:38.844+00:00",
+        "latency_s": 0.193
+      },
+      {
+        "status": "title_generated",
+        "observed_utc": "2026-11-20T18:06:56.781+00:00"
+      },
+      {
+        "action": "submit-title-config",
+        "admitted_utc": "2026-11-20T18:06:56.816+00:00",
+        "latency_s": 0.029
+      },
+      {
+        "status": "outline_generated",
+        "observed_utc": "2026-11-20T18:07:10.909+00:00"
+      },
+      {
+        "action": "generate-content",
+        "admitted_utc": "2026-11-20T18:07:13.999+00:00",
+        "latency_s": 0.037
+      },
+      {
+        "status": "failed",
+        "observed_utc": "2026-11-20T18:07:27.791+00:00"
+      },
+      {
+        "replayed_utc": "2026-11-20T18:07:27.850+00:00",
+        "provider_requests": 13,
+        "failure": "模型服务当前限流，请稍后重试。",
+        "draft_saved": true
+      },
+      {
+        "action": "generate-content",
+        "admitted_utc": "2026-11-20T18:07:27.896+00:00",
+        "latency_s": 0.045
+      },
+      {
+        "status": "completed",
+        "observed_utc": "2026-11-20T18:07:36.237+00:00"
+      }
+    ],
+    "CASE002": [
+      {
+        "action": "generate-titles",
+        "admitted_utc": "2026-11-20T18:06:38.811+00:00",
+        "latency_s": 0.16
+      },
+      {
+        "status": "title_generated",
+        "observed_utc": "2026-11-20T18:06:47.794+00:00"
+      },
+      {
+        "action": "submit-title-config",
+        "admitted_utc": "2026-11-20T18:06:47.824+00:00",
+        "latency_s": 0.023
+      },
+      {
+        "status": "outline_generated",
+        "observed_utc": "2026-11-20T18:07:02.649+00:00"
+      },
+      {
+        "action": "generate-content",
+        "admitted_utc": "2026-11-20T18:07:10.937+00:00",
+        "latency_s": 0.016
+      },
+      {
+        "status": "failed",
+        "observed_utc": "2026-11-20T18:07:27.788+00:00"
+      },
+      {
+        "replayed_utc": "2026-11-20T18:07:27.852+00:00",
+        "provider_requests": 12,
+        "failure": "本阶段执行中断，已保存创作设置。请确认后重新提交。",
+        "draft_saved": false
+      },
+      {
+        "action": "generate-content",
+        "admitted_utc": "2026-11-20T18:07:27.887+00:00",
+        "latency_s": 0.036
+      },
+      {
+        "status": "completed",
+        "observed_utc": "2026-11-20T18:07:33.581+00:00"
+      }
+    ],
+    "CASE003": [
+      {
+        "action": "generate-titles",
+        "admitted_utc": "2026-11-20T18:06:38.781+00:00",
+        "latency_s": 0.132
+      },
+      {
+        "status": "title_generated",
+        "observed_utc": "2026-11-20T18:06:43.253+00:00"
+      },
+      {
+        "action": "submit-title-config",
+        "admitted_utc": "2026-11-20T18:06:43.296+00:00",
+        "latency_s": 0.034
+      },
+      {
+        "status": "outline_generated",
+        "observed_utc": "2026-11-20T18:06:58.138+00:00"
+      },
+      {
+        "action": "generate-content",
+        "admitted_utc": "2026-11-20T18:07:14.028+00:00",
+        "latency_s": 0.065
+      },
+      {
+        "status": "completed",
+        "observed_utc": "2026-11-20T18:07:27.790+00:00"
+      }
+    ],
+    "CASE004": [
+      {
+        "action": "generate-titles",
+        "admitted_utc": "2026-11-20T18:06:38.773+00:00",
+        "latency_s": 0.124
+      },
+      {
+        "status": "title_generated",
+        "observed_utc": "2026-11-20T18:06:43.404+00:00"
+      },
+      {
+        "action": "submit-title-config",
+        "admitted_utc": "2026-11-20T18:06:43.451+00:00",
+        "latency_s": 0.036
+      },
+      {
+        "status": "outline_generated",
+        "observed_utc": "2026-11-20T18:07:01.124+00:00"
+      },
+      {
+        "action": "generate-content",
+        "admitted_utc": "2026-11-20T18:07:14.033+00:00",
+        "latency_s": 0.069
+      },
+      {
+        "status": "completed",
+        "observed_utc": "2026-11-20T18:07:27.789+00:00"
+      }
+    ],
+    "CASE005": [
+      {
+        "action": "generate-titles",
+        "admitted_utc": "2026-11-20T18:06:38.827+00:00",
+        "latency_s": 0.178
+      },
+      {
+        "status": "title_generated",
+        "observed_utc": "2026-11-20T18:06:52.716+00:00"
+      },
+      {
+        "action": "submit-title-config",
+        "admitted_utc": "2026-11-20T18:06:52.758+00:00",
+        "latency_s": 0.034
+      },
+      {
+        "status": "outline_generated",
+        "observed_utc": "2026-11-20T18:07:07.049+00:00"
+      },
+      {
+        "action": "generate-content",
+        "admitted_utc": "2026-11-20T18:07:14.040+00:00",
+        "latency_s": 0.078
+      },
+      {
+        "status": "completed",
+        "observed_utc": "2026-11-20T18:07:27.799+00:00"
+      }
+    ],
+    "CASE006": [
+      {
+        "action": "generate-titles",
+        "admitted_utc": "2026-11-20T18:06:38.794+00:00",
+        "latency_s": 0.145
+      },
+      {
+        "status": "title_generated",
+        "observed_utc": "2026-11-20T18:06:47.592+00:00"
+      },
+      {
+        "action": "submit-title-config",
+        "admitted_utc": "2026-11-20T18:06:47.610+00:00",
+        "latency_s": 0.012
+      },
+      {
+        "status": "outline_generated",
+        "observed_utc": "2026-11-20T18:07:01.966+00:00"
+      },
+      {
+        "action": "generate-content",
+        "admitted_utc": "2026-11-20T18:07:14.061+00:00",
+        "latency_s": 0.096
+      },
+      {
+        "status": "completed",
+        "observed_utc": "2026-11-20T18:07:31.746+00:00"
+      }
+    ],
+    "CASE007": [
+      {
+        "action": "generate-titles",
+        "admitted_utc": "2026-11-20T18:06:38.837+00:00",
+        "latency_s": 0.189
+      },
+      {
+        "status": "title_generated",
+        "observed_utc": "2026-11-20T18:06:53.243+00:00"
+      },
+      {
+        "action": "submit-title-config",
+        "admitted_utc": "2026-11-20T18:06:53.299+00:00",
+        "latency_s": 0.043
+      },
+      {
+        "status": "outline_generated",
+        "observed_utc": "2026-11-20T18:07:10.285+00:00"
+      },
+      {
+        "action": "generate-content",
+        "admitted_utc": "2026-11-20T18:07:14.016+00:00",
+        "latency_s": 0.052
+      },
+      {
+        "status": "completed",
+        "observed_utc": "2026-11-20T18:07:27.801+00:00"
+      }
+    ],
+    "CASE008": [
+      {
+        "action": "generate-titles",
+        "admitted_utc": "2026-11-20T18:06:38.819+00:00",
+        "latency_s": 0.168
+      },
+      {
+        "status": "title_generated",
+        "observed_utc": "2026-11-20T18:06:51.984+00:00"
+      },
+      {
+        "action": "submit-title-config",
+        "admitted_utc": "2026-11-20T18:06:52.018+00:00",
+        "latency_s": 0.025
+      },
+      {
+        "status": "outline_generated",
+        "observed_utc": "2026-11-20T18:07:06.225+00:00"
+      },
+      {
+        "action": "generate-content",
+        "admitted_utc": "2026-11-20T18:07:14.055+00:00",
+        "latency_s": 0.09
+      },
+      {
+        "status": "completed",
+        "observed_utc": "2026-11-20T18:07:29.689+00:00"
+      }
+    ],
+    "CASE009": [
+      {
+        "action": "generate-titles",
+        "admitted_utc": "2026-11-20T18:06:38.765+00:00",
+        "latency_s": 0.118
+      },
+      {
+        "status": "title_generated",
+        "observed_utc": "2026-11-20T18:06:43.228+00:00"
+      },
+      {
+        "action": "submit-title-config",
+        "admitted_utc": "2026-11-20T18:06:43.265+00:00",
+        "latency_s": 0.027
+      },
+      {
+        "status": "outline_generated",
+        "observed_utc": "2026-11-20T18:06:57.600+00:00"
+      },
+      {
+        "action": "generate-content",
+        "admitted_utc": "2026-11-20T18:07:14.050+00:00",
+        "latency_s": 0.087
+      },
+      {
+        "status": "completed",
+        "observed_utc": "2026-11-20T18:07:29.226+00:00"
+      }
+    ]
+  },
+  "audit": {
+    "passed": true,
+    "checks": 601,
+    "error_count": 0,
+    "errors": [],
+    "failed_authors": [],
+    "utc_window": 20777,
+    "users": 10,
+    "tasks": 10,
+    "jobs": 33,
+    "receipts": 33,
+    "queued": 0,
+    "running": 0,
+    "reservations": 0,
+    "expected_units": 59,
+    "user_units": 59,
+    "site_units": 59,
+    "model_calls": 140,
+    "accounts": [
+      {
+        "author": "CASE000",
+        "user_id": 2,
+        "task_id": 1,
+        "fault": "writer_timeout",
+        "jobs": [
+          {
+            "id": 5,
+            "stage": "title",
+            "status": "succeeded",
+            "attempt": 1,
+            "started": true,
+            "units": 1
+          },
+          {
+            "id": 16,
+            "stage": "outline",
+            "status": "succeeded",
+            "attempt": 1,
+            "started": true,
+            "units": 1
+          },
+          {
+            "id": 24,
+            "stage": "content",
+            "status": "failed",
+            "attempt": 1,
+            "started": true,
+            "units": 3
+          },
+          {
+            "id": 31,
+            "stage": "content",
+            "status": "succeeded",
+            "attempt": 1,
+            "started": true,
+            "units": 3
+          }
+        ],
+        "expected_units": 8,
+        "job_units": 8,
+        "db_used": 8,
+        "http": {
+          "requests": 11,
+          "receipt_echoes": 4,
+          "used": 8,
+          "remaining": 2,
+          "limit": 10,
+          "peer_task": 4,
+          "peer_detail_status": 403,
+          "peer_stream_status": 403
+        },
+        "used_history": [
+          1,
+          2,
+          5,
+          5,
+          8
+        ],
+        "receipt_count": 4,
+        "verified_commands": 4,
+        "expected_model_calls": 16,
+        "model_calls": 16,
+        "model_calls_by_kind": {
+          "research_plan": 4,
+          "research_summary": 4,
+          "TitleList": 1,
+          "TitleScoreList": 1,
+          "TitleReviewResult": 1,
+          "outliner": 1,
+          "OutlineReviewResult": 1,
+          "writer": 2,
+          "ReviewResult": 1
+        },
+        "model_calls_added_by_replay": 0,
+        "checks": 63,
+        "errors": [],
+        "passed": true
+      },
+      {
+        "author": "CASE001",
+        "user_id": 5,
+        "task_id": 4,
+        "fault": "reviewer_429",
+        "jobs": [
+          {
+            "id": 10,
+            "stage": "title",
+            "status": "succeeded",
+            "attempt": 1,
+            "started": true,
+            "units": 1
+          },
+          {
+            "id": 20,
+            "stage": "outline",
+            "status": "succeeded",
+            "attempt": 1,
+            "started": true,
+            "units": 1
+          },
+          {
+            "id": 22,
+            "stage": "content",
+            "status": "failed",
+            "attempt": 1,
+            "started": true,
+            "units": 3
+          },
+          {
+            "id": 33,
+            "stage": "content",
+            "status": "succeeded",
+            "attempt": 1,
+            "started": true,
+            "units": 3
+          }
+        ],
+        "expected_units": 8,
+        "job_units": 8,
+        "db_used": 8,
+        "http": {
+          "requests": 11,
+          "receipt_echoes": 4,
+          "used": 8,
+          "remaining": 2,
+          "limit": 10,
+          "peer_task": 8,
+          "peer_detail_status": 403,
+          "peer_stream_status": 403
+        },
+        "used_history": [
+          1,
+          2,
+          5,
+          5,
+          8
+        ],
+        "receipt_count": 4,
+        "verified_commands": 4,
+        "expected_model_calls": 17,
+        "model_calls": 17,
+        "model_calls_by_kind": {
+          "research_plan": 4,
+          "research_summary": 4,
+          "TitleList": 1,
+          "TitleScoreList": 1,
+          "TitleReviewResult": 1,
+          "outliner": 1,
+          "OutlineReviewResult": 1,
+          "writer": 2,
+          "ReviewResult": 2
+        },
+        "model_calls_added_by_replay": 0,
+        "checks": 63,
+        "errors": [],
+        "passed": true
+      },
+      {
+        "author": "CASE002",
+        "user_id": 8,
+        "task_id": 8,
+        "fault": "api_crash",
+        "jobs": [
+          {
+            "id": 6,
+            "stage": "title",
+            "status": "succeeded",
+            "attempt": 1,
+            "started": true,
+            "units": 1
+          },
+          {
+            "id": 15,
+            "stage": "outline",
+            "status": "succeeded",
+            "attempt": 1,
+            "started": true,
+            "units": 1
+          },
+          {
+            "id": 21,
+            "stage": "content",
+            "status": "failed",
+            "attempt": 1,
+            "started": true,
+            "units": 3
+          },
+          {
+            "id": 32,
+            "stage": "content",
+            "status": "succeeded",
+            "attempt": 1,
+            "started": true,
+            "units": 3
+          }
+        ],
+        "expected_units": 8,
+        "job_units": 8,
+        "db_used": 8,
+        "http": {
+          "requests": 11,
+          "receipt_echoes": 4,
+          "used": 8,
+          "remaining": 2,
+          "limit": 10,
+          "peer_task": 3,
+          "peer_detail_status": 403,
+          "peer_stream_status": 403
+        },
+        "used_history": [
+          1,
+          2,
+          5,
+          5,
+          8
+        ],
+        "receipt_count": 4,
+        "verified_commands": 4,
+        "expected_model_calls": 16,
+        "model_calls": 16,
+        "model_calls_by_kind": {
+          "research_plan": 4,
+          "research_summary": 4,
+          "TitleList": 1,
+          "TitleScoreList": 1,
+          "TitleReviewResult": 1,
+          "outliner": 1,
+          "OutlineReviewResult": 1,
+          "writer": 2,
+          "ReviewResult": 1
+        },
+        "model_calls_added_by_replay": 0,
+        "checks": 63,
+        "errors": [],
+        "passed": true
+      },
+      {
+        "author": "CASE003",
+        "user_id": 3,
+        "task_id": 3,
+        "fault": null,
+        "jobs": [
+          {
+            "id": 3,
+            "stage": "title",
+            "status": "succeeded",
+            "attempt": 1,
+            "started": true,
+            "units": 1
+          },
+          {
+            "id": 12,
+            "stage": "outline",
+            "status": "succeeded",
+            "attempt": 1,
+            "started": true,
+            "units": 1
+          },
+          {
+            "id": 25,
+            "stage": "content",
+            "status": "succeeded",
+            "attempt": 1,
+            "started": true,
+            "units": 3
+          }
+        ],
+        "expected_units": 5,
+        "job_units": 5,
+        "db_used": 5,
+        "http": {
+          "requests": 10,
+          "receipt_echoes": 3,
+          "used": 5,
+          "remaining": 5,
+          "limit": 10,
+          "peer_task": 7,
+          "peer_detail_status": 403,
+          "peer_stream_status": 403
+        },
+        "used_history": [
+          1,
+          2,
+          5
+        ],
+        "receipt_count": 3,
+        "verified_commands": 3,
+        "expected_model_calls": 13,
+        "model_calls": 13,
+        "model_calls_by_kind": {
+          "research_plan": 3,
+          "research_summary": 3,
+          "TitleList": 1,
+          "TitleScoreList": 1,
+          "TitleReviewResult": 1,
+          "outliner": 1,
+          "OutlineReviewResult": 1,
+          "writer": 1,
+          "ReviewResult": 1
+        },
+        "model_calls_added_by_replay": null,
+        "checks": 57,
+        "errors": [],
+        "passed": true
+      },
+      {
+        "author": "CASE004",
+        "user_id": 7,
+        "task_id": 7,
+        "fault": null,
+        "jobs": [
+          {
+            "id": 2,
+            "stage": "title",
+            "status": "succeeded",
+            "attempt": 1,
+            "started": true,
+            "units": 1
+          },
+          {
+            "id": 13,
+            "stage": "outline",
+            "status": "succeeded",
+            "attempt": 1,
+            "started": true,
+            "units": 1
+          },
+          {
+            "id": 26,
+            "stage": "content",
+            "status": "succeeded",
+            "attempt": 1,
+            "started": true,
+            "units": 3
+          }
+        ],
+        "expected_units": 5,
+        "job_units": 5,
+        "db_used": 5,
+        "http": {
+          "requests": 10,
+          "receipt_echoes": 3,
+          "used": 5,
+          "remaining": 5,
+          "limit": 10,
+          "peer_task": 5,
+          "peer_detail_status": 403,
+          "peer_stream_status": 403
+        },
+        "used_history": [
+          1,
+          2,
+          5
+        ],
+        "receipt_count": 3,
+        "verified_commands": 3,
+        "expected_model_calls": 13,
+        "model_calls": 13,
+        "model_calls_by_kind": {
+          "research_plan": 3,
+          "research_summary": 3,
+          "TitleList": 1,
+          "TitleScoreList": 1,
+          "TitleReviewResult": 1,
+          "outliner": 1,
+          "OutlineReviewResult": 1,
+          "writer": 1,
+          "ReviewResult": 1
+        },
+        "model_calls_added_by_replay": null,
+        "checks": 57,
+        "errors": [],
+        "passed": true
+      },
+      {
+        "author": "CASE005",
+        "user_id": 4,
+        "task_id": 5,
+        "fault": null,
+        "jobs": [
+          {
+            "id": 8,
+            "stage": "title",
+            "status": "succeeded",
+            "attempt": 1,
+            "started": true,
+            "units": 1
+          },
+          {
+            "id": 18,
+            "stage": "outline",
+            "status": "succeeded",
+            "attempt": 1,
+            "started": true,
+            "units": 1
+          },
+          {
+            "id": 27,
+            "stage": "content",
+            "status": "succeeded",
+            "attempt": 1,
+            "started": true,
+            "units": 3
+          }
+        ],
+        "expected_units": 5,
+        "job_units": 5,
+        "db_used": 5,
+        "http": {
+          "requests": 10,
+          "receipt_echoes": 3,
+          "used": 5,
+          "remaining": 5,
+          "limit": 10,
+          "peer_task": 9,
+          "peer_detail_status": 403,
+          "peer_stream_status": 403
+        },
+        "used_history": [
+          1,
+          2,
+          5
+        ],
+        "receipt_count": 3,
+        "verified_commands": 3,
+        "expected_model_calls": 13,
+        "model_calls": 13,
+        "model_calls_by_kind": {
+          "research_plan": 3,
+          "research_summary": 3,
+          "TitleList": 1,
+          "TitleScoreList": 1,
+          "TitleReviewResult": 1,
+          "outliner": 1,
+          "OutlineReviewResult": 1,
+          "writer": 1,
+          "ReviewResult": 1
+        },
+        "model_calls_added_by_replay": null,
+        "checks": 57,
+        "errors": [],
+        "passed": true
+      },
+      {
+        "author": "CASE006",
+        "user_id": 9,
+        "task_id": 9,
+        "fault": null,
+        "jobs": [
+          {
+            "id": 4,
+            "stage": "title",
+            "status": "succeeded",
+            "attempt": 1,
+            "started": true,
+            "units": 1
+          },
+          {
+            "id": 14,
+            "stage": "outline",
+            "status": "succeeded",
+            "attempt": 1,
+            "started": true,
+            "units": 1
+          },
+          {
+            "id": 30,
+            "stage": "content",
+            "status": "succeeded",
+            "attempt": 1,
+            "started": true,
+            "units": 3
+          }
+        ],
+        "expected_units": 5,
+        "job_units": 5,
+        "db_used": 5,
+        "http": {
+          "requests": 10,
+          "receipt_echoes": 3,
+          "used": 5,
+          "remaining": 5,
+          "limit": 10,
+          "peer_task": 10,
+          "peer_detail_status": 403,
+          "peer_stream_status": 403
+        },
+        "used_history": [
+          1,
+          2,
+          5
+        ],
+        "receipt_count": 3,
+        "verified_commands": 3,
+        "expected_model_calls": 13,
+        "model_calls": 13,
+        "model_calls_by_kind": {
+          "research_plan": 3,
+          "research_summary": 3,
+          "TitleList": 1,
+          "TitleScoreList": 1,
+          "TitleReviewResult": 1,
+          "outliner": 1,
+          "OutlineReviewResult": 1,
+          "writer": 1,
+          "ReviewResult": 1
+        },
+        "model_calls_added_by_replay": null,
+        "checks": 57,
+        "errors": [],
+        "passed": true
+      },
+      {
+        "author": "CASE007",
+        "user_id": 10,
+        "task_id": 10,
+        "fault": null,
+        "jobs": [
+          {
+            "id": 9,
+            "stage": "title",
+            "status": "succeeded",
+            "attempt": 1,
+            "started": true,
+            "units": 1
+          },
+          {
+            "id": 19,
+            "stage": "outline",
+            "status": "succeeded",
+            "attempt": 1,
+            "started": true,
+            "units": 1
+          },
+          {
+            "id": 23,
+            "stage": "content",
+            "status": "succeeded",
+            "attempt": 1,
+            "started": true,
+            "units": 3
+          }
+        ],
+        "expected_units": 5,
+        "job_units": 5,
+        "db_used": 5,
+        "http": {
+          "requests": 10,
+          "receipt_echoes": 3,
+          "used": 5,
+          "remaining": 5,
+          "limit": 10,
+          "peer_task": 2,
+          "peer_detail_status": 403,
+          "peer_stream_status": 403
+        },
+        "used_history": [
+          1,
+          2,
+          5
+        ],
+        "receipt_count": 3,
+        "verified_commands": 3,
+        "expected_model_calls": 13,
+        "model_calls": 13,
+        "model_calls_by_kind": {
+          "research_plan": 3,
+          "research_summary": 3,
+          "TitleList": 1,
+          "TitleScoreList": 1,
+          "TitleReviewResult": 1,
+          "outliner": 1,
+          "OutlineReviewResult": 1,
+          "writer": 1,
+          "ReviewResult": 1
+        },
+        "model_calls_added_by_replay": null,
+        "checks": 57,
+        "errors": [],
+        "passed": true
+      },
+      {
+        "author": "CASE008",
+        "user_id": 1,
+        "task_id": 2,
+        "fault": null,
+        "jobs": [
+          {
+            "id": 7,
+            "stage": "title",
+            "status": "succeeded",
+            "attempt": 1,
+            "started": true,
+            "units": 1
+          },
+          {
+            "id": 17,
+            "stage": "outline",
+            "status": "succeeded",
+            "attempt": 1,
+            "started": true,
+            "units": 1
+          },
+          {
+            "id": 29,
+            "stage": "content",
+            "status": "succeeded",
+            "attempt": 1,
+            "started": true,
+            "units": 3
+          }
+        ],
+        "expected_units": 5,
+        "job_units": 5,
+        "db_used": 5,
+        "http": {
+          "requests": 10,
+          "receipt_echoes": 3,
+          "used": 5,
+          "remaining": 5,
+          "limit": 10,
+          "peer_task": 6,
+          "peer_detail_status": 403,
+          "peer_stream_status": 403
+        },
+        "used_history": [
+          1,
+          2,
+          5
+        ],
+        "receipt_count": 3,
+        "verified_commands": 3,
+        "expected_model_calls": 13,
+        "model_calls": 13,
+        "model_calls_by_kind": {
+          "research_plan": 3,
+          "research_summary": 3,
+          "TitleList": 1,
+          "TitleScoreList": 1,
+          "TitleReviewResult": 1,
+          "outliner": 1,
+          "OutlineReviewResult": 1,
+          "writer": 1,
+          "ReviewResult": 1
+        },
+        "model_calls_added_by_replay": null,
+        "checks": 57,
+        "errors": [],
+        "passed": true
+      },
+      {
+        "author": "CASE009",
+        "user_id": 6,
+        "task_id": 6,
+        "fault": null,
+        "jobs": [
+          {
+            "id": 1,
+            "stage": "title",
+            "status": "succeeded",
+            "attempt": 1,
+            "started": true,
+            "units": 1
+          },
+          {
+            "id": 11,
+            "stage": "outline",
+            "status": "succeeded",
+            "attempt": 1,
+            "started": true,
+            "units": 1
+          },
+          {
+            "id": 28,
+            "stage": "content",
+            "status": "succeeded",
+            "attempt": 1,
+            "started": true,
+            "units": 3
+          }
+        ],
+        "expected_units": 5,
+        "job_units": 5,
+        "db_used": 5,
+        "http": {
+          "requests": 10,
+          "receipt_echoes": 3,
+          "used": 5,
+          "remaining": 5,
+          "limit": 10,
+          "peer_task": 1,
+          "peer_detail_status": 403,
+          "peer_stream_status": 403
+        },
+        "used_history": [
+          1,
+          2,
+          5
+        ],
+        "receipt_count": 3,
+        "verified_commands": 3,
+        "expected_model_calls": 13,
+        "model_calls": 13,
+        "model_calls_by_kind": {
+          "research_plan": 3,
+          "research_summary": 3,
+          "TitleList": 1,
+          "TitleScoreList": 1,
+          "TitleReviewResult": 1,
+          "outliner": 1,
+          "OutlineReviewResult": 1,
+          "writer": 1,
+          "ReviewResult": 1
+        },
+        "model_calls_added_by_replay": null,
+        "checks": 57,
+        "errors": [],
+        "passed": true
+      }
+    ]
+  },
+  "title_admission_commit_to_final_content_commit_seconds": {
+    "CASE000": 54.667,
+    "CASE001": 57.279,
+    "CASE002": 54.657,
+    "CASE003": 42.776,
+    "CASE004": 46.652,
+    "CASE005": 48.552,
+    "CASE006": 52.943,
+    "CASE007": 38.485,
+    "CASE008": 50.864,
+    "CASE009": 50.348
+  }
+}

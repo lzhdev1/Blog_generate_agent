@@ -45,6 +45,8 @@ from src.blog_agent.agent.nodes.react_tools import (
 )
 from src.blog_agent.agent.state import AgentState
 from src.blog_agent.agent.tools import web_search
+from src.blog_agent.agent.agents.short_brief import short_brief, title_request
+from src.blog_agent.agent.evidence import personal_reflection
 
 # 标题调研阶段只绑定搜索工具（配图/格式化等工具不属于调研段）
 RESEARCH_TOOLS = [web_search]
@@ -63,9 +65,10 @@ def build_title_graph():
         "research_plan",
         make_react_model_node(
             RESEARCH_SYSTEM,
-            task_builder=lambda s: RESEARCH_TITLES_PLAN.format(
-                topic=s.get("topic", "")
-            ),
+            task_builder=lambda s: (
+                f"为短文选题《{s.get('topic', '')}》检索原始参考资料。优先定位能回答核心问题的官方文档或科学机构；"
+                "用该来源语言和具体概念进行检索。无需分析相似标题或流量。"
+                if short_brief(s) else RESEARCH_TITLES_PLAN.format(topic=s.get("topic", ""))),
             tools=RESEARCH_TOOLS,
             model_role="researcher",
             temperature=0.3,
@@ -79,7 +82,7 @@ def build_title_graph():
         make_output_node(
             RESEARCH_SYSTEM,
             task_builder=lambda s: (
-                RESEARCH_TITLES_SUMMARY
+                f"主题：{s.get('topic', '')}\n" + RESEARCH_TITLES_SUMMARY
                 + "\n\n【本次联网检索到的真实资料】\n"
                 + collect_search_results(s)
             ),
@@ -95,13 +98,15 @@ def build_title_graph():
         make_output_node(
             GENERATE_TITLES_SYSTEM,
             task_builder=lambda s: (
-                GENERATE_TITLES_TASK.format(
+                (title_request(s) if short_brief(s) else GENERATE_TITLES_TASK.format(
                     topic=s.get("topic", ""),
                     title_research=s.get("title_research", ""),
-                )
+                ))
+                + "\n【原始检索记录，只有这些资料可支持事实断言】\n" + collect_search_results(s)
                 + (
                     REVIEW_ADDON_FOR_TITLES.format(
-                        review_feedback=s.get("review_feedback", "")
+                        review_feedback=s.get("review_feedback", ""),
+                        previous_titles="\n".join(f"{i}. {title}" for i, title in enumerate(s.get("titles") or [], 1)),
                     )
                     if s.get("review_feedback")
                     else ""
@@ -140,7 +145,7 @@ def build_title_graph():
 
     # ---- 边：入口路由（打回重跑时跳过调研，直接用已有 title_research 重新生成）----
     def _entry_router(state: AgentState) -> str:
-        if state.get("title_research") and state.get("review_count", 0) > 0:
+        if (short_brief(state) and personal_reflection(state)) or (state.get("title_research") and state.get("review_count", 0) > 0):
             return "regenerate"  # 打回重跑：跳过调研
         return "research"        # 首次：正常调研
 
@@ -166,12 +171,15 @@ def build_title_graph():
 if __name__ == "__main__":
     # 本地冒烟：docker exec 内直接跑，验证标题链路（调研 + 生成）
     graph = build_title_graph()
-    result = graph.invoke(
-        {
-            "topic": "2026年 AI Agent 发展趋势",
-            "max_review_rounds": 2,
-        }
-    )
+    from src.blog_agent.clients.provider_budget import provider_run
+
+    with provider_run():
+        result = graph.invoke(
+            {
+                "topic": "2026年 AI Agent 发展趋势",
+                "max_review_rounds": 2,
+            }
+        )
     print("=== title_research ===")
     print((result.get("title_research") or "")[:800])
     print("=== titles ===")

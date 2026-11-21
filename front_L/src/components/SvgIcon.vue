@@ -12,6 +12,11 @@
       <path d="M12 20h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       <path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
     </template>
+    <g v-else-if="name === 'desk'" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.6"/><rect x="14" y="3" width="7" height="7" rx="1.6"/><rect x="3" y="14" width="7" height="7" rx="1.6"/><rect x="14" y="14" width="7" height="7" rx="1.6"/></g>
+    <g v-else-if="name === 'library'" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="3.5" y="5" width="4" height="15" rx=".8"/><path d="M10 5v15M14 5l4-1 3.6 15-4 1z"/></g>
+    <g v-else-if="name === 'compass'" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m16.5 7.5-3 6-6 3 3-6z"/></g>
+    <path v-else-if="name === 'right'" d="M4 12h15m-5.5-5.5L19 12l-5.5 5.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+    <g v-else-if="name === 'calendar'" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3.5" y="5.5" width="17" height="15" rx="2"/><path d="M7.5 3.5v4M16.5 3.5v4M4 10h16"/></g>
     <!-- 标题 -->
     <template v-else-if="name === 'title'">
       <path d="M4 7V5h16v2M9 5v14M15 5v14M7 19h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>

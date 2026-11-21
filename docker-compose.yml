@@ -1,11 +1,12 @@
 # ============================================================
-# 生产编排：新版 backend_L + front_L + 独立 PostgreSQL
+# 生产编排：新版 backend_L + front_L
 #
 # 蓝绿切换说明：
 #   - 旧版线上容器（blog-agent-backend / blog-agent-frontend-prod /
-#     blog-agent-postgres）保留不动，Nginx 反代 127.0.0.1:8080
-#   - 新版起在 127.0.0.1:8090，验证无误后把系统 Nginx 反代改指 8090
-#   - 回滚：把 Nginx 改回 8080 即可，秒级恢复旧版
+#     blog-agent-postgres）已下线删除，Nginx 反代 127.0.0.1:8090
+#   - 回滚：见 git 历史里的旧版 compose
+#
+# 数据库：本机统一实例 shared-postgres（见 D:\AMySpace\AMe\_infra\shared-db），连接串在 backend_L/.env
 #
 # 常用命令：
 #   docker compose up -d --build      # 构建并启动
@@ -15,26 +16,6 @@
 name: blog-agent-l-prod
 
 services:
-  # ========== PostgreSQL（新版独立库）==========
-  postgresl:
-    image: postgres:16-alpine
-    container_name: blog-agent-l-postgres-prod
-    environment:
-      POSTGRES_USER: blog
-      POSTGRES_PASSWORD: lisiyao
-      POSTGRES_DB: blog_agent_L
-    # 生产不对外暴露数据库端口，只在 Docker 内网可达
-    expose:
-      - "5432"
-    volumes:
-      - postgres_data_L:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U blog -d blog_agent_L"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    restart: unless-stopped
-
   # ========== 新后端（backend_L）==========
   backendl:
     build:
@@ -44,17 +25,24 @@ services:
     expose:
       - "8001"
     env_file:
-      - ./backend_L/.env
+      - ${BLOG_PRODUCTION_ENV_FILE:-./backend_L/.env}
     environment:
       - PYTHONPATH=/app
+      - APP_ENV=production
     # 生产去掉 --reload（Dockerfile 默认 CMD 带热更新）
-    command: uvicorn src.blog_agent.main:app --host 0.0.0.0 --port 8001
+    command: uvicorn src.blog_agent.main:app --host 0.0.0.0 --port 8001 --limit-concurrency 160 --timeout-keep-alive 5
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/api/v1/ready', timeout=4).close()"]
+      interval: 20s
+      timeout: 6s
+      retries: 3
+      start_period: 20s
     # 持久化配图目录（容器内 /app/data/images）
     volumes:
       - backend_images:/app/data/images
-    depends_on:
-      postgresl:
-        condition: service_healthy
+    networks:
+      - default
+      - shared-db
     restart: unless-stopped
 
   # ========== 新前端（front_L，nginx 托管构建产物）==========
@@ -63,7 +51,7 @@ services:
       context: ./front_L
       dockerfile: Dockerfile
     container_name: blog-agent-l-frontend-prod
-    # 只绑本机回环，由系统 Nginx 反代；8090 与旧版 8080 错开
+    # 只绑本机回环，由系统 Nginx 反代
     ports:
       - "127.0.0.1:8090:80"
     depends_on:
@@ -72,5 +60,8 @@ services:
 
 # ========== 持久化卷 ==========
 volumes:
-  postgres_data_L:
   backend_images:
+
+networks:
+  shared-db:
+    external: true

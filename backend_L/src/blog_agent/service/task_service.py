@@ -14,9 +14,9 @@ class TaskService:
     # ========== 基础查询 ==========
 
     @staticmethod
-    def create_task(db: Session, topic: str, user_id: Optional[int] = None) -> BlogTask:
+    def create_task(db: Session, topic: str, user_id: Optional[int] = None, **brief) -> BlogTask:
         """创建博客生成任务"""
-        return TaskRepository.create_task(db, topic=topic, user_id=user_id)
+        return TaskRepository.create_task(db, topic=topic, user_id=user_id, **brief)
 
     @staticmethod
     def get_task(db: Session, task_id: int) -> Optional[BlogTask]:
@@ -47,11 +47,13 @@ class TaskService:
     # ========== 通用：状态和进度 ==========
 
     @staticmethod
-    def update_status(db: Session, task_id: int, status: TaskStatus):
-        """更新任务状态"""
+    def update_status(db: Session, task_id: int, status: TaskStatus, progress: Optional[str] = None):
+        """原子更新状态及对应的进度提示"""
         task = TaskRepository.get_task_by_id(db, task_id)
         if task:
             task.status = status
+            if progress is not None:
+                task.progress = progress
             db.commit()
 
     @staticmethod
@@ -99,7 +101,8 @@ class TaskService:
     # ========== 节点1：标题 ==========
 
     @staticmethod
-    def save_titles(db: Session, task_id: int, titles: List[str], scores: Optional[list] = None):
+    def save_titles(db: Session, task_id: int, titles: List[str], scores: Optional[list] = None,
+                    progress: str = "标题已生成，请选择标题并配置文章风格", review: Optional[dict] = None):
         """保存生成的3个标题，状态改为 title_generated
         同时保存评分（如有），避免前端轮询时标题已存在但评分为空的竞态问题
         """
@@ -110,7 +113,8 @@ class TaskService:
         if scores is not None:
             task.title_scores = json.dumps(scores, ensure_ascii=False)
         task.status = TaskStatus.TITLE_GENERATED
-        task.progress = "标题已生成，请选择标题并配置文章风格"
+        task.progress = progress
+        task.review_feedback = json.dumps({**review, "stage": "title"}, ensure_ascii=False) if review and not review.get("skipped") else None
         db.commit()
 
     @staticmethod
@@ -146,7 +150,8 @@ class TaskService:
     # ========== 节点2：大纲 ==========
 
     @staticmethod
-    def save_outline(db: Session, task_id: int, outline: str):
+    def save_outline(db: Session, task_id: int, outline: str,
+                     progress: str = "大纲已生成，请确认或修改", review: Optional[dict] = None):
         """保存生成的大纲，状态改为 outline_generated"""
         task = TaskRepository.get_task_by_id(db, task_id)
         if not task:
@@ -154,7 +159,8 @@ class TaskService:
         task.outline = outline
         task.outline_confirmed = False
         task.status = TaskStatus.OUTLINE_GENERATED
-        task.progress = "大纲已生成，请确认或修改"
+        task.progress = progress
+        task.review_feedback = json.dumps({**review, "stage": "outline"}, ensure_ascii=False) if review and not review.get("skipped") else None
         db.commit()
 
     @staticmethod
@@ -183,6 +189,19 @@ class TaskService:
         db.commit()
 
     # ========== 节点3：正文 ==========
+
+    @staticmethod
+    def save_reviewed_draft(db: Session, task_id: int, state: dict):
+        """保存同一轮正文及审稿结果，配图与排版结束后再公开完成状态。"""
+        task = TaskRepository.get_task_by_id(db, task_id)
+        if task:
+            task.content = state["content"]
+            task.content_research = state.get("content_research") or ""
+            task.evidence_sources = state.get("evidence_sources") or []
+            task.writing_thoughts = state.get("writing_thoughts") or ""
+            review = state["review_result"]
+            task.review_feedback = None if review.get("skipped") else json.dumps(review, ensure_ascii=False)
+            db.commit()
 
     @staticmethod
     def save_content(db: Session, task_id: int, content: str):
@@ -239,14 +258,14 @@ class TaskService:
     # ========== 格式化节点 ==========
 
     @staticmethod
-    def save_formatted_content(db: Session, task_id: int, content: str):
+    def save_formatted_content(db: Session, task_id: int, content: str, progress: str = "全部完成"):
         """保存格式化后的正文，标记为完成"""
         task = TaskRepository.get_task_by_id(db, task_id)
         if not task:
             return
         task.formatted_content = content
         task.status = TaskStatus.COMPLETED
-        task.progress = "全部完成"
+        task.progress = progress
         db.commit()
 
     # ========== 失败处理 ==========

@@ -1,0 +1,162 @@
+{
+  "started_utc": "2026-11-21T01:52:20+08:00",
+  "finished_utc": "2026-11-21T01:52:50+08:00",
+  "scenarios": [
+    {
+      "case": "writer_read_timeout",
+      "task": 2,
+      "used": [
+        2,
+        5,
+        5,
+        8
+      ],
+      "submission": "researching_content",
+      "failed_job": "failed",
+      "error": "模型服务响应超时，请稍后重试。",
+      "replay": "failed",
+      "retry_submission": "researching_content",
+      "recovered": "completed",
+      "config_retained": true,
+      "failed_research_saved": true,
+      "failed_draft_saved": false,
+      "failed_plan_saved": false,
+      "failed_has_final": false,
+      "before_model_calls": 9,
+      "failed_content_calls": 3,
+      "replay_extra_model_calls": 0,
+      "retry_content_calls": 4,
+      "exact_model_calls": {
+        "research_plan": 4,
+        "research_summary": 4,
+        "TitleList": 1,
+        "TitleScoreList": 1,
+        "TitleReviewResult": 1,
+        "outliner": 1,
+        "OutlineReviewResult": 1,
+        "writer": 2,
+        "ReviewResult": 1
+      },
+      "states": [
+        "researching_content",
+        "generating_content",
+        "failed"
+      ],
+      "failure_seconds": 5.95,
+      "e2e_seconds": 27.94
+    },
+    {
+      "case": "reviewer_http_429",
+      "task": 1,
+      "used": [
+        2,
+        5,
+        5,
+        8
+      ],
+      "submission": "researching_content",
+      "failed_job": "failed",
+      "error": "模型服务当前限流，请稍后重试。",
+      "replay": "failed",
+      "retry_submission": "researching_content",
+      "recovered": "completed",
+      "config_retained": true,
+      "failed_research_saved": true,
+      "failed_draft_saved": true,
+      "failed_plan_saved": true,
+      "failed_has_final": false,
+      "before_model_calls": 9,
+      "failed_content_calls": 4,
+      "replay_extra_model_calls": 0,
+      "retry_content_calls": 4,
+      "exact_model_calls": {
+        "research_plan": 4,
+        "research_summary": 4,
+        "TitleList": 1,
+        "TitleScoreList": 1,
+        "TitleReviewResult": 1,
+        "outliner": 1,
+        "OutlineReviewResult": 1,
+        "writer": 2,
+        "ReviewResult": 2
+      },
+      "states": [
+        "researching_content",
+        "generating_content",
+        "failed"
+      ],
+      "failure_seconds": 5.21,
+      "e2e_seconds": 23.49
+    },
+    {
+      "case": "rewrite_429_restore",
+      "task": 3,
+      "used": [
+        5,
+        8,
+        8,
+        8
+      ],
+      "failed_rewrite_error": "模型服务当前限流，请稍后重试。",
+      "distinct_failed_draft": true,
+      "original_public": true,
+      "restored_private": true,
+      "original_fields_verified": 21,
+      "after_restore_state": "completed",
+      "after_replay_state": "completed",
+      "other_restore_http": 403,
+      "other_read_http": {
+        "/task/3": 403,
+        "/blog/3": 403,
+        "/articles/3": 404
+      },
+      "author_detail_read": true,
+      "sse_restored": true,
+      "model_calls_before_restore": 17,
+      "model_calls_after_restore": 17,
+      "model_calls_after_replay": 17,
+      "restoration_seconds": 0.017,
+      "e2e_seconds": 30.14
+    }
+  ],
+  "content_jobs": [
+    [
+      1,
+      "failed",
+      1,
+      1
+    ],
+    [
+      1,
+      "succeeded",
+      1,
+      1
+    ],
+    [
+      2,
+      "failed",
+      1,
+      1
+    ],
+    [
+      2,
+      "succeeded",
+      1,
+      1
+    ],
+    [
+      3,
+      "failed",
+      1,
+      1
+    ],
+    [
+      3,
+      "succeeded",
+      1,
+      1
+    ]
+  ],
+  "sdk_retries": 0,
+  "provider_timeout_s": 2
+}

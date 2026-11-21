@@ -1,6 +1,7 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import router from '@/router'
+import { useAuthStore } from '@/stores/auth'
 
 const TOKEN_KEY = 'blog-agent-token'
 
@@ -47,17 +48,26 @@ request.interceptors.response.use(
 
     // 401：登录失效/未登录 → 清除本地登录态并跳转登录页（记录原路径，登录后跳回）
     if (error.response?.status === 401) {
-      localStorage.removeItem(TOKEN_KEY)
-      localStorage.removeItem('blog-agent-user')
-      if (!window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/register')) {
-        router.push({ path: '/login', query: { redirect: window.location.pathname + window.location.search } })
+      const sent = error.config?.headers?.Authorization
+      const active = localStorage.getItem(TOKEN_KEY)
+      // An old response must not sign out a session established after it was sent.
+      if (sent && sent !== 'Bearer ' + active) return Promise.reject(error)
+      if (sent) useAuthStore().logout()
+      const current = router.currentRoute.value
+      if (!['Login','Register'].includes(current.name)) {
+        router.push({ path: '/login', query: { redirect: current.fullPath } })
       }
       ElMessage.warning(error.response?.data?.detail || '请先登录')
       return Promise.reject(error)
     }
 
     const message = error.response?.data?.detail || error.message || '请求失败'
-    ElMessage.error(message)
+    const status = error.response?.status
+    if (error.config?.quietTransientError && (!status || status === 408 || status === 429 || status >= 500)) {
+      return Promise.reject(error)
+    }
+    const display = Array.isArray(message) ? message.map(item => item.msg).filter(Boolean).join(' · ') : message?.message || String(message)
+    ElMessage.error(display)
     return Promise.reject(error)
   }
 )
